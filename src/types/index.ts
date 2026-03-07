@@ -47,6 +47,7 @@ export type PlatformName =
   | 'Spotify'
   | 'SoundCloud'
   | 'LinkedIn'
+  | 'Eventbrite'
   | 'Website'
   | 'Other';
 
@@ -61,13 +62,39 @@ export interface ExternalLink {
 
 export type EventType =
   | 'FASHION_SHOW'
-  | 'NETWORKING'
-  | 'WORKSHOP'
+  | 'PERFORMANCE'
+  | 'OPEN_MIC'
+  | 'SCREENING'
   | 'LISTENING_PARTY'
+  | 'STUDIO_SESSION'
+  | 'WORKSHOP'
+  | 'MASTERCLASS'
+  | 'PANEL'
+  | 'CRITIQUE_SESSION'
+  | 'HACKATHON'
+  | 'NETWORKING'
   | 'COMMUNITY'
+  | 'COLLAB_SESSION'
+  | 'OPEN_CALL'
+  | 'POP_UP'
+  | 'MARKET'
+  | 'LAUNCH_PARTY'
+  | 'EXHIBITION'
+  | 'OPEN_STUDIO'
+  | 'PHOTOSHOOT'
+  | 'GROUP_RUN'
+  | 'FITNESS_CLASS'
+  | 'RETREAT'
+  | 'GAME_NIGHT'
+  | 'BLOCK_PARTY'
+  | 'COMPETITION'
+  | 'CHARITY'
+  | 'VIRTUAL_EVENT'
   | 'OTHER';
 
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED';
+
+export type EventPrivacy = 'PUBLIC' | 'EXCLUSIVE';
 
 export interface Event {
   id: string;
@@ -75,18 +102,23 @@ export interface Event {
   title: string;
   description: string;
   event_type: EventType;
+  privacy: EventPrivacy;
   start_time: string;
   end_time: string;
   latitude: number;
   longitude: number;
   address_name: string;
   status: EventStatus;
+  is_recurring: boolean;
+  recurrence_rule: string | null;
+  recurrence_end_date: string | null;
+  parent_event_id: string | null;
   created_at: string;
 }
 
 // ─── RSVPs ───────────────────────────────────────────────────────────────────
 
-export type RSVPStatus = 'INTERESTED' | 'GOING';
+export type RSVPStatus = 'INTERESTED' | 'REQUESTED' | 'GOING' | 'DECLINED';
 
 export interface EventRSVP {
   event_id: string;
@@ -135,4 +167,5 @@ export interface EventWithHost extends Event {
   host: Profile;
   interested_count: number;
   going_count: number;
+  niches: Niche[];
 }

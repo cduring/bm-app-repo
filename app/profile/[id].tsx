@@ -16,7 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useProfileById } from '../../src/hooks/useProfile';
 import { NicheTag } from '../../src/components/NicheTag';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { PlatformName } from '../../src/types';
+import { MOCK_PROFILES } from '../../src/mock/profiles';
+import type { PlatformName, ProfileWithNiches } from '../../src/types';
 
 const PLATFORM_ICONS: Record<PlatformName, string> = {
   Instagram: 'logo-instagram',
@@ -30,10 +31,21 @@ const PLATFORM_ICONS: Record<PlatformName, string> = {
   Other: 'link-outline',
 };
 
+function mockToProfileData(p: ProfileWithNiches) {
+  return {
+    profile: p,
+    niches: p.niches,
+    externalLinks: p.external_links ?? [],
+  };
+}
+
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, isLoading, error } = useProfileById(id);
+  const { data: supabaseData, isLoading } = useProfileById(id);
   const [isFollowing, setIsFollowing] = useState(false);
+
+  const mockProfile = MOCK_PROFILES.find(p => p.id === id);
+  const data = supabaseData ?? (mockProfile ? mockToProfileData(mockProfile) : null);
 
   function openLink(url: string) {
     const full = url.startsWith('http') ? url : `https://${url}`;
@@ -42,7 +54,7 @@ export default function ViewProfileScreen() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !mockProfile) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -50,7 +62,7 @@ export default function ViewProfileScreen() {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <View style={styles.centered}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textTertiary} />

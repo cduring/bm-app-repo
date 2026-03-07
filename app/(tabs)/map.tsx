@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, memo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import Mapbox, { MapView, Camera, PointAnnotation } from '@rnmapbox/maps';
+import Mapbox, { MapView, Camera, MarkerView, UserLocation } from '@rnmapbox/maps';
+import * as Location from 'expo-location';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
 import { NicheTag } from '../../src/components/NicheTag';
 import { MOCK_PROFILES } from '../../src/mock/profiles';
@@ -24,6 +25,18 @@ type SelectedPin =
   | { type: 'CREATOR'; data: ProfileWithNiches }
   | { type: 'EVENT'; data: EventWithHost }
   | null;
+
+const CreatorPin = memo(({ initial, isSelected }: { initial: string; isSelected: boolean }) => (
+  <View style={[styles.pin, styles.creatorPin, isSelected && styles.pinSelected]}>
+    <Text style={styles.pinInitial}>{initial}</Text>
+  </View>
+));
+
+const EventPin = memo(({ initial, color, isSelected }: { initial: string; color: string; isSelected: boolean }) => (
+  <View style={[styles.pin, { backgroundColor: color }, isSelected && styles.pinSelected]}>
+    <Text style={styles.pinInitial}>{initial}</Text>
+  </View>
+));
 
 const EVENT_COLORS: Record<EventType, string> = {
   FASHION_SHOW: Colors.fashionShow,
@@ -58,11 +71,22 @@ function formatEventDate(isoString: string): string {
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>('CREATORS');
-  const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [selectedPin, setSelectedPin] = useState<SelectedPin>(null);
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [showRecenterButton, setShowRecenterButton] = useState(false);
+  const cameraRef = useRef<any>(null);
+  const userCoordsRef = useRef<[number, number] | null>(null);
+  const hasInitiallyCentered = useRef(false);
+
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status === 'granted') setLocationGranted(true);
+    });
+  }, []);
 
   // Unique niches across all mock profiles (deduplicated by id)
-  const allNiches = useMemo<Niche[]>(() => {
+  const allProfileNiches = useMemo<Niche[]>(() => {
     const seen = new Set<string>();
     const result: Niche[] = [];
     for (const profile of MOCK_PROFILES) {
@@ -76,23 +100,70 @@ export default function MapScreen() {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }, []);
 
-  // Filtered profiles based on selected niche
+  // Unique niches across all mock events (deduplicated by id)
+  const allEventNiches = useMemo<Niche[]>(() => {
+    const seen = new Set<string>();
+    const result: Niche[] = [];
+    for (const event of MOCK_EVENTS) {
+      for (const niche of event.niches) {
+        if (!seen.has(niche.id)) {
+          seen.add(niche.id);
+          result.push(niche);
+        }
+      }
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  const allNiches = mode === 'CREATORS' ? allProfileNiches : allEventNiches;
+
+  // Filtered profiles based on selected niches
   const visibleProfiles = useMemo(() => {
-    if (!selectedNicheId) return MOCK_PROFILES;
+    if (selectedNicheIds.size === 0) return MOCK_PROFILES;
     return MOCK_PROFILES.filter(p =>
-      p.niches.some(n => n.id === selectedNicheId)
+      p.niches.some(n => selectedNicheIds.has(n.id))
     );
-  }, [selectedNicheId]);
+  }, [selectedNicheIds]);
+
+  // Filtered events based on selected niches
+  const visibleEvents = useMemo(() => {
+    if (selectedNicheIds.size === 0) return MOCK_EVENTS;
+    return MOCK_EVENTS.filter(e =>
+      e.niches.some(n => selectedNicheIds.has(n.id))
+    );
+  }, [selectedNicheIds]);
 
   function handleToggleNiche(nicheId: string) {
-    setSelectedNicheId(prev => (prev === nicheId ? null : nicheId));
+    setSelectedNicheIds(prev => {
+      const next = new Set(prev);
+      next.has(nicheId) ? next.delete(nicheId) : next.add(nicheId);
+      return next;
+    });
     setSelectedPin(null);
   }
 
   function handleSwitchMode(newMode: Mode) {
     setMode(newMode);
     setSelectedPin(null);
-    setSelectedNicheId(null);
+    setSelectedNicheIds(new Set());
+  }
+
+  function handleUserLocationUpdate(location: any) {
+    const coords: [number, number] = [
+      location.coords.longitude,
+      location.coords.latitude,
+    ];
+    userCoordsRef.current = coords;
+    if (!hasInitiallyCentered.current) {
+      hasInitiallyCentered.current = true;
+      cameraRef.current?.flyTo(coords, 800);
+    }
+  }
+
+  function handleRecenter() {
+    if (!userCoordsRef.current) return;
+    cameraRef.current?.flyTo(userCoordsRef.current, 800);
+    setShowRecenterButton(false);
   }
 
   function handleMapPress() {
@@ -108,12 +179,21 @@ export default function MapScreen() {
         compassEnabled={false}
         logoEnabled={false}
         attributionEnabled={false}
+        onRegionIsChanging={(feature: any) => {
+          if (feature.properties?.isUserInteraction) {
+            setShowRecenterButton(true);
+          }
+        }}
       >
         <Camera
+          ref={cameraRef}
           centerCoordinate={[-79.3832, 43.6532]}
           zoomLevel={12}
           animationDuration={0}
         />
+        {locationGranted && (
+          <UserLocation visible onUpdate={handleUserLocationUpdate} minDisplacement={5} />
+        )}
 
         {/* Creator pins */}
         {mode === 'CREATORS' &&
@@ -122,59 +202,63 @@ export default function MapScreen() {
               selectedPin?.type === 'CREATOR' &&
               selectedPin.data.id === profile.id;
             return (
-              <PointAnnotation
+              <MarkerView
                 key={profile.id}
-                id={profile.id}
                 coordinate={[profile.longitude!, profile.latitude!]}
-                onSelected={() =>
-                  setSelectedPin({ type: 'CREATOR', data: profile })
-                }
+                anchor={{ x: 0.5, y: 0.5 }}
+                allowOverlap
               >
-                <View
-                  style={[
-                    styles.pin,
-                    styles.creatorPin,
-                    isSelected && styles.pinSelected,
-                  ]}
+                <TouchableOpacity
+                  onPress={() => setSelectedPin({ type: 'CREATOR', data: profile })}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.pinInitial}>
-                    {profile.display_name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              </PointAnnotation>
+                  <CreatorPin
+                    initial={profile.display_name.charAt(0).toUpperCase()}
+                    isSelected={isSelected}
+                  />
+                </TouchableOpacity>
+              </MarkerView>
             );
           })}
 
         {/* Event pins */}
         {mode === 'EVENTS' &&
-          MOCK_EVENTS.map(event => {
+          visibleEvents.map(event => {
             const isSelected =
               selectedPin?.type === 'EVENT' && selectedPin.data.id === event.id;
             const color = EVENT_COLORS[event.event_type];
             return (
-              <PointAnnotation
+              <MarkerView
                 key={event.id}
-                id={event.id}
                 coordinate={[event.longitude, event.latitude]}
-                onSelected={() =>
-                  setSelectedPin({ type: 'EVENT', data: event })
-                }
+                anchor={{ x: 0.5, y: 0.5 }}
+                allowOverlap
               >
-                <View
-                  style={[
-                    styles.pin,
-                    { backgroundColor: color },
-                    isSelected && styles.pinSelected,
-                  ]}
+                <TouchableOpacity
+                  onPress={() => setSelectedPin({ type: 'EVENT', data: event })}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.pinInitial}>
-                    {event.event_type.charAt(0)}
-                  </Text>
-                </View>
-              </PointAnnotation>
+                  <EventPin
+                    initial={event.event_type.charAt(0)}
+                    color={color}
+                    isSelected={isSelected}
+                  />
+                </TouchableOpacity>
+              </MarkerView>
             );
           })}
       </MapView>
+
+      {/* Recenter button */}
+      {showRecenterButton && locationGranted && (
+        <TouchableOpacity
+          style={[styles.recenterButton, { bottom: insets.bottom + Spacing.lg }]}
+          onPress={handleRecenter}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="locate" size={20} color={Colors.textPrimary} />
+        </TouchableOpacity>
+      )}
 
       {/* Filter bar — floats above map */}
       <SafeAreaView style={styles.filterBar} edges={['top']}>
@@ -200,8 +284,8 @@ export default function MapScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Niche filter chips (Creators mode only) */}
-        {mode === 'CREATORS' && (
+        {/* Niche filter chips */}
+        {(
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -209,22 +293,22 @@ export default function MapScreen() {
             style={styles.nichesScroll}
           >
             <TouchableOpacity
-              style={[styles.nicheChip, !selectedNicheId && styles.nicheChipActive]}
-              onPress={() => { setSelectedNicheId(null); setSelectedPin(null); }}
+              style={[styles.nicheChip, selectedNicheIds.size === 0 && styles.nicheChipActive]}
+              onPress={() => { setSelectedNicheIds(new Set()); setSelectedPin(null); }}
               activeOpacity={0.7}
             >
-              <Text style={[styles.nicheChipText, !selectedNicheId && styles.nicheChipTextActive]}>
+              <Text style={[styles.nicheChipText, selectedNicheIds.size === 0 && styles.nicheChipTextActive]}>
                 All
               </Text>
             </TouchableOpacity>
             {allNiches.map(niche => (
               <TouchableOpacity
                 key={niche.id}
-                style={[styles.nicheChip, selectedNicheId === niche.id && styles.nicheChipActive]}
+                style={[styles.nicheChip, selectedNicheIds.has(niche.id) && styles.nicheChipActive]}
                 onPress={() => handleToggleNiche(niche.id)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.nicheChipText, selectedNicheId === niche.id && styles.nicheChipTextActive]}>
+                <Text style={[styles.nicheChipText, selectedNicheIds.has(niche.id) && styles.nicheChipTextActive]}>
                   {niche.name}
                 </Text>
               </TouchableOpacity>
@@ -323,9 +407,22 @@ function EventCard({ event }: { event: EventWithHost }) {
       <View style={styles.cardRow}>
         <View style={[styles.eventTypeDot, { backgroundColor: color }]} />
         <View style={styles.cardInfo}>
-          <Text style={styles.cardName} numberOfLines={2}>{event.title}</Text>
-          <View style={[styles.eventTypeBadge, { backgroundColor: color + '20', borderColor: color + '50' }]}>
-            <Text style={[styles.eventTypeBadgeText, { color }]}>{label}</Text>
+          <View style={styles.eventTitleRow}>
+            <Text style={[styles.cardName, { flex: 1 }]} numberOfLines={2}>{event.title}</Text>
+            {event.is_recurring && (
+              <Ionicons name="repeat" size={14} color={Colors.textTertiary} style={styles.recurringIcon} />
+            )}
+          </View>
+          <View style={styles.eventBadges}>
+            <View style={[styles.eventTypeBadge, { backgroundColor: color + '20', borderColor: color + '50' }]}>
+              <Text style={[styles.eventTypeBadgeText, { color }]}>{label}</Text>
+            </View>
+            {event.privacy === 'EXCLUSIVE' && (
+              <View style={styles.exclusiveBadge}>
+                <Ionicons name="lock-closed" size={9} color={Colors.textTertiary} />
+                <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -385,6 +482,20 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
     color: '#ffffff',
+  },
+
+  // Recenter button
+  recenterButton: {
+    position: 'absolute',
+    right: Spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Filter bar
@@ -560,6 +671,36 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  eventTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
+  recurringIcon: {
+    marginTop: 2,
+  },
+  eventBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 2,
+  },
+  exclusiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+  },
+  exclusiveBadgeText: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textTertiary,
   },
   eventTypeBadge: {
     alignSelf: 'flex-start',

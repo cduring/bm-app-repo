@@ -15,8 +15,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-01-10T00:00:00Z',
     niches: [
-      { id: 'n1', name: 'Streetwear' },
-      { id: 'n14', name: 'Fashion Design' },
+      { id: '1', name: 'Streetwear' },
+      { id: '15', name: 'Fashion Design' },
     ],
     external_links: [
       { id: 'el1', profile_id: 'p1', platform_name: 'Instagram', url: 'https://instagram.com/jordanellis' },
@@ -37,8 +37,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-02-14T00:00:00Z',
     niches: [
-      { id: 'n2', name: 'Cinematography' },
-      { id: 'n5', name: 'Photography' },
+      { id: '2', name: 'Cinematography' },
+      { id: '5', name: 'Photography' },
     ],
     external_links: [
       { id: 'el3', profile_id: 'p2', platform_name: 'YouTube', url: 'https://youtube.com/@amaraosei' },
@@ -59,7 +59,7 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-01-05T00:00:00Z',
     niches: [
-      { id: 'n3', name: 'Barbering' },
+      { id: '3', name: 'Barbering' },
     ],
     external_links: [
       { id: 'el5', profile_id: 'p3', platform_name: 'Instagram', url: 'https://instagram.com/fade_barber' },
@@ -79,8 +79,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-03-01T00:00:00Z',
     niches: [
-      { id: 'n4', name: 'Music Production' },
-      { id: 'n16', name: 'DJing' },
+      { id: '4', name: 'Music Production' },
+      { id: '17', name: 'DJing' },
     ],
     external_links: [
       { id: 'el6', profile_id: 'p4', platform_name: 'SoundCloud', url: 'https://soundcloud.com/kainakamura' },
@@ -101,8 +101,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-04-20T00:00:00Z',
     niches: [
-      { id: 'n6', name: 'Modeling' },
-      { id: 'n5', name: 'Photography' },
+      { id: '6', name: 'Modeling' },
+      { id: '5', name: 'Photography' },
     ],
     external_links: [
       { id: 'el8', profile_id: 'p5', platform_name: 'Instagram', url: 'https://instagram.com/priyasharma_' },
@@ -122,8 +122,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-05-01T00:00:00Z',
     niches: [
-      { id: 'n7', name: 'Comedy' },
-      { id: 'n13', name: 'Podcasting' },
+      { id: '7', name: 'Comedy' },
+      { id: '14', name: 'Podcasting' },
     ],
     external_links: [
       { id: 'el9', profile_id: 'p6', platform_name: 'TikTok', url: 'https://tiktok.com/@thelaughingfox' },
@@ -144,8 +144,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-01-15T00:00:00Z',
     niches: [
-      { id: 'n8', name: 'Tattoo Art' },
-      { id: 'n11', name: 'Digital Art' },
+      { id: '8', name: 'Tattoo Art' },
+      { id: '12', name: 'Digital Art' },
     ],
     external_links: [
       { id: 'el11', profile_id: 'p7', platform_name: 'Instagram', url: 'https://instagram.com/novoinkstudio' },
@@ -166,8 +166,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-02-01T00:00:00Z',
     niches: [
-      { id: 'n17', name: 'Makeup Artistry' },
-      { id: 'n12', name: 'Hair Styling' },
+      { id: '18', name: 'Makeup Artistry' },
+      { id: '13', name: 'Hair Styling' },
     ],
     external_links: [
       { id: 'el13', profile_id: 'p8', platform_name: 'Instagram', url: 'https://instagram.com/destinylafleur' },
@@ -188,7 +188,7 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-03-10T00:00:00Z',
     niches: [
-      { id: 'n10', name: 'Food & Culinary' },
+      { id: '10', name: 'Food & Culinary' },
     ],
     external_links: [
       { id: 'el15', profile_id: 'p9', platform_name: 'Instagram', url: 'https://instagram.com/harvesttableco' },
@@ -209,8 +209,8 @@ export const MOCK_PROFILES: ProfileWithNiches[] = [
     following_count: 0,
     created_at: '2025-04-01T00:00:00Z',
     niches: [
-      { id: 'n15', name: 'Graphic Design' },
-      { id: 'n11', name: 'Digital Art' },
+      { id: '16', name: 'Graphic Design' },
+      { id: '12', name: 'Digital Art' },
     ],
     external_links: [
       { id: 'el17', profile_id: 'p10', platform_name: 'Instagram', url: 'https://instagram.com/dariusmensah' },
