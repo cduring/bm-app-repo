@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import Mapbox, { MapView, Camera, MarkerView, UserLocation } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
@@ -42,17 +42,65 @@ const EVENT_COLORS: Record<EventType, string> = {
   FASHION_SHOW: Colors.fashionShow,
   NETWORKING: Colors.networking,
   WORKSHOP: Colors.workshop,
+  MASTERCLASS: Colors.workshop,
   LISTENING_PARTY: Colors.listeningParty,
   COMMUNITY: Colors.community,
+  PERFORMANCE: Colors.other,
+  OPEN_MIC: Colors.other,
+  SCREENING: Colors.other,
+  STUDIO_SESSION: Colors.other,
+  PANEL: Colors.other,
+  CRITIQUE_SESSION: Colors.other,
+  HACKATHON: Colors.other,
+  COLLAB_SESSION: Colors.other,
+  OPEN_CALL: Colors.other,
+  POP_UP: Colors.other,
+  MARKET: Colors.other,
+  LAUNCH_PARTY: Colors.other,
+  EXHIBITION: Colors.other,
+  OPEN_STUDIO: Colors.other,
+  PHOTOSHOOT: Colors.other,
+  GROUP_RUN: Colors.other,
+  FITNESS_CLASS: Colors.other,
+  RETREAT: Colors.other,
+  GAME_NIGHT: Colors.other,
+  BLOCK_PARTY: Colors.other,
+  COMPETITION: Colors.other,
+  CHARITY: Colors.other,
+  VIRTUAL_EVENT: Colors.other,
   OTHER: Colors.other,
 };
 
 const EVENT_TYPE_LABEL: Record<EventType, string> = {
   FASHION_SHOW: 'Fashion Show',
-  NETWORKING: 'Networking',
-  WORKSHOP: 'Workshop',
+  PERFORMANCE: 'Performance',
+  OPEN_MIC: 'Open Mic',
+  SCREENING: 'Screening',
   LISTENING_PARTY: 'Listening Party',
+  STUDIO_SESSION: 'Studio Session',
+  WORKSHOP: 'Workshop',
+  MASTERCLASS: 'Masterclass',
+  PANEL: 'Panel',
+  CRITIQUE_SESSION: 'Critique',
+  HACKATHON: 'Hackathon',
+  NETWORKING: 'Networking',
   COMMUNITY: 'Community',
+  COLLAB_SESSION: 'Collab Session',
+  OPEN_CALL: 'Open Call',
+  POP_UP: 'Pop-Up',
+  MARKET: 'Market',
+  LAUNCH_PARTY: 'Launch Party',
+  EXHIBITION: 'Exhibition',
+  OPEN_STUDIO: 'Open Studio',
+  PHOTOSHOOT: 'Photoshoot',
+  GROUP_RUN: 'Group Run',
+  FITNESS_CLASS: 'Fitness Class',
+  RETREAT: 'Retreat',
+  GAME_NIGHT: 'Game Night',
+  BLOCK_PARTY: 'Block Party',
+  COMPETITION: 'Competition',
+  CHARITY: 'Charity',
+  VIRTUAL_EVENT: 'Virtual Event',
   OTHER: 'Event',
 };
 
@@ -70,6 +118,7 @@ function formatEventDate(isoString: string): string {
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const [mode, setMode] = useState<Mode>('CREATORS');
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [selectedPin, setSelectedPin] = useState<SelectedPin>(null);
@@ -84,6 +133,22 @@ export default function MapScreen() {
       if (status === 'granted') setLocationGranted(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!eventId) return;
+    const target = MOCK_EVENTS.find(e => e.id === eventId);
+    if (!target) return;
+    setMode('EVENTS');
+    setSelectedNicheIds(new Set());
+    setSelectedPin({ type: 'EVENT', data: target });
+    setTimeout(() => {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [target.longitude, target.latitude],
+        zoomLevel: 14,
+        animationDuration: 800,
+      });
+    }, 300);
+  }, [eventId]);
 
   // Unique niches across all mock profiles (deduplicated by id)
   const allProfileNiches = useMemo<Niche[]>(() => {

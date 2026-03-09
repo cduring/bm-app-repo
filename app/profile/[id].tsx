@@ -27,6 +27,7 @@ const PLATFORM_ICONS: Record<PlatformName, string> = {
   Spotify: 'musical-notes-outline',
   SoundCloud: 'musical-note-outline',
   LinkedIn: 'logo-linkedin',
+  Eventbrite: 'ticket-outline',
   Website: 'globe-outline',
   Other: 'link-outline',
 };

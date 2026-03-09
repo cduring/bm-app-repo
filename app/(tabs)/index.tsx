@@ -1,32 +1,264 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Typography, Spacing } from '../../src/constants/theme';
+import { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useEvents } from '../../src/hooks/useEvents';
+import { EventFullCard } from '../../src/components/EventFullCard';
+import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
+import { MOCK_EVENTS } from '../../src/mock/events';
+import type { EventType, EventWithHost, RSVPStatus } from '../../src/types';
+
+type TimeFilter = 'all' | 'this_week';
 
 export default function HomeScreen() {
+  const { data: supabaseData } = useEvents();
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [selectedTypes, setSelectedTypes] = useState<Set<EventType>>(new Set());
+  const [rsvpMap, setRsvpMap] = useState<Record<string, RSVPStatus | null>>({});
+  const [interestedMap, setInterestedMap] = useState<Record<string, boolean>>({});
+  const [cardHeight, setCardHeight] = useState(0);
+
+  const allEvents: EventWithHost[] = useMemo(() => {
+    const base = supabaseData ?? MOCK_EVENTS;
+    return base
+      .slice()
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  }, [supabaseData]);
+
+  const availableTypes = useMemo<EventType[]>(
+    () => [...new Set(allEvents.map(e => e.event_type))],
+    [allEvents],
+  );
+
+  const filteredEvents = useMemo(() => {
+    let result = allEvents;
+    if (timeFilter === 'this_week') {
+      const weekFromNow = new Date();
+      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      result = result.filter(e => new Date(e.start_time) <= weekFromNow);
+    }
+    if (selectedTypes.size > 0) {
+      result = result.filter(e => selectedTypes.has(e.event_type));
+    }
+    return result;
+  }, [allEvents, timeFilter, selectedTypes]);
+
+  function toggleType(type: EventType) {
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    setTimeFilter('all');
+    setSelectedTypes(new Set());
+  }
+
+  function handleRSVP(eventId: string, status: RSVPStatus) {
+    setRsvpMap(prev => ({
+      ...prev,
+      [eventId]: prev[eventId] === status ? null : status,
+    }));
+  }
+
+  function handleToggleInterested(eventId: string) {
+    setInterestedMap(prev => ({ ...prev, [eventId]: !prev[eventId] }));
+  }
+
+  const hasActiveFilters = timeFilter !== 'all' || selectedTypes.size > 0;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Home</Text>
-      <Text style={styles.subtitle}>Events & Posts feed coming in Stage 4</Text>
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Discover</Text>
+        <TouchableOpacity style={styles.filterIconBtn}>
+          <Ionicons name="options-outline" size={22} color={Colors.textPrimary} />
+          {hasActiveFilters && <View style={styles.filterDot} />}
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={filterStyles.row}
+        style={filterStyles.scroll}
+      >
+        {(['all', 'this_week'] as TimeFilter[]).map(f => (
+          <TouchableOpacity
+            key={f}
+            style={[filterStyles.pill, timeFilter === f && filterStyles.pillActive]}
+            onPress={() => setTimeFilter(f)}
+            activeOpacity={0.7}
+          >
+            <Text style={[filterStyles.pillText, timeFilter === f && filterStyles.pillTextActive]}>
+              {f === 'all' ? 'All Dates' : 'This Week'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <View style={filterStyles.divider} />
+        {availableTypes.map(type => {
+          const active = selectedTypes.has(type);
+          const label = type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, ' ');
+          return (
+            <TouchableOpacity
+              key={type}
+              style={[filterStyles.pill, active && filterStyles.pillActive]}
+              onPress={() => toggleType(type)}
+              activeOpacity={0.7}
+            >
+              <Text style={[filterStyles.pillText, active && filterStyles.pillTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Card stack */}
+      <View
+        style={styles.stackContainer}
+        onLayout={e => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0) setCardHeight(h);
+        }}
+      >
+        {filteredEvents.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color={Colors.textTertiary} />
+            <Text style={styles.emptyTitle}>No events found</Text>
+            <Text style={styles.emptySubtitle}>Try adjusting your filters</Text>
+            {hasActiveFilters && (
+              <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
+                <Text style={styles.clearBtnText}>Clear Filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : cardHeight > 0 ? (
+          <FlatList
+            data={filteredEvents}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <EventFullCard
+                event={item}
+                height={cardHeight}
+                rsvp={rsvpMap[item.id] ?? null}
+                isInterested={interestedMap[item.id] ?? false}
+                onRSVP={status => handleRSVP(item.id, status)}
+                onToggleInterested={() => handleToggleInterested(item.id)}
+                onViewDetails={() => router.push(`/event/${item.id}`)}
+              />
+            )}
+            snapToInterval={cardHeight}
+            decelerationRate="fast"
+            showsVerticalScrollIndicator={false}
+          />
+        ) : null}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  headerTitle: {
     flex: 1,
-    backgroundColor: Colors.background,
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.textPrimary,
+  },
+  filterIconBtn: { position: 'relative', padding: 4 },
+  filterDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  stackContainer: { flex: 1 },
+  emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.md,
+    gap: Spacing.sm,
   },
-  title: {
+  emptyTitle: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
-    fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.bold,
-    marginBottom: Spacing.sm,
   },
-  subtitle: {
-    color: Colors.textTertiary,
+  emptySubtitle: {
     fontSize: Typography.size.sm,
-    textAlign: 'center',
+    color: Colors.textTertiary,
+  },
+  clearBtn: {
+    marginTop: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  clearBtnText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.primary,
+  },
+});
+
+const filterStyles = StyleSheet.create({
+  scroll: { flexGrow: 0 },
+  row: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.xs,
+    alignItems: 'center',
+  },
+  divider: {
+    width: 1,
+    height: 20,
+    backgroundColor: Colors.border,
+    marginHorizontal: 4,
+  },
+  pill: {
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.chip,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  pillActive: {
+    backgroundColor: Colors.primary + '20',
+    borderColor: Colors.primary + '60',
+  },
+  pillText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textSecondary,
+  },
+  pillTextActive: {
+    color: Colors.primary,
   },
 });

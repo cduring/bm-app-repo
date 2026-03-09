@@ -27,7 +27,7 @@ import type { PlatformName, ExternalLink } from '../src/types';
 
 const PLATFORMS: PlatformName[] = [
   'Instagram', 'TikTok', 'YouTube', 'Twitter',
-  'Spotify', 'SoundCloud', 'LinkedIn', 'Website', 'Other',
+  'Spotify', 'SoundCloud', 'LinkedIn', 'Eventbrite', 'Website', 'Other',
 ];
 
 const PLATFORM_ICONS: Record<PlatformName, string> = {
@@ -38,6 +38,7 @@ const PLATFORM_ICONS: Record<PlatformName, string> = {
   Spotify: 'musical-notes-outline',
   SoundCloud: 'musical-note-outline',
   LinkedIn: 'logo-linkedin',
+  Eventbrite: 'ticket-outline',
   Website: 'globe-outline',
   Other: 'link-outline',
 };

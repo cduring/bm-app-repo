@@ -113,6 +113,7 @@ export interface Event {
   recurrence_rule: string | null;
   recurrence_end_date: string | null;
   parent_event_id: string | null;
+  cover_image_url: string | null;
   created_at: string;
 }
 
