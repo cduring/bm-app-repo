@@ -16,21 +16,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useProfileById } from '../../src/hooks/useProfile';
 import { NicheTag } from '../../src/components/NicheTag';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
+import { PLATFORM_ICONS } from '../../src/constants/platformIcons';
 import { MOCK_PROFILES } from '../../src/mock/profiles';
-import type { PlatformName, ProfileWithNiches } from '../../src/types';
-
-const PLATFORM_ICONS: Record<PlatformName, string> = {
-  Instagram: 'logo-instagram',
-  TikTok: 'logo-tiktok',
-  YouTube: 'logo-youtube',
-  Twitter: 'logo-twitter',
-  Spotify: 'musical-notes-outline',
-  SoundCloud: 'musical-note-outline',
-  LinkedIn: 'logo-linkedin',
-  Eventbrite: 'ticket-outline',
-  Website: 'globe-outline',
-  Other: 'link-outline',
-};
+import type { ProfileWithNiches } from '../../src/types';
 
 function mockToProfileData(p: ProfileWithNiches) {
   return {

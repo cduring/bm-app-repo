@@ -14,9 +14,10 @@ import Mapbox, { MapView, Camera, MarkerView, UserLocation } from '@rnmapbox/map
 import * as Location from 'expo-location';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
 import { NicheTag } from '../../src/components/NicheTag';
+import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from '../../src/components/EventTypeBadge';
 import { MOCK_PROFILES } from '../../src/mock/profiles';
 import { MOCK_EVENTS } from '../../src/mock/events';
-import type { ProfileWithNiches, EventWithHost, EventType, Niche } from '../../src/types';
+import type { ProfileWithNiches, EventWithHost, Niche } from '../../src/types';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN!);
 
@@ -38,71 +39,6 @@ const EventPin = memo(({ initial, color, isSelected }: { initial: string; color:
   </View>
 ));
 
-const EVENT_COLORS: Record<EventType, string> = {
-  FASHION_SHOW: Colors.fashionShow,
-  NETWORKING: Colors.networking,
-  WORKSHOP: Colors.workshop,
-  MASTERCLASS: Colors.workshop,
-  LISTENING_PARTY: Colors.listeningParty,
-  COMMUNITY: Colors.community,
-  PERFORMANCE: Colors.other,
-  OPEN_MIC: Colors.other,
-  SCREENING: Colors.other,
-  STUDIO_SESSION: Colors.other,
-  PANEL: Colors.other,
-  CRITIQUE_SESSION: Colors.other,
-  HACKATHON: Colors.other,
-  COLLAB_SESSION: Colors.other,
-  OPEN_CALL: Colors.other,
-  POP_UP: Colors.other,
-  MARKET: Colors.other,
-  LAUNCH_PARTY: Colors.other,
-  EXHIBITION: Colors.other,
-  OPEN_STUDIO: Colors.other,
-  PHOTOSHOOT: Colors.other,
-  GROUP_RUN: Colors.other,
-  FITNESS_CLASS: Colors.other,
-  RETREAT: Colors.other,
-  GAME_NIGHT: Colors.other,
-  BLOCK_PARTY: Colors.other,
-  COMPETITION: Colors.other,
-  CHARITY: Colors.other,
-  VIRTUAL_EVENT: Colors.other,
-  OTHER: Colors.other,
-};
-
-const EVENT_TYPE_LABEL: Record<EventType, string> = {
-  FASHION_SHOW: 'Fashion Show',
-  PERFORMANCE: 'Performance',
-  OPEN_MIC: 'Open Mic',
-  SCREENING: 'Screening',
-  LISTENING_PARTY: 'Listening Party',
-  STUDIO_SESSION: 'Studio Session',
-  WORKSHOP: 'Workshop',
-  MASTERCLASS: 'Masterclass',
-  PANEL: 'Panel',
-  CRITIQUE_SESSION: 'Critique',
-  HACKATHON: 'Hackathon',
-  NETWORKING: 'Networking',
-  COMMUNITY: 'Community',
-  COLLAB_SESSION: 'Collab Session',
-  OPEN_CALL: 'Open Call',
-  POP_UP: 'Pop-Up',
-  MARKET: 'Market',
-  LAUNCH_PARTY: 'Launch Party',
-  EXHIBITION: 'Exhibition',
-  OPEN_STUDIO: 'Open Studio',
-  PHOTOSHOOT: 'Photoshoot',
-  GROUP_RUN: 'Group Run',
-  FITNESS_CLASS: 'Fitness Class',
-  RETREAT: 'Retreat',
-  GAME_NIGHT: 'Game Night',
-  BLOCK_PARTY: 'Block Party',
-  COMPETITION: 'Competition',
-  CHARITY: 'Charity',
-  VIRTUAL_EVENT: 'Virtual Event',
-  OTHER: 'Event',
-};
 
 function formatEventDate(isoString: string): string {
   const date = new Date(isoString);
@@ -291,7 +227,7 @@ export default function MapScreen() {
           visibleEvents.map(event => {
             const isSelected =
               selectedPin?.type === 'EVENT' && selectedPin.data.id === event.id;
-            const color = EVENT_COLORS[event.event_type];
+            const color = EVENT_TYPE_COLOR[event.event_type];
             return (
               <MarkerView
                 key={event.id}
@@ -464,7 +400,7 @@ function CreatorCard({
 // ─── Event card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event }: { event: EventWithHost }) {
-  const color = EVENT_COLORS[event.event_type];
+  const color = EVENT_TYPE_COLOR[event.event_type];
   const label = EVENT_TYPE_LABEL[event.event_type];
 
   return (

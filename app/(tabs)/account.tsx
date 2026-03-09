@@ -18,20 +18,7 @@ import { supabase } from '../../src/lib/supabase';
 import { useProfile } from '../../src/hooks/useProfile';
 import { NicheTag } from '../../src/components/NicheTag';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { PlatformName } from '../../src/types';
-
-const PLATFORM_ICONS: Record<PlatformName, string> = {
-  Instagram: 'logo-instagram',
-  TikTok: 'logo-tiktok',
-  YouTube: 'logo-youtube',
-  Twitter: 'logo-twitter',
-  Spotify: 'musical-notes-outline',
-  SoundCloud: 'musical-note-outline',
-  LinkedIn: 'logo-linkedin',
-  Eventbrite: 'ticket-outline',
-  Website: 'globe-outline',
-  Other: 'link-outline',
-};
+import { PLATFORM_ICONS } from '../../src/constants/platformIcons';
 
 export default function AccountScreen() {
   const { session } = useAuth();

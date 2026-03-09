@@ -23,25 +23,13 @@ import { supabase } from '../src/lib/supabase';
 import { useProfile } from '../src/hooks/useProfile';
 import { MOCK_NICHES } from '../src/mock/niches';
 import { Colors, Typography, Spacing, BorderRadius } from '../src/constants/theme';
+import { PLATFORM_ICONS } from '../src/constants/platformIcons';
 import type { PlatformName, ExternalLink } from '../src/types';
 
 const PLATFORMS: PlatformName[] = [
   'Instagram', 'TikTok', 'YouTube', 'Twitter',
   'Spotify', 'SoundCloud', 'LinkedIn', 'Eventbrite', 'Website', 'Other',
 ];
-
-const PLATFORM_ICONS: Record<PlatformName, string> = {
-  Instagram: 'logo-instagram',
-  TikTok: 'logo-tiktok',
-  YouTube: 'logo-youtube',
-  Twitter: 'logo-twitter',
-  Spotify: 'musical-notes-outline',
-  SoundCloud: 'musical-note-outline',
-  LinkedIn: 'logo-linkedin',
-  Eventbrite: 'ticket-outline',
-  Website: 'globe-outline',
-  Other: 'link-outline',
-};
 
 interface LinkDraft {
   id?: string; // undefined = new, string = existing

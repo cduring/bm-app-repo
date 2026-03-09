@@ -14,24 +14,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEventById } from '../../src/hooks/useEvents';
 import { NicheTag } from '../../src/components/NicheTag';
 import { ProfileCard } from '../../src/components/ProfileCard';
-import { EventTypeBadge } from '../../src/components/EventTypeBadge';
+import { EventTypeBadge, EVENT_TYPE_COLOR } from '../../src/components/EventTypeBadge';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
 import { MOCK_EVENTS } from '../../src/mock/events';
 import { formatDayDate, formatTimeRange, formatRecurrenceLabel } from '../../src/utils/date';
 import type { RSVPStatus } from '../../src/types';
 
-const EVENT_BANNER_COLOR: Record<string, string> = {
-  FASHION_SHOW: Colors.fashionShow,
-  LISTENING_PARTY: Colors.listeningParty,
-  NETWORKING: Colors.networking,
-  WORKSHOP: Colors.workshop,
-  MASTERCLASS: Colors.workshop,
-  COMMUNITY: Colors.community,
-};
-
-function getBannerColor(eventType: string): string {
-  return EVENT_BANNER_COLOR[eventType] ?? Colors.other;
-}
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,7 +54,7 @@ export default function EventDetailScreen() {
     );
   }
 
-  const bannerColor = getBannerColor(event.event_type);
+  const bannerColor = EVENT_TYPE_COLOR[event.event_type];
   const recurrenceLabel = formatRecurrenceLabel(event.recurrence_rule);
   const isPublic = event.privacy === 'PUBLIC';
 
@@ -444,46 +432,6 @@ const styles = StyleSheet.create({
   },
   rsvpButtonTextPrimary: { color: Colors.primary },
   rsvpButtonTextDisabled: { color: Colors.textTertiary, fontWeight: Typography.weight.medium },
-  rsvpButtonFullPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary,
-  },
-  rsvpButtonFullGoing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.going,
-  },
-  rsvpButtonFullDisabled: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  rsvpButtonFullText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-  },
-  rsvpButtonFullDisabledText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textTertiary,
-  },
-
   sectionTitle: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,

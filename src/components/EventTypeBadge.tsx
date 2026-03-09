@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors, Typography, BorderRadius, Spacing } from '../constants/theme';
 import type { EventType } from '../types';
 
-const EVENT_TYPE_COLOR: Record<EventType, string> = {
+export const EVENT_TYPE_COLOR: Record<EventType, string> = {
   FASHION_SHOW: Colors.fashionShow,
   LISTENING_PARTY: Colors.listeningParty,
   NETWORKING: Colors.networking,
