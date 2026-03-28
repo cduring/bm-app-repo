@@ -62,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: 'Create',
+          title: 'Host',
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'add-circle' : 'add-circle-outline'} focused={focused} />
           ),

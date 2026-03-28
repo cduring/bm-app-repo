@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
+import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import {
   ActivityIndicator,
   Alert,
@@ -32,9 +32,9 @@ import { supabase } from "../../src/lib/supabase";
 import type { EventPrivacy, EventType } from "../../src/types";
 
 const RECURRENCE_OPTIONS: { label: string; rule: string }[] = [
-  { label: "Weekly", rule: "FREQ=WEEKLY" },
-  { label: "Biweekly", rule: "FREQ=WEEKLY;INTERVAL=2" },
-  { label: "Monthly", rule: "FREQ=MONTHLY" },
+  { label: "Weekly", rule: "WEEKLY" },
+  { label: "Biweekly", rule: "BIWEEKLY" },
+  { label: "Monthly", rule: "MONTHLY" },
 ];
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
@@ -465,7 +465,7 @@ export default function CreateScreen() {
   const queryClient = useQueryClient();
   const { data: profileData } = useProfile(userId);
 
-  // Form state
+  // Event form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [eventType, setEventType] = useState<EventType>("NETWORKING");
@@ -484,9 +484,11 @@ export default function CreateScreen() {
   const [recurrenceRule, setRecurrenceRule] = useState("");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
   const [showRecurrenceEndPicker, setShowRecurrenceEndPicker] = useState(false);
-  const [toast, setToast] = useState(false);
-
-  const [saving, setSaving] = useState(false);
+  // Overlay: 'submitting' | 'success' | 'error' | null
+  const [overlayState, setOverlayState] = useState<
+    "submitting" | "success" | "error" | null
+  >(null);
+  const saving = overlayState === "submitting";
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -551,7 +553,7 @@ export default function CreateScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images' as ImagePicker.MediaType,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -564,16 +566,20 @@ export default function CreateScreen() {
     setGeocoding(true);
     setLocationError(null);
     try {
-      const results = await Location.geocodeAsync(
-        text + ", Toronto, Ontario, Canada",
-      );
-      if (results.length > 0) {
-        setLatitude(results[0].latitude);
-        setLongitude(results[0].longitude);
+      const query = encodeURIComponent(text.trim());
+      const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&country=ca&limit=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const feature = data.features?.[0];
+      if (feature && feature.relevance >= 0.6) {
+        const [lng, lat] = feature.center;
+        setLatitude(lat);
+        setLongitude(lng);
         setGeocoded(true);
       } else {
         setLocationError(
-          "Location not found. Try entering a more specific address (e.g. 55 Mill St, Toronto).",
+          "Location not found. Try a more specific address (e.g. 55 Mill St, Toronto).",
         );
       }
     } catch {
@@ -597,6 +603,25 @@ export default function CreateScreen() {
     return `${urlData.publicUrl}?t=${Date.now()}`;
   }
 
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setEventType("NETWORKING");
+    setPrivacy("PUBLIC");
+    setStartDate(defaultStart());
+    setEndDate(defaultEnd());
+    setAddressName("");
+    setLatitude(43.6532);
+    setLongitude(-79.3832);
+    setGeocoded(false);
+    setIsRecurring(false);
+    setCoverUri(null);
+    setLocationError(null);
+    setRecurrenceRule("");
+    setRecurrenceEndDate(null);
+    setError(null);
+  }
+
   async function handlePublish() {
     setError(null);
 
@@ -614,7 +639,7 @@ export default function CreateScreen() {
     if (!profileId)
       return setError("Could not load your profile. Please try again.");
 
-    setSaving(true);
+    setOverlayState("submitting");
     try {
       const { data: newEvent, error: insertError } = await supabase
         .from("events")
@@ -661,15 +686,15 @@ export default function CreateScreen() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["events"] });
-      setToast(true);
+      setOverlayState("success");
       setTimeout(() => {
-        setToast(false);
+        setOverlayState(null);
+        resetForm();
         router.replace("/(tabs)");
       }, 2000);
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong. Please try again.");
-    } finally {
-      setSaving(false);
+      setOverlayState("error");
     }
   }
 
@@ -699,24 +724,33 @@ export default function CreateScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Event creation form */}
+        <>
+
+        {/* Sticky error banner — outside ScrollView so it stays visible */}
+        {error && (
+          <View style={styles.errorBox}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={16}
+              color={Colors.cancelled}
+            />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              onPress={() => setError(null)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close" size={16} color={Colors.cancelled} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Error */}
-          {error && (
-            <View style={styles.errorBox}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={16}
-                color={Colors.cancelled}
-              />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
           {/* ── Cover Image ── */}
           <TouchableOpacity
             style={styles.coverPicker}
@@ -1064,9 +1098,13 @@ export default function CreateScreen() {
               {locationError && (
                 <Text style={styles.locationErrorText}>{locationError}</Text>
               )}
+              {geocoded && !locationError && (
+                <LocationMapPreview latitude={latitude} longitude={longitude} />
+              )}
             </View>
           </View>
         </ScrollView>
+        </>
       </KeyboardAvoidingView>
 
       {/* ── Event Type Picker Modal ── */}
@@ -1144,11 +1182,44 @@ export default function CreateScreen() {
         onConfirm={(d) => setRecurrenceEndDate(d)}
       />
 
-      {/* ── Success Toast ── */}
-      {toast && (
-        <View style={styles.toast} pointerEvents="none">
-          <Ionicons name="checkmark-circle" size={18} color="#fff" />
-          <Text style={styles.toastText}>Event published!</Text>
+      {/* ── Full-screen overlay ── */}
+      {overlayState !== null && (
+        <View style={styles.overlay}>
+          {overlayState === "submitting" && (
+            <ActivityIndicator size="large" color={Colors.primary} />
+          )}
+
+          {overlayState === "success" && (
+            <View style={styles.overlayToast}>
+              <Ionicons
+                name="checkmark-circle"
+                size={28}
+                color={Colors.going}
+              />
+              <Text style={styles.overlayToastText}>Event published!</Text>
+            </View>
+          )}
+
+          {overlayState === "error" && (
+            <View style={styles.overlayError}>
+              <Ionicons
+                name="alert-circle"
+                size={36}
+                color={Colors.cancelled}
+              />
+              <Text style={styles.overlayErrorTitle}>Something went wrong</Text>
+              <Text style={styles.overlayErrorSub}>
+                {error ?? "Please try again."}
+              </Text>
+              <TouchableOpacity
+                style={styles.overlayDismissBtn}
+                onPress={() => setOverlayState(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.overlayDismissBtnText}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
     </SafeAreaView>
@@ -1403,24 +1474,52 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: Typography.weight.medium,
   },
-  toast: {
-    position: "absolute",
-    bottom: Spacing.xl + 20,
-    left: Spacing.lg,
-    right: Spacing.lg,
-    backgroundColor: Colors.going,
-    borderRadius: BorderRadius.md,
-    flexDirection: "row",
+  // ── Full-screen overlay ──
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 100,
+  },
+  overlayToast: {
     alignItems: "center",
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
   },
-  toastText: {
+  overlayToastText: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: "#FFFFFF",
+  },
+  overlayError: {
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+  },
+  overlayErrorTitle: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  overlayErrorSub: {
     fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: "#fff",
-    flex: 1,
+    color: "rgba(255,255,255,0.65)",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  overlayDismissBtn: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  overlayDismissBtnText: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.medium,
+    color: "#FFFFFF",
   },
 
   // Event type picker modal
@@ -1477,4 +1576,5 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: Typography.weight.medium,
   },
+
 });

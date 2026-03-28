@@ -1,24 +1,38 @@
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
-  Linking,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useProfileById } from '../../src/hooks/useProfile';
-import { NicheTag } from '../../src/components/NicheTag';
-import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import { PLATFORM_ICONS } from '../../src/constants/platformIcons';
-import { MOCK_PROFILES } from '../../src/mock/profiles';
-import type { ProfileWithNiches } from '../../src/types';
+  Dimensions,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useState } from "react";
+import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { NicheTag } from "../../src/components/NicheTag";
+import { PLATFORM_ICONS } from "../../src/constants/platformIcons";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../../src/constants/theme";
+import { useAuth } from "../../src/context/auth";
+import {
+  useFollowMutation,
+  useIsFollowing,
+  useUnfollowMutation,
+} from "../../src/hooks/useFollow";
+import { usePortfolio } from "../../src/hooks/usePortfolio";
+import { useProfile, useProfileById } from "../../src/hooks/useProfile";
+import { MOCK_PROFILES } from "../../src/mock/profiles";
+import type { ProfileWithNiches } from "../../src/types";
 
 function mockToProfileData(p: ProfileWithNiches) {
   return {
@@ -30,16 +44,42 @@ function mockToProfileData(p: ProfileWithNiches) {
 
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: supabaseData, isLoading } = useProfileById(id);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const { session } = useAuth();
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
 
-  const mockProfile = MOCK_PROFILES.find(p => p.id === id);
-  const data = supabaseData ?? (mockProfile ? mockToProfileData(mockProfile) : null);
+  const { data: supabaseData, isLoading } = useProfileById(id);
+  const { data: isFollowing, isLoading: followLoading } = useIsFollowing(
+    myProfileId,
+    id,
+  );
+  const followMutation = useFollowMutation();
+  const unfollowMutation = useUnfollowMutation();
+
+  const isOwnProfile = myProfileId === id;
+  const isMutating = followMutation.isPending || unfollowMutation.isPending;
+
+  function handleFollowToggle() {
+    if (!myProfileId || !id || isMutating) return;
+    if (isFollowing) {
+      unfollowMutation.mutate({ followerId: myProfileId, followingId: id });
+    } else {
+      followMutation.mutate({ followerId: myProfileId, followingId: id });
+    }
+  }
+
+  const { data: portfolioImages } = usePortfolio(id);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+
+  const mockProfile = MOCK_PROFILES.find((p) => p.id === id);
+  const data =
+    supabaseData ?? (mockProfile ? mockToProfileData(mockProfile) : null);
 
   function openLink(url: string) {
-    const full = url.startsWith('http') ? url : `https://${url}`;
+    const full = url.startsWith("http") ? url : `https://${url}`;
     Linking.openURL(full).catch(() =>
-      Alert.alert('Error', 'Could not open this link.')
+      Alert.alert("Error", "Could not open this link."),
     );
   }
 
@@ -54,7 +94,11 @@ export default function ViewProfileScreen() {
   if (!data) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={32} color={Colors.textTertiary} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={32}
+          color={Colors.textTertiary}
+        />
         <Text style={styles.errorText}>Profile not found.</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
           <Text style={styles.backLinkText}>Go back</Text>
@@ -64,26 +108,39 @@ export default function ViewProfileScreen() {
   }
 
   const { profile, niches, externalLinks } = data;
-  const isCreator = profile.profile_type === 'CREATOR';
+  const isCreator = profile.profile_type === "CREATOR";
 
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Navigation header */}
       <View style={styles.navHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>{profile.display_name}</Text>
-        {/* Follow button */}
-        <TouchableOpacity
-          style={[styles.followButton, isFollowing && styles.followingButton]}
-          onPress={() => setIsFollowing(f => !f)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-            {isFollowing ? 'Following' : 'Follow'}
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.navTitle} numberOfLines={1}>
+          {profile.display_name}
+        </Text>
+        {/* Follow button — hidden on own profile */}
+        {!isOwnProfile && (
+          <TouchableOpacity
+            style={[styles.followButton, isFollowing && styles.followingButton]}
+            onPress={handleFollowToggle}
+            activeOpacity={0.8}
+            disabled={isMutating || followLoading}
+          >
+            <Text
+              style={[
+                styles.followButtonText,
+                isFollowing && styles.followingButtonText,
+              ]}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -94,7 +151,10 @@ export default function ViewProfileScreen() {
         {/* Avatar + Name + Badge */}
         <View style={styles.avatarSection}>
           {profile.profile_picture_url ? (
-            <Image source={{ uri: profile.profile_picture_url }} style={styles.avatar} />
+            <Image
+              source={{ uri: profile.profile_picture_url }}
+              style={styles.avatar}
+            />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Text style={styles.avatarInitial}>
@@ -106,14 +166,30 @@ export default function ViewProfileScreen() {
           <Text style={styles.displayName}>{profile.display_name}</Text>
 
           <View style={styles.metaRow}>
-            <View style={[styles.typeBadge, isCreator ? styles.creatorBadge : styles.businessBadge]}>
-              <Text style={[styles.typeBadgeText, isCreator ? styles.creatorBadgeText : styles.businessBadgeText]}>
-                {isCreator ? 'Creator' : 'Business'}
+            <View
+              style={[
+                styles.typeBadge,
+                isCreator ? styles.creatorBadge : styles.businessBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.typeBadgeText,
+                  isCreator
+                    ? styles.creatorBadgeText
+                    : styles.businessBadgeText,
+                ]}
+              >
+                {isCreator ? "Creator" : "Business"}
               </Text>
             </View>
             {profile.location_name ? (
               <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={13} color={Colors.textTertiary} />
+                <Ionicons
+                  name="location-outline"
+                  size={13}
+                  color={Colors.textTertiary}
+                />
                 <Text style={styles.locationText}>{profile.location_name}</Text>
               </View>
             ) : null}
@@ -122,20 +198,38 @@ export default function ViewProfileScreen() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              router.push(
+                `/follow-list?mode=followers&profileId=${profile.id}` as any,
+              )
+            }
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>{profile.follower_count}</Text>
             <Text style={styles.statLabel}>Followers</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              router.push(
+                `/follow-list?mode=following&profileId=${profile.id}` as any,
+              )
+            }
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>{profile.following_count}</Text>
             <Text style={styles.statLabel}>Following</Text>
-          </View>
+          </TouchableOpacity>
           {profile.years_in_business != null && (
             <>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{profile.years_in_business}</Text>
+                <Text style={styles.statNumber}>
+                  {profile.years_in_business}
+                </Text>
                 <Text style={styles.statLabel}>Yrs Active</Text>
               </View>
             </>
@@ -155,7 +249,7 @@ export default function ViewProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
-              {niches.map(niche => (
+              {niches.map((niche) => (
                 <NicheTag key={niche.id} name={niche.name} />
               ))}
             </View>
@@ -167,7 +261,7 @@ export default function ViewProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Links</Text>
             <View style={styles.links}>
-              {externalLinks.map(link => (
+              {externalLinks.map((link) => (
                 <TouchableOpacity
                   key={link.id}
                   style={styles.linkButton}
@@ -180,12 +274,45 @@ export default function ViewProfileScreen() {
                     color={Colors.primary}
                   />
                   <Text style={styles.linkText}>{link.platform_name}</Text>
-                  <Ionicons name="open-outline" size={13} color={Colors.textTertiary} />
+                  <Ionicons
+                    name="open-outline"
+                    size={13}
+                    color={Colors.textTertiary}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         )}
+
+        {/* Portfolio */}
+        {portfolioImages && portfolioImages.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Portfolio</Text>
+            <View style={styles.portfolioGrid}>
+              {portfolioImages.map((img, idx) => (
+                <TouchableOpacity
+                  key={img.id}
+                  style={styles.portfolioItem}
+                  activeOpacity={0.85}
+                  onPress={() => { setLightboxIndex(idx); setLightboxVisible(true); }}
+                >
+                  <Image
+                    source={{ uri: img.image_url }}
+                    style={styles.portfolioImage}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <PortfolioLightbox
+          images={portfolioImages ?? []}
+          initialIndex={lightboxIndex}
+          visible={lightboxVisible}
+          onClose={() => setLightboxVisible(false)}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -205,8 +332,8 @@ const styles = StyleSheet.create({
   centered: {
     flex: 1,
     backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   errorText: {
@@ -223,8 +350,8 @@ const styles = StyleSheet.create({
 
   // Nav header
   navHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
@@ -234,7 +361,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   navTitle: {
     flex: 1,
@@ -249,7 +376,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   followingButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -264,7 +391,7 @@ const styles = StyleSheet.create({
 
   // Avatar section
   avatarSection: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
@@ -277,8 +404,8 @@ const styles = StyleSheet.create({
   },
   avatarPlaceholder: {
     backgroundColor: Colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -292,14 +419,14 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   typeBadge: {
     paddingHorizontal: Spacing.sm,
@@ -308,12 +435,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   creatorBadge: {
-    backgroundColor: Colors.creatorBadge + '15',
-    borderColor: Colors.creatorBadge + '50',
+    backgroundColor: Colors.creatorBadge + "15",
+    borderColor: Colors.creatorBadge + "50",
   },
   businessBadge: {
-    backgroundColor: Colors.businessBadge + '15',
-    borderColor: Colors.businessBadge + '50',
+    backgroundColor: Colors.businessBadge + "15",
+    borderColor: Colors.businessBadge + "50",
   },
   typeBadgeText: {
     fontSize: Typography.size.sm,
@@ -326,8 +453,8 @@ const styles = StyleSheet.create({
     color: Colors.businessBadge,
   },
   locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 3,
   },
   locationText: {
@@ -337,8 +464,8 @@ const styles = StyleSheet.create({
 
   // Stats
   statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: Spacing.lg,
     borderTopWidth: 1,
     borderBottomWidth: 1,
@@ -348,7 +475,7 @@ const styles = StyleSheet.create({
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 2,
   },
   statNumber: {
@@ -376,7 +503,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.textTertiary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   bio: {
@@ -385,16 +512,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   niches: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
   links: {
     gap: Spacing.xs,
   },
   linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
@@ -407,5 +534,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Typography.size.base,
     color: Colors.textPrimary,
+  },
+
+  // Portfolio
+  portfolioGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  portfolioItem: {
+    width:
+      (Dimensions.get("window").width - Spacing.lg * 2 - Spacing.xs * 2) / 3,
+    aspectRatio: 1,
+  },
+  portfolioImage: {
+    width: "100%" as any,
+    height: "100%" as any,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.surfaceElevated,
   },
 });

@@ -150,20 +150,28 @@ export default function MapScreen() {
   }
 
   function handleUserLocationUpdate(location: any) {
-    const coords: [number, number] = [
-      location.coords.longitude,
-      location.coords.latitude,
-    ];
+    const lng = location.coords?.longitude;
+    const lat = location.coords?.latitude;
+    if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) return;
+    const coords: [number, number] = [lng, lat];
     userCoordsRef.current = coords;
     if (!hasInitiallyCentered.current) {
       hasInitiallyCentered.current = true;
-      cameraRef.current?.flyTo(coords, 800);
+      cameraRef.current?.setCamera({
+        centerCoordinate: coords,
+        zoomLevel: 14,
+        animationDuration: 800,
+      });
     }
   }
 
   function handleRecenter() {
     if (!userCoordsRef.current) return;
-    cameraRef.current?.flyTo(userCoordsRef.current, 800);
+    cameraRef.current?.setCamera({
+      centerCoordinate: userCoordsRef.current,
+      zoomLevel: 14,
+      animationDuration: 800,
+    });
     setShowRecenterButton(false);
   }
 
@@ -180,8 +188,8 @@ export default function MapScreen() {
         compassEnabled={false}
         logoEnabled={false}
         attributionEnabled={false}
-        onRegionIsChanging={(feature: any) => {
-          if (feature.properties?.isUserInteraction) {
+        onCameraChanged={(payload: any) => {
+          if (payload.type === 'user') {
             setShowRecenterButton(true);
           }
         }}

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../src/lib/supabase';
 import { AuthContext } from '../src/context/auth';
+import { RSVPProvider } from '../src/context/rsvp';
 
 const queryClient = new QueryClient();
 
@@ -99,8 +100,10 @@ export default function RootLayout() {
   return (
     <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <RSVPProvider>
+          <StatusBar style="light" />
+          <Stack screenOptions={{ headerShown: false }} />
+        </RSVPProvider>
       </QueryClientProvider>
     </AuthContext.Provider>
   );

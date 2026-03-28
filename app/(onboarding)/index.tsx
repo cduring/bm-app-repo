@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -15,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DraggablePinMap } from "../../src/components/DraggablePinMap";
 import {
   BorderRadius,
   Colors,
@@ -40,12 +40,44 @@ interface OnboardingData {
   locationLabel: string;
 }
 
+/** Geocodes a Canadian FSA via Mapbox Places and returns a privacy-jittered pin. */
+async function resolvePostalCode(
+  fsa: string,
+): Promise<{ latitude: number; longitude: number; locationLabel: string } | null> {
+  const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+  if (!token) return null;
+
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fsa)}.json?country=ca&types=postcode&access_token=${token}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+
+  const json = await response.json();
+  if (!json.features || json.features.length === 0) return null;
+
+  const feature = json.features[0];
+  const [lng, lat] = feature.center as [number, number];
+
+  // Build a clean "City, Province" label from the context hierarchy
+  const ctx: Array<{ id: string; text: string }> = feature.context ?? [];
+  const city = ctx.find((c) => c.id.startsWith('place.'))?.text;
+  const province = ctx.find((c) => c.id.startsWith('region.'))?.text;
+  const locationLabel =
+    city && province ? `${city}, ${province}`
+    : city ?? feature.place_name?.split(',').slice(1, 3).join(',').trim() ?? fsa;
+
+  // ±0.009 degrees ≈ ±~900 m privacy jitter
+  const jitter = () => (Math.random() - 0.5) * 0.018;
+  return { latitude: lat + jitter(), longitude: lng + jitter(), locationLabel };
+}
+
 export default function OnboardingScreen() {
   const { session, onboardingComplete } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Step 5 postal prefix input (not saved to Supabase directly; drives coordinate generation)
+  const [postalPrefix, setPostalPrefix] = useState("");
   const [data, setData] = useState<OnboardingData>({
     profileType: null,
     displayName: "",
@@ -78,6 +110,10 @@ export default function OnboardingScreen() {
       setError("Select at least one niche.");
       return;
     }
+    if (step === 5 && postalPrefix.length > 0 && postalPrefix.length < 3) {
+      setError("Enter all 3 characters of your postal code area (e.g. M5V).");
+      return;
+    }
 
     if (step < TOTAL_STEPS) {
       setStep((s) => s + 1);
@@ -93,7 +129,7 @@ export default function OnboardingScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images" as ImagePicker.MediaType,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -103,55 +139,51 @@ export default function OnboardingScreen() {
     }
   }
 
-  async function detectLocation() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      setError("Location permission denied. Enter your city manually below.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const coords = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const geocode = await Location.reverseGeocodeAsync({
-        latitude: coords.coords.latitude,
-        longitude: coords.coords.longitude,
-      });
-      const place = geocode[0];
-      const label =
-        [place?.city, place?.region].filter(Boolean).join(", ") ||
-        "Toronto, ON";
+  async function handlePostalPrefixChange(text: string) {
+    // Uppercase, strip non-alphanumeric, cap at 3 chars
+    const clean = text
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 3);
+    setPostalPrefix(clean);
+    setError(null);
+
+    // Clear stale pin whenever input changes
+    if (data.latitude !== null) {
       setData((d) => ({
         ...d,
-        latitude: coords.coords.latitude,
-        longitude: coords.coords.longitude,
-        locationLabel: label,
+        latitude: null,
+        longitude: null,
+        locationLabel: "",
       }));
-    } catch {
-      setError("Could not detect location. Enter your city manually below.");
-    } finally {
-      setLoading(false);
     }
-  }
 
-  async function geocodeAddress(address: string) {
-    if (!address.trim()) return;
-    setGeocoding(true);
-    try {
-      const results = await Location.geocodeAsync(address.trim());
-      if (results.length > 0) {
-        setData((d) => ({
-          ...d,
-          latitude: results[0].latitude,
-          longitude: results[0].longitude,
-        }));
+    // Auto-resolve once all 3 chars are entered
+    if (clean.length === 3) {
+      if (!/^[A-Z][0-9][A-Z]$/.test(clean)) {
+        setError("Enter a valid Canadian postal code area (e.g. M5V, N2L).");
+        return;
       }
-      // No results: lat/lng stay null — location is optional, no error needed
-    } catch {
-      // Silent — location is optional
-    } finally {
-      setGeocoding(false);
+      setGeocoding(true);
+      try {
+        const result = await resolvePostalCode(clean);
+        if (result) {
+          setData((d) => ({
+            ...d,
+            latitude: result.latitude,
+            longitude: result.longitude,
+            locationLabel: result.locationLabel,
+          }));
+        } else {
+          setError(
+            "Couldn't find that postal area. Check the first 3 characters of your Canadian postal code.",
+          );
+        }
+      } catch {
+        setError("Couldn't look up that location. Check your connection and try again.");
+      } finally {
+        setGeocoding(false);
+      }
     }
   }
 
@@ -175,9 +207,14 @@ export default function OnboardingScreen() {
         const path = `${user.id}/profile.jpg`;
         const { error: uploadError } = await supabase.storage
           .from("avatars")
-          .upload(path, arrayBuffer, { contentType: "image/jpeg", upsert: true });
+          .upload(path, arrayBuffer, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
         if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+          const { data: urlData } = supabase.storage
+            .from("avatars")
+            .getPublicUrl(path);
           profilePictureUrl = `${urlData.publicUrl}?t=${Date.now()}`;
         }
       } catch {
@@ -199,13 +236,14 @@ export default function OnboardingScreen() {
             ? parseInt(data.yearsInBusiness, 10)
             : null,
           location_name: data.locationLabel.trim() || null,
+          location_fsa: postalPrefix || null,
           latitude: data.latitude,
           longitude: data.longitude,
           profile_picture_url: profilePictureUrl,
           follower_count: 0,
           following_count: 0,
         },
-        { onConflict: "user_id" }
+        { onConflict: "user_id" },
       )
       .select("id")
       .single();
@@ -487,7 +525,7 @@ export default function OnboardingScreen() {
                     <View style={styles.photoPlaceholder}>
                       <Ionicons
                         name="camera"
-                        size={36}
+                        size={52}
                         color={Colors.textTertiary}
                       />
                       <Text style={styles.photoPlaceholderText}>
@@ -512,66 +550,96 @@ export default function OnboardingScreen() {
             <View style={styles.stepContent}>
               <Text style={styles.title}>Where are you based?</Text>
               <Text style={styles.subtitle}>
-                Helps nearby creators and businesses find you on the map.
+                Helps nearby creators and businesses discover you. Your exact
+                address is never stored or shared.
               </Text>
               <View style={styles.form}>
-                <TouchableOpacity
-                  style={styles.detectButton}
-                  activeOpacity={0.8}
-                  onPress={detectLocation}
-                  disabled={loading}
-                >
-                  <Ionicons name="locate" size={18} color={Colors.primary} />
-                  <Text style={styles.detectButtonText}>
-                    {loading ? "Detecting..." : "Use my current location"}
-                  </Text>
-                </TouchableOpacity>
-
-                <Text style={styles.orDivider}>— or enter manually —</Text>
-
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>City / Neighbourhood</Text>
+                  <Text style={styles.label}>
+                    Postal code area (first 3 characters)
+                  </Text>
                   <TextInput
                     style={styles.input}
-                    value={data.locationLabel}
-                    onChangeText={(v) =>
-                      setData((d) => ({
-                        ...d,
-                        locationLabel: v,
-                        // Clear stale coordinates whenever the text changes;
-                        // geocodeAddress() will re-set them on end editing.
-                        latitude: null,
-                        longitude: null,
-                      }))
-                    }
-                    onEndEditing={(e) => geocodeAddress(e.nativeEvent.text)}
-                    placeholder="e.g. Toronto, ON or CN Tower"
+                    value={postalPrefix}
+                    onChangeText={handlePostalPrefixChange}
+                    placeholder="e.g. M5V"
                     placeholderTextColor={Colors.textTertiary}
-                    autoCapitalize="words"
+                    autoCapitalize="characters"
                     autoCorrect={false}
-                    autoComplete="postal-address-locality"
-                    textContentType="addressCity"
+                    autoComplete="postal-code"
+                    textContentType="postalCode"
+                    maxLength={3}
                     returnKeyType="done"
                   />
                 </View>
 
                 {geocoding && (
-                  <View style={styles.locationConfirmed}>
+                  <View style={styles.geocodingRow}>
                     <ActivityIndicator size="small" color={Colors.textTertiary} />
-                    <Text style={styles.locationLookingUp}>Looking up location…</Text>
+                    <Text style={styles.geocodingText}>Looking up location…</Text>
                   </View>
                 )}
-                {!geocoding && data.latitude && (
-                  <View style={styles.locationConfirmed}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={Colors.going}
+
+                <View style={styles.privacyNote}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={14}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.privacyNoteText}>
+                    We only use the first 3 characters of your postal code to
+                    place a randomized pin in your general area. Your full
+                    postal code and street address are never stored.
+                  </Text>
+                </View>
+
+                {data.latitude !== null && (
+                  <>
+                    <View style={styles.locationNameRow}>
+                      <Ionicons
+                        name="location"
+                        size={14}
+                        color={Colors.primary}
+                      />
+                      <Text style={styles.locationNameText}>
+                        {data.locationLabel}
+                      </Text>
+                    </View>
+                    <DraggablePinMap
+                      pinLatitude={data.latitude}
+                      pinLongitude={data.longitude!}
+                      onPinMoved={(lat, lng) =>
+                        setData((d) => ({
+                          ...d,
+                          latitude: lat,
+                          longitude: lng,
+                        }))
+                      }
+                      height={200}
                     />
-                    <Text style={styles.locationConfirmedText}>
-                      Location set: {data.locationLabel}
-                    </Text>
-                  </View>
+                    <View style={styles.dragHint}>
+                      <Ionicons
+                        name="hand-left-outline"
+                        size={14}
+                        color={Colors.textTertiary}
+                      />
+                      <Text style={styles.dragHintText}>
+                        Hold and drag the pin to adjust the location
+                      </Text>
+                    </View>
+                    <View style={styles.warningNote}>
+                      <Ionicons
+                        name="warning-outline"
+                        size={14}
+                        color={Colors.primary}
+                      />
+                      <Text style={styles.warningNoteText}>
+                        Do not place the pin on your home address. Choose a
+                        nearby intersection or landmark instead — this pin is
+                        visible to other users.
+                      </Text>
+                    </View>
+                  </>
                 )}
               </View>
             </View>
@@ -592,7 +660,8 @@ export default function OnboardingScreen() {
 
         {/* CTA */}
         <View style={styles.footer}>
-          {step === 4 && !data.photoUri && (
+          {((step === 4 && !data.photoUri) ||
+            (step === 5 && !data.latitude)) && (
             <TouchableOpacity style={styles.skipButton} onPress={goNext}>
               <Text style={styles.skipText}>Skip for now</Text>
             </TouchableOpacity>
@@ -758,22 +827,22 @@ const styles = StyleSheet.create({
   photoArea: {
     alignItems: "center",
     gap: Spacing.md,
-    marginTop: Spacing.md,
+    marginTop: Spacing["2xl"],
   },
   photoButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     overflow: "hidden",
   },
   photoPreview: {
-    width: 140,
-    height: 140,
+    width: 200,
+    height: 200,
   },
   photoPlaceholder: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     backgroundColor: Colors.surfaceElevated,
     borderWidth: 1.5,
     borderColor: Colors.border,
@@ -781,6 +850,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
+    padding: Spacing.md,
   },
   photoPlaceholderText: {
     fontSize: Typography.size.sm,
@@ -793,40 +863,66 @@ const styles = StyleSheet.create({
   },
 
   // Location
-  detectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    backgroundColor: "#1A0D00",
-    borderWidth: 1,
-    borderColor: Colors.chipBorder,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
-    paddingHorizontal: Spacing.md,
-  },
-  detectButtonText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
-  },
-  orDivider: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    textAlign: "center",
-    marginVertical: Spacing.xs,
-  },
-  locationConfirmed: {
+  geocodingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
   },
-  locationConfirmedText: {
-    fontSize: Typography.size.sm,
-    color: Colors.going,
-  },
-  locationLookingUp: {
+  geocodingText: {
     fontSize: Typography.size.sm,
     color: Colors.textTertiary,
+  },
+  privacyNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.xs,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+  },
+  privacyNoteText: {
+    flex: 1,
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+    lineHeight: 17,
+  },
+  locationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  locationNameText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weight.medium,
+  },
+  dragHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  dragHintText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  warningNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.xs,
+    backgroundColor: "#1A0D00",
+    borderWidth: 1,
+    borderColor: "#4A2A00",
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  warningNoteText: {
+    flex: 1,
+    fontSize: Typography.size.xs,
+    color: Colors.primary,
+    lineHeight: 17,
   },
 
   // Error

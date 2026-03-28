@@ -18,6 +18,7 @@ export interface Profile {
   years_in_business?: number;
   profile_picture_url?: string;
   location_name?: string;
+  location_fsa?: string;
   latitude?: number;
   longitude?: number;
   follower_count: number;
@@ -125,16 +126,6 @@ export interface EventRSVP {
   event_id: string;
   profile_id: string;
   status: RSVPStatus;
-}
-
-// ─── Posts ───────────────────────────────────────────────────────────────────
-
-export interface Post {
-  id: string;
-  author_id: string;
-  media_url: string;
-  caption: string;
-  created_at: string;
 }
 
 // ─── Social Graph ─────────────────────────────────────────────────────────────

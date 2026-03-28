@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import { DraggablePinMap } from '../src/components/DraggablePinMap';
 import { useAuth } from '../src/context/auth';
 import { supabase } from '../src/lib/supabase';
 import { useProfile } from '../src/hooks/useProfile';
@@ -25,6 +25,29 @@ import { MOCK_NICHES } from '../src/mock/niches';
 import { Colors, Typography, Spacing, BorderRadius } from '../src/constants/theme';
 import { PLATFORM_ICONS } from '../src/constants/platformIcons';
 import type { PlatformName, ExternalLink } from '../src/types';
+
+/** Geocodes a Canadian FSA via Mapbox Places and returns a privacy-jittered pin. */
+async function resolvePostalCode(
+  fsa: string,
+): Promise<{ latitude: number; longitude: number; locationLabel: string } | null> {
+  const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+  if (!token) return null;
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fsa)}.json?country=ca&types=postcode&access_token=${token}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const json = await response.json();
+  if (!json.features || json.features.length === 0) return null;
+  const feature = json.features[0];
+  const [lng, lat] = feature.center as [number, number];
+  const ctx: Array<{ id: string; text: string }> = feature.context ?? [];
+  const city = ctx.find((c) => c.id.startsWith('place.'))?.text;
+  const province = ctx.find((c) => c.id.startsWith('region.'))?.text;
+  const locationLabel =
+    city && province ? `${city}, ${province}`
+    : city ?? feature.place_name?.split(',').slice(1, 3).join(',').trim() ?? fsa;
+  const jitter = () => (Math.random() - 0.5) * 0.018;
+  return { latitude: lat + jitter(), longitude: lng + jitter(), locationLabel };
+}
 
 const PLATFORMS: PlatformName[] = [
   'Instagram', 'TikTok', 'YouTube', 'Twitter',
@@ -48,6 +71,7 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState('');
   const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [locationName, setLocationName] = useState('');
+  const [locationFsa, setLocationFsa] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [selectedNicheIds, setSelectedNicheIds] = useState<string[]>([]);
@@ -57,7 +81,6 @@ export default function EditProfileScreen() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const [gpsLoading, setGpsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Add link form
@@ -73,60 +96,48 @@ export default function EditProfileScreen() {
     setBio(profile.bio ?? '');
     setYearsInBusiness(profile.years_in_business?.toString() ?? '');
     setLocationName(profile.location_name ?? '');
+    setLocationFsa(profile.location_fsa ?? '');
     setLatitude(profile.latitude ?? null);
     setLongitude(profile.longitude ?? null);
     setSelectedNicheIds(niches.map(n => n.id));
     setLinks(externalLinks.map(l => ({ id: l.id, platform_name: l.platform_name, url: l.url })));
   }, [data]);
 
+  async function handleFsaChange(text: string) {
+    const clean = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+    setLocationFsa(clean);
+    setError(null);
+    if (latitude !== null) {
+      setLatitude(null);
+      setLongitude(null);
+    }
+    if (clean.length === 3) {
+      if (!/^[A-Z][0-9][A-Z]$/.test(clean)) {
+        setError('Enter a valid Canadian postal code area (e.g. M5V, N2L).');
+        return;
+      }
+      setGeocoding(true);
+      try {
+        const result = await resolvePostalCode(clean);
+        if (result) {
+          setLatitude(result.latitude);
+          setLongitude(result.longitude);
+          if (!locationName.trim()) setLocationName(result.locationLabel);
+        } else {
+          setError('Couldn\'t find that postal area. Check the first 3 characters of your Canadian postal code.');
+        }
+      } catch {
+        setError('Couldn\'t look up that location. Check your connection and try again.');
+      } finally {
+        setGeocoding(false);
+      }
+    }
+  }
+
   function toggleNiche(id: string) {
     setSelectedNicheIds(prev =>
       prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]
     );
-  }
-
-  async function geocodeAddress(text: string) {
-    if (!text.trim()) return;
-    setGeocoding(true);
-    try {
-      const results = await Location.geocodeAsync(text + ', Toronto, Ontario, Canada');
-      if (results.length > 0) {
-        setLatitude(results[0].latitude);
-        setLongitude(results[0].longitude);
-      }
-    } catch {
-      // Silent — coordinates are optional
-    } finally {
-      setGeocoding(false);
-    }
-  }
-
-  async function useGpsLocation() {
-    setGpsLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location access is needed to use your current location.');
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLatitude(loc.coords.latitude);
-      setLongitude(loc.coords.longitude);
-      // Reverse geocode for a human-readable label
-      const places = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-      if (places.length > 0) {
-        const p = places[0];
-        const label = p.district ?? p.subregion ?? p.city ?? '';
-        if (label) setLocationName(label);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not get your location.');
-    } finally {
-      setGpsLoading(false);
-    }
   }
 
   async function pickPhoto() {
@@ -136,7 +147,7 @@ export default function EditProfileScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images' as ImagePicker.MediaType,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -198,6 +209,7 @@ export default function EditProfileScreen() {
             bio: bio.trim(),
             years_in_business: yearsInBusiness ? parseInt(yearsInBusiness, 10) : null,
             location_name: locationName.trim() || null,
+            location_fsa: locationFsa.trim() || null,
             latitude,
             longitude,
             profile_picture_url: profilePictureUrl,
@@ -355,37 +367,62 @@ export default function EditProfileScreen() {
             <Text style={styles.sectionTitle}>Location</Text>
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Neighbourhood / Area</Text>
-              <View style={styles.locationRow}>
-                <TextInput
-                  style={[styles.input, styles.locationInput]}
-                  value={locationName}
-                  onChangeText={setLocationName}
-                  onEndEditing={e => geocodeAddress(e.nativeEvent.text)}
-                  placeholder="e.g. Kensington Market"
-                  placeholderTextColor={Colors.textTertiary}
-                  autoComplete="postal-address-locality"
-                  textContentType="addressCity"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                />
-                {geocoding ? (
-                  <ActivityIndicator style={styles.locationIcon} color={Colors.textTertiary} size="small" />
-                ) : latitude ? (
-                  <Ionicons name="checkmark-circle" style={styles.locationIcon} size={20} color={Colors.going} />
-                ) : null}
-                <TouchableOpacity
-                  style={styles.gpsButton}
-                  onPress={useGpsLocation}
-                  disabled={gpsLoading}
-                  activeOpacity={0.7}
-                >
-                  {gpsLoading ? (
-                    <ActivityIndicator color={Colors.primary} size="small" />
-                  ) : (
-                    <Ionicons name="navigate-outline" size={20} color={Colors.primary} />
-                  )}
-                </TouchableOpacity>
-              </View>
+              <TextInput
+                style={styles.input}
+                value={locationName}
+                onChangeText={setLocationName}
+                placeholder="e.g. Kensington Market"
+                placeholderTextColor={Colors.textTertiary}
+                autoComplete="postal-address-locality"
+                textContentType="addressCity"
+                autoCorrect={false}
+                returnKeyType="done"
+              />
+              <Text style={styles.locationHint}>
+                You can change this to something more reflective of where you're based — for example: Toronto, Ontario → Kensington Market
+              </Text>
+            </View>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Postal Code Area</Text>
+              <TextInput
+                style={styles.input}
+                value={locationFsa}
+                onChangeText={handleFsaChange}
+                placeholder="e.g. M5V"
+                placeholderTextColor={Colors.textTertiary}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                autoComplete="postal-code"
+                textContentType="postalCode"
+                maxLength={3}
+                returnKeyType="done"
+              />
+              {geocoding && (
+                <View style={styles.geocodingRow}>
+                  <ActivityIndicator size="small" color={Colors.textTertiary} />
+                  <Text style={styles.geocodingText}>Looking up location…</Text>
+                </View>
+              )}
+              {latitude !== null && (
+                <>
+                  <DraggablePinMap
+                    pinLatitude={latitude}
+                    pinLongitude={longitude!}
+                    onPinMoved={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                    height={200}
+                  />
+                  <View style={styles.dragHint}>
+                    <Ionicons name="hand-left-outline" size={14} color={Colors.textTertiary} />
+                    <Text style={styles.dragHintText}>Hold and drag the pin to adjust the location</Text>
+                  </View>
+                  <View style={styles.warningNote}>
+                    <Ionicons name="warning-outline" size={14} color={Colors.primary} />
+                    <Text style={styles.warningNoteText}>
+                      Do not place the pin on your home address. Choose a nearby intersection or landmark instead — this pin is visible to other users.
+                    </Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
@@ -652,26 +689,47 @@ const styles = StyleSheet.create({
   },
 
   // Location
-  locationRow: {
+  locationHint: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  geocodingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
-  locationInput: {
-    flex: 1,
+  geocodingText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
   },
-  locationIcon: {
-    width: 20,
-  },
-  gpsButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  dragHint: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  dragHintText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  warningNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    backgroundColor: '#1A0D00',
+    borderWidth: 1,
+    borderColor: '#4A2A00',
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  warningNoteText: {
+    flex: 1,
+    fontSize: Typography.size.xs,
+    color: Colors.primary,
+    lineHeight: 17,
   },
 
   // Niches

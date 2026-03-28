@@ -1,13 +1,30 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
-import { NicheTag } from './NicheTag';
-import { EventTypeBadge } from './EventTypeBadge';
-import { formatTimeRange } from '../utils/date';
-import type { EventWithHost } from '../types';
+import { Ionicons } from "@expo/vector-icons";
+import {
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { BorderRadius, Colors, Spacing, Typography } from "../constants/theme";
+import type { EventWithHost } from "../types";
+import { EventTypeBadge } from "./EventTypeBadge";
 
-const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-const WEEKDAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MONTHS = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+];
+const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 interface EventCardProps {
   event: EventWithHost;
@@ -20,9 +37,6 @@ export function EventCard({ event, onPress }: EventCardProps) {
   const day = startDate.getUTCDate();
   const weekday = WEEKDAYS[startDate.getUTCDay()];
 
-  const visibleNiches = event.niches.slice(0, 2);
-  const overflowCount = event.niches.length - visibleNiches.length;
-
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       {/* Date column */}
@@ -32,69 +46,58 @@ export function EventCard({ event, onPress }: EventCardProps) {
         <Text style={styles.weekday}>{weekday}</Text>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
+      {/* Content — cover image background */}
+      <ImageBackground
+        source={
+          event.cover_image_url ? { uri: event.cover_image_url } : undefined
+        }
+        style={styles.contentBg}
+        imageStyle={styles.contentBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.contentOverlay}>
+          <Text style={styles.title} numberOfLines={2}>
+            {event.title}
+          </Text>
 
-        {/* Badge row */}
-        <View style={styles.badgeRow}>
-          <EventTypeBadge eventType={event.event_type} small />
-          {event.privacy === 'EXCLUSIVE' && (
-            <View style={styles.exclusiveBadge}>
-              <Ionicons name="lock-closed" size={9} color={Colors.primary} />
-              <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
-            </View>
-          )}
-          {event.is_recurring && (
-            <View style={styles.recurringBadge}>
-              <Ionicons name="repeat-outline" size={10} color={Colors.other} />
-              <Text style={styles.recurringBadgeText}>Recurring</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Location */}
-        <View style={styles.metaRow}>
-          <Ionicons name="location-outline" size={12} color={Colors.textTertiary} />
-          <Text style={styles.metaText} numberOfLines={1}>{event.address_name}</Text>
-        </View>
-
-        {/* Time */}
-        <View style={styles.metaRow}>
-          <Ionicons name="time-outline" size={12} color={Colors.textTertiary} />
-          <Text style={styles.metaText}>{formatTimeRange(event.start_time, event.end_time)}</Text>
-        </View>
-
-        {/* Host */}
-        <View style={styles.metaRow}>
-          <Ionicons name="person-outline" size={12} color={Colors.textTertiary} />
-          <Text style={styles.metaText}>by {event.host.display_name}</Text>
-        </View>
-
-        {/* Niches */}
-        {visibleNiches.length > 0 && (
-          <View style={styles.niches}>
-            {visibleNiches.map(niche => (
-              <NicheTag key={niche.id} name={niche.name} small />
-            ))}
-            {overflowCount > 0 && (
-              <Text style={styles.overflow}>+{overflowCount}</Text>
+          {/* Badge row */}
+          <View style={styles.badgeRow}>
+            <EventTypeBadge eventType={event.event_type} small />
+            {event.privacy === "EXCLUSIVE" && (
+              <View style={styles.exclusiveBadge}>
+                <Ionicons name="lock-closed" size={9} color={Colors.primary} />
+                <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
+              </View>
+            )}
+            {event.is_recurring && (
+              <View style={styles.recurringBadge}>
+                <Ionicons
+                  name="repeat-outline"
+                  size={10}
+                  color={Colors.other}
+                />
+                <Text style={styles.recurringBadgeText}>Recurring</Text>
+              </View>
             )}
           </View>
-        )}
 
-        {/* Attendee counts */}
-        <View style={styles.countsRow}>
-          <View style={styles.countItem}>
-            <View style={[styles.dot, { backgroundColor: Colors.interested }]} />
-            <Text style={styles.countText}>{event.interested_count} interested</Text>
-          </View>
-          <View style={styles.countItem}>
-            <View style={[styles.dot, { backgroundColor: Colors.going }]} />
-            <Text style={styles.countText}>{event.going_count} going</Text>
+          {/* Attendee counts */}
+          <View style={styles.countsRow}>
+            <View style={styles.countItem}>
+              <View
+                style={[styles.dot, { backgroundColor: Colors.interested }]}
+              />
+              <Text style={styles.countText}>
+                {event.interested_count} interested
+              </Text>
+            </View>
+            <View style={styles.countItem}>
+              <View style={[styles.dot, { backgroundColor: Colors.going }]} />
+              <Text style={styles.countText}>{event.going_count} going</Text>
+            </View>
           </View>
         </View>
-      </View>
+      </ImageBackground>
 
       {/* Chevron */}
       <Ionicons
@@ -109,22 +112,21 @@ export function EventCard({ event, onPress }: EventCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
+    flexDirection: "row",
+    backgroundColor: "transparent",
     borderRadius: BorderRadius.card,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   dateCol: {
     width: 52,
     backgroundColor: Colors.surfaceElevated,
     borderRightWidth: 1,
     borderRightColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.md,
     gap: 2,
   },
@@ -145,84 +147,73 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     letterSpacing: 0.5,
   },
-  content: {
+  contentBg: {
     flex: 1,
-    padding: Spacing.md,
-    gap: 5,
+  },
+  contentBgImage: {
+    borderTopRightRadius: BorderRadius.card - 1,
+    borderBottomRightRadius: BorderRadius.card - 1,
+  },
+  contentOverlay: {
+    flex: 1,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+    backgroundColor: "rgba(0,0,0,0.78)",
   },
   title: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-    lineHeight: 20,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: "#FFFFFF",
+    lineHeight: 24,
   },
   badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-    alignItems: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    alignItems: "center",
   },
   exclusiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 3,
-    backgroundColor: Colors.primary + '20',
+    backgroundColor: Colors.primary + "20",
     borderWidth: 1,
-    borderColor: Colors.primary + '60',
+    borderColor: Colors.primary + "60",
     borderRadius: BorderRadius.chip,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   exclusiveBadgeText: {
-    fontSize: Typography.size.xs,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.medium,
     color: Colors.primary,
   },
   recurringBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 3,
-    backgroundColor: Colors.other + '20',
+    backgroundColor: Colors.other + "20",
     borderWidth: 1,
-    borderColor: Colors.other + '40',
+    borderColor: Colors.other + "40",
     borderRadius: BorderRadius.chip,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   recurringBadgeText: {
-    fontSize: Typography.size.xs,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.medium,
     color: Colors.other,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metaText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  niches: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    alignItems: 'center',
-  },
-  overflow: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-  },
+
   countsRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    marginTop: 2,
+    flexDirection: "row",
+    gap: Spacing.lg,
+    marginTop: Spacing.xs,
   },
   countItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   dot: {
     width: 6,
@@ -230,11 +221,13 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   countText: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
+    fontSize: Typography.size.sm,
+    color: "rgba(255,255,255,0.65)",
   },
   chevron: {
-    alignSelf: 'center',
+    alignSelf: "center",
     paddingRight: Spacing.sm,
+    position: "absolute",
+    right: 0,
   },
 });

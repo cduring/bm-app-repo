@@ -80,7 +80,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Discover</Text>
         <TouchableOpacity style={styles.filterIconBtn}>
@@ -89,7 +88,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Filter pills */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -127,7 +125,6 @@ export default function HomeScreen() {
         })}
       </ScrollView>
 
-      {/* Card stack */}
       <View
         style={styles.stackContainer}
         onLayout={e => {
@@ -176,11 +173,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
   headerTitle: {
-    flex: 1,
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,

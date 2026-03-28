@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   View,
   Text,
@@ -7,11 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEventById } from '../../src/hooks/useEvents';
+import { useProfile } from '../../src/hooks/useProfile';
+import { useAuth } from '../../src/context/auth';
+import { useRSVP } from '../../src/context/rsvp';
 import { NicheTag } from '../../src/components/NicheTag';
 import { ProfileCard } from '../../src/components/ProfileCard';
 import { EventTypeBadge, EVENT_TYPE_COLOR } from '../../src/components/EventTypeBadge';
@@ -23,15 +26,45 @@ import type { RSVPStatus } from '../../src/types';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { session } = useAuth();
   const { data: supabaseData, isLoading } = useEventById(id);
-  const [rsvp, setRsvp] = useState<RSVPStatus | null>(null);
-  const [isInterested, setIsInterested] = useState(false);
+  const { data: profileData } = useProfile(session?.user?.id);
+  const {
+    getRSVP,
+    setRSVP,
+    getEffectiveEvent,
+    eventRequestors,
+    approveRequest,
+    declineRequest,
+    getPendingCount,
+  } = useRSVP();
 
   const mockEvent = MOCK_EVENTS.find(e => e.id === id);
-  const event = supabaseData ?? mockEvent ?? null;
+  const rawEvent = supabaseData ?? mockEvent ?? null;
+  const event = rawEvent ? getEffectiveEvent(rawEvent) : null;
+
+  const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
 
   function handleRSVP(status: RSVPStatus) {
-    setRsvp(prev => (prev === status ? null : status));
+    if (!id) return;
+    setRSVP(id, rsvp === status ? null : status);
+  }
+
+  function handleApprove(profileId: string) {
+    if (!id) return;
+    approveRequest(id, profileId);
+  }
+
+  function handleDecline(profileId: string) {
+    if (!id) return;
+    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Decline',
+        style: 'destructive',
+        onPress: () => declineRequest(id, profileId),
+      },
+    ]);
   }
 
   if (isLoading && !mockEvent) {
@@ -57,6 +90,10 @@ export default function EventDetailScreen() {
   const bannerColor = EVENT_TYPE_COLOR[event.event_type];
   const recurrenceLabel = formatRecurrenceLabel(event.recurrence_rule);
   const isPublic = event.privacy === 'PUBLIC';
+  const isHost = !!profileData && profileData.profile.id === event.host_id;
+  const isCancelled = event.status === 'CANCELLED';
+  const pendingCount = id ? getPendingCount(id) : 0;
+  const requestors = id ? (eventRequestors[id] ?? []) : [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -66,9 +103,18 @@ export default function EventDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>{event.title}</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Ionicons name="share-outline" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        {isHost && !isCancelled ? (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push(`/event/edit/${event.id}`)}
+          >
+            <Ionicons name="create-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.shareButton}>
+            <Ionicons name="share-outline" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -76,6 +122,14 @@ export default function EventDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Cancelled Banner */}
+        {isCancelled && (
+          <View style={styles.cancelledBanner}>
+            <Ionicons name="close-circle" size={16} color={Colors.cancelled} />
+            <Text style={styles.cancelledBannerText}>This event has been cancelled</Text>
+          </View>
+        )}
+
         {/* Type Banner */}
         {event.cover_image_url ? (
           <View style={styles.banner}>
@@ -153,84 +207,161 @@ export default function EventDetailScreen() {
             </Text>
             <Text style={styles.statLabel}>Going</Text>
           </View>
+          {isHost && pendingCount > 0 && (
+            <>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: Colors.primary }]}>
+                  {pendingCount}
+                </Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+            </>
+          )}
         </View>
 
-        {/* RSVP Buttons */}
-        <View style={styles.rsvpSection}>
-          {isPublic ? (
-            <View style={styles.rsvpRow}>
-              <TouchableOpacity
-                style={[styles.rsvpButton, rsvp === 'INTERESTED' && styles.rsvpButtonInterested]}
-                onPress={() => handleRSVP('INTERESTED')}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={rsvp === 'INTERESTED' ? 'star' : 'star-outline'}
-                  size={16}
-                  color={rsvp === 'INTERESTED' ? Colors.textInverse : Colors.textSecondary}
-                />
-                <Text style={[styles.rsvpButtonText, rsvp === 'INTERESTED' && styles.rsvpButtonTextActive]}>
-                  Interested
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.rsvpButton, rsvp === 'GOING' && styles.rsvpButtonGoing]}
-                onPress={() => handleRSVP('GOING')}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={rsvp === 'GOING' ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                  size={16}
-                  color={rsvp === 'GOING' ? Colors.textInverse : Colors.textSecondary}
-                />
-                <Text style={[styles.rsvpButtonText, rsvp === 'GOING' && styles.rsvpButtonTextActive]}>
-                  Going
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.rsvpRow}>
-              <TouchableOpacity
-                style={[styles.rsvpButton, isInterested && styles.rsvpButtonInterested]}
-                onPress={() => setIsInterested(prev => !prev)}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={isInterested ? 'star' : 'star-outline'}
-                  size={16}
-                  color={isInterested ? Colors.textInverse : Colors.textSecondary}
-                />
-                <Text style={[styles.rsvpButtonText, isInterested && styles.rsvpButtonTextActive]}>
-                  Interested
-                </Text>
-              </TouchableOpacity>
-              {rsvp === null ? (
+        {/* RSVP Buttons (hidden if cancelled or host) */}
+        {!isCancelled && !isHost && (
+          <View style={styles.rsvpSection}>
+            {isPublic ? (
+              <View style={styles.rsvpRow}>
                 <TouchableOpacity
-                  style={[styles.rsvpButton, styles.rsvpButtonExclusiveAccess]}
-                  onPress={() => handleRSVP('REQUESTED')}
+                  style={[styles.rsvpButton, rsvp === 'INTERESTED' && styles.rsvpButtonInterested]}
+                  onPress={() => handleRSVP('INTERESTED')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="lock-open-outline" size={16} color={Colors.primary} />
-                  <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextPrimary]}>Request Access</Text>
+                  <Ionicons
+                    name={rsvp === 'INTERESTED' ? 'star' : 'star-outline'}
+                    size={16}
+                    color={rsvp === 'INTERESTED' ? Colors.textInverse : Colors.textSecondary}
+                  />
+                  <Text style={[styles.rsvpButtonText, rsvp === 'INTERESTED' && styles.rsvpButtonTextActive]}>
+                    Interested
+                  </Text>
                 </TouchableOpacity>
-              ) : rsvp === 'REQUESTED' ? (
-                <View style={[styles.rsvpButton, styles.rsvpButtonDisabled]}>
-                  <Ionicons name="time-outline" size={16} color={Colors.textTertiary} />
-                  <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextDisabled]}>Pending…</Text>
-                </View>
-              ) : (
                 <TouchableOpacity
-                  style={[styles.rsvpButton, styles.rsvpButtonGoing]}
+                  style={[styles.rsvpButton, rsvp === 'GOING' && styles.rsvpButtonGoing]}
                   onPress={() => handleRSVP('GOING')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.textInverse} />
-                  <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextActive]}>Going ✓</Text>
+                  <Ionicons
+                    name={rsvp === 'GOING' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                    size={16}
+                    color={rsvp === 'GOING' ? Colors.textInverse : Colors.textSecondary}
+                  />
+                  <Text style={[styles.rsvpButtonText, rsvp === 'GOING' && styles.rsvpButtonTextActive]}>
+                    Going
+                  </Text>
                 </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.rsvpRow}>
+                <TouchableOpacity
+                  style={[styles.rsvpButton, rsvp === 'INTERESTED' && styles.rsvpButtonInterested]}
+                  onPress={() => handleRSVP('INTERESTED')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={rsvp === 'INTERESTED' ? 'star' : 'star-outline'}
+                    size={16}
+                    color={rsvp === 'INTERESTED' ? Colors.textInverse : Colors.textSecondary}
+                  />
+                  <Text style={[styles.rsvpButtonText, rsvp === 'INTERESTED' && styles.rsvpButtonTextActive]}>
+                    Interested
+                  </Text>
+                </TouchableOpacity>
+                {rsvp === null || rsvp === 'INTERESTED' ? (
+                  <TouchableOpacity
+                    style={[styles.rsvpButton, styles.rsvpButtonExclusiveAccess]}
+                    onPress={() => handleRSVP('REQUESTED')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="lock-open-outline" size={16} color={Colors.primary} />
+                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextPrimary]}>Request Access</Text>
+                  </TouchableOpacity>
+                ) : rsvp === 'REQUESTED' ? (
+                  <View style={[styles.rsvpButton, styles.rsvpButtonDisabled]}>
+                    <Ionicons name="time-outline" size={16} color={Colors.textTertiary} />
+                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextDisabled]}>Pending…</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.rsvpButton, styles.rsvpButtonGoing]}
+                    onPress={() => handleRSVP('GOING')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="checkmark-circle" size={16} color={Colors.textInverse} />
+                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextActive]}>Going ✓</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Manage Requests (host only, exclusive events) */}
+        {isHost && event.privacy === 'EXCLUSIVE' && (
+          <View style={styles.section}>
+            <View style={styles.manageHeader}>
+              <Text style={styles.sectionTitle}>Attendance Requests</Text>
+              {pendingCount > 0 && (
+                <View style={styles.pendingCountBadge}>
+                  <Text style={styles.pendingCountText}>{pendingCount}</Text>
+                </View>
               )}
             </View>
-          )}
-        </View>
+
+            {requestors.length === 0 ? (
+              <View style={styles.manageEmpty}>
+                <Text style={styles.manageEmptyText}>No pending requests</Text>
+              </View>
+            ) : (
+              <View style={styles.requestorList}>
+                {requestors.map(requestor => (
+                  <View key={requestor.id} style={styles.requestorRow}>
+                    {requestor.profile_picture_url ? (
+                      <Image
+                        source={{ uri: requestor.profile_picture_url }}
+                        style={styles.requestorAvatar}
+                      />
+                    ) : (
+                      <View style={[styles.requestorAvatar, styles.requestorAvatarPlaceholder]}>
+                        <Text style={styles.requestorAvatarInitial}>
+                          {requestor.display_name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.requestorInfo}>
+                      <Text style={styles.requestorName} numberOfLines={1}>
+                        {requestor.display_name}
+                      </Text>
+                      <Text style={styles.requestorType}>
+                        {requestor.profile_type === 'CREATOR' ? 'Creator' : 'Business'}
+                      </Text>
+                    </View>
+                    <View style={styles.requestorActions}>
+                      <TouchableOpacity
+                        style={styles.approveButton}
+                        onPress={() => handleApprove(requestor.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="checkmark" size={16} color={Colors.going} />
+                        <Text style={styles.approveText}>Approve</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.declineButton}
+                        onPress={() => handleDecline(requestor.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="close" size={16} color={Colors.cancelled} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Host Card */}
         <View style={styles.section}>
@@ -308,6 +439,25 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   shareButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+  editButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+
+  // Cancelled banner
+  cancelledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.cancelled + '15',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.cancelled + '30',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  cancelledBannerText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.cancelled,
+  },
 
   // Banner
   banner: {
@@ -432,6 +582,13 @@ const styles = StyleSheet.create({
   },
   rsvpButtonTextPrimary: { color: Colors.primary },
   rsvpButtonTextDisabled: { color: Colors.textTertiary, fontWeight: Typography.weight.medium },
+
+  // Manage requests
+  manageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   sectionTitle: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
@@ -439,6 +596,101 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
+  pendingCountBadge: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.full,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  pendingCountText: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.bold,
+    color: Colors.textInverse,
+  },
+  manageEmpty: {
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  manageEmptyText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+  },
+  requestorList: {
+    gap: Spacing.sm,
+  },
+  requestorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.sm,
+  },
+  requestorAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.avatar,
+  },
+  requestorAvatarPlaceholder: {
+    backgroundColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requestorAvatarInitial: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.bold,
+    color: Colors.primary,
+  },
+  requestorInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  requestorName: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+  },
+  requestorType: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  requestorActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  approveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.going + '15',
+    borderWidth: 1,
+    borderColor: Colors.going + '40',
+  },
+  approveText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.going,
+  },
+  declineButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.cancelled + '15',
+    borderWidth: 1,
+    borderColor: Colors.cancelled + '40',
+  },
+
   description: {
     fontSize: Typography.size.base,
     color: Colors.textSecondary,
