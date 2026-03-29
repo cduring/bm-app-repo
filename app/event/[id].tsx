@@ -1,27 +1,39 @@
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEventById } from '../../src/hooks/useEvents';
-import { useProfile } from '../../src/hooks/useProfile';
-import { useAuth } from '../../src/context/auth';
-import { useRSVP } from '../../src/context/rsvp';
-import { NicheTag } from '../../src/components/NicheTag';
-import { ProfileCard } from '../../src/components/ProfileCard';
-import { EventTypeBadge, EVENT_TYPE_COLOR } from '../../src/components/EventTypeBadge';
-import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import { formatDayDate, formatTimeRange, formatRecurrenceLabel } from '../../src/utils/date';
-import type { RSVPStatus } from '../../src/types';
-
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  EVENT_TYPE_COLOR,
+  EventTypeBadge,
+} from "../../src/components/EventTypeBadge";
+import { LocationMapPreview } from "../../src/components/LocationMapPreview";
+import { NicheTag } from "../../src/components/NicheTag";
+import { ProfileCard } from "../../src/components/ProfileCard";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../../src/constants/theme";
+import { useAuth } from "../../src/context/auth";
+import { useRSVP } from "../../src/context/rsvp";
+import { useEventById } from "../../src/hooks/useEvents";
+import { useProfile } from "../../src/hooks/useProfile";
+import type { RSVPStatus } from "../../src/types";
+import {
+  formatDayDate,
+  formatRecurrenceLabel,
+  formatTimeRange,
+} from "../../src/utils/date";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -51,14 +63,18 @@ export default function EventDetailScreen() {
 
   function handleDecline(profileId: string) {
     if (!id) return;
-    Alert.alert('Decline Request', 'Are you sure you want to decline this request?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline',
-        style: 'destructive',
-        onPress: () => declineRequest(id, profileId),
-      },
-    ]);
+    Alert.alert(
+      "Decline Request",
+      "Are you sure you want to decline this request?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Decline",
+          style: "destructive",
+          onPress: () => declineRequest(id, profileId),
+        },
+      ],
+    );
   }
 
   if (isLoading && !event) {
@@ -72,7 +88,11 @@ export default function EventDetailScreen() {
   if (!event) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={32} color={Colors.textTertiary} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={32}
+          color={Colors.textTertiary}
+        />
         <Text style={styles.errorText}>Event not found.</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
           <Text style={styles.backLinkText}>Go back</Text>
@@ -83,9 +103,9 @@ export default function EventDetailScreen() {
 
   const bannerColor = EVENT_TYPE_COLOR[event.event_type];
   const recurrenceLabel = formatRecurrenceLabel(event.recurrence_rule);
-  const isPublic = event.privacy === 'PUBLIC';
+  const isPublic = event.privacy === "PUBLIC";
   const isHost = !!profileData && profileData.profile.id === event.host_id;
-  const isCancelled = event.status === 'CANCELLED';
+  const isCancelled = event.status === "CANCELLED";
   const pendingCount = id ? getPendingCount(id) : 0;
   const requestors = id ? (eventRequestors[id] ?? []) : [];
 
@@ -93,10 +113,15 @@ export default function EventDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       {/* Nav Header */}
       <View style={styles.navHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>{event.title}</Text>
+        <Text style={styles.navTitle} numberOfLines={1}>
+          {event.title}
+        </Text>
         {isHost && !isCancelled ? (
           <TouchableOpacity
             style={styles.editButton}
@@ -106,7 +131,11 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={22} color={Colors.textPrimary} />
+            <Ionicons
+              name="share-outline"
+              size={22}
+              color={Colors.textPrimary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -120,45 +149,61 @@ export default function EventDetailScreen() {
         {isCancelled && (
           <View style={styles.cancelledBanner}>
             <Ionicons name="close-circle" size={16} color={Colors.cancelled} />
-            <Text style={styles.cancelledBannerText}>This event has been cancelled</Text>
+            <Text style={styles.cancelledBannerText}>
+              This event has been cancelled
+            </Text>
           </View>
         )}
 
         {/* Type Banner */}
         {event.cover_image_url ? (
           <View style={styles.banner}>
-            <Image source={{ uri: event.cover_image_url }} style={styles.bannerImage} />
-            <View style={[styles.bannerOverlay, { backgroundColor: bannerColor + '40' }]} />
-            <View style={styles.bannerCenter}>
-              <EventTypeBadge eventType={event.event_type} />
-            </View>
+            <Image
+              source={{ uri: event.cover_image_url }}
+              style={styles.bannerImage}
+            />
             {event.is_recurring && (
               <View style={styles.bannerBottomLeft}>
-                <Ionicons name="repeat-outline" size={12} color={Colors.textPrimary} />
+                <Ionicons
+                  name="repeat-outline"
+                  size={12}
+                  color={Colors.textPrimary}
+                />
                 <Text style={styles.bannerLabelOnImage}>Recurring Event</Text>
               </View>
             )}
-            {event.privacy === 'EXCLUSIVE' && (
+            {event.privacy === "EXCLUSIVE" && (
               <View style={styles.bannerBottomRight}>
-                <Ionicons name="lock-closed" size={12} color={Colors.textPrimary} />
+                <Ionicons
+                  name="lock-closed"
+                  size={12}
+                  color={Colors.textPrimary}
+                />
                 <Text style={styles.bannerLabelOnImage}>Exclusive</Text>
               </View>
             )}
           </View>
         ) : (
-          <View style={[styles.banner, { backgroundColor: bannerColor + '30' }]}>
-            <View style={styles.bannerCenter}>
-              <EventTypeBadge eventType={event.event_type} />
-            </View>
+          <View
+            style={[styles.banner, { backgroundColor: bannerColor + "30" }]}
+          >
             {event.is_recurring && (
               <View style={styles.bannerBottomLeft}>
-                <Ionicons name="repeat-outline" size={12} color={Colors.textSecondary} />
+                <Ionicons
+                  name="repeat-outline"
+                  size={12}
+                  color={Colors.textSecondary}
+                />
                 <Text style={styles.bannerLabel}>Recurring Event</Text>
               </View>
             )}
-            {event.privacy === 'EXCLUSIVE' && (
+            {event.privacy === "EXCLUSIVE" && (
               <View style={styles.bannerBottomRight}>
-                <Ionicons name="lock-closed" size={12} color={Colors.textSecondary} />
+                <Ionicons
+                  name="lock-closed"
+                  size={12}
+                  color={Colors.textSecondary}
+                />
                 <Text style={styles.bannerLabel}>Exclusive</Text>
               </View>
             )}
@@ -168,19 +213,33 @@ export default function EventDetailScreen() {
         {/* Title + Meta */}
         <View style={styles.section}>
           <Text style={styles.eventTitle}>{event.title}</Text>
+          <EventTypeBadge eventType={event.event_type} />
           <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={15} color={Colors.textTertiary} />
+            <Ionicons
+              name="location-outline"
+              size={15}
+              color={Colors.textTertiary}
+            />
             <Text style={styles.metaText}>{event.address_name}</Text>
           </View>
           <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={15} color={Colors.textTertiary} />
+            <Ionicons
+              name="calendar-outline"
+              size={15}
+              color={Colors.textTertiary}
+            />
             <Text style={styles.metaText}>
-              {formatDayDate(event.start_time)} · {formatTimeRange(event.start_time, event.end_time)}
+              {formatDayDate(event.start_time)} ·{" "}
+              {formatTimeRange(event.start_time, event.end_time)}
             </Text>
           </View>
           {recurrenceLabel && (
             <View style={styles.metaRow}>
-              <Ionicons name="repeat-outline" size={15} color={Colors.textTertiary} />
+              <Ionicons
+                name="repeat-outline"
+                size={15}
+                color={Colors.textTertiary}
+              />
               <Text style={styles.recurrenceText}>{recurrenceLabel}</Text>
             </View>
           )}
@@ -220,30 +279,58 @@ export default function EventDetailScreen() {
             {isPublic ? (
               <View style={styles.rsvpRow}>
                 <TouchableOpacity
-                  style={[styles.rsvpButton, rsvp === 'INTERESTED' && styles.rsvpButtonInterested]}
-                  onPress={() => handleRSVP('INTERESTED')}
+                  style={[
+                    styles.rsvpButton,
+                    rsvp === "INTERESTED" && styles.rsvpButtonInterested,
+                  ]}
+                  onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
                 >
                   <Ionicons
-                    name={rsvp === 'INTERESTED' ? 'star' : 'star-outline'}
+                    name={rsvp === "INTERESTED" ? "star" : "star-outline"}
                     size={16}
-                    color={rsvp === 'INTERESTED' ? Colors.textInverse : Colors.textSecondary}
+                    color={
+                      rsvp === "INTERESTED"
+                        ? Colors.textInverse
+                        : Colors.textSecondary
+                    }
                   />
-                  <Text style={[styles.rsvpButtonText, rsvp === 'INTERESTED' && styles.rsvpButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.rsvpButtonText,
+                      rsvp === "INTERESTED" && styles.rsvpButtonTextActive,
+                    ]}
+                  >
                     Interested
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.rsvpButton, rsvp === 'GOING' && styles.rsvpButtonGoing]}
-                  onPress={() => handleRSVP('GOING')}
+                  style={[
+                    styles.rsvpButton,
+                    rsvp === "GOING" && styles.rsvpButtonGoing,
+                  ]}
+                  onPress={() => handleRSVP("GOING")}
                   activeOpacity={0.8}
                 >
                   <Ionicons
-                    name={rsvp === 'GOING' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                    name={
+                      rsvp === "GOING"
+                        ? "checkmark-circle"
+                        : "checkmark-circle-outline"
+                    }
                     size={16}
-                    color={rsvp === 'GOING' ? Colors.textInverse : Colors.textSecondary}
+                    color={
+                      rsvp === "GOING"
+                        ? Colors.textInverse
+                        : Colors.textSecondary
+                    }
                   />
-                  <Text style={[styles.rsvpButtonText, rsvp === 'GOING' && styles.rsvpButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.rsvpButtonText,
+                      rsvp === "GOING" && styles.rsvpButtonTextActive,
+                    ]}
+                  >
                     Going
                   </Text>
                 </TouchableOpacity>
@@ -251,41 +338,89 @@ export default function EventDetailScreen() {
             ) : (
               <View style={styles.rsvpRow}>
                 <TouchableOpacity
-                  style={[styles.rsvpButton, rsvp === 'INTERESTED' && styles.rsvpButtonInterested]}
-                  onPress={() => handleRSVP('INTERESTED')}
+                  style={[
+                    styles.rsvpButton,
+                    rsvp === "INTERESTED" && styles.rsvpButtonInterested,
+                  ]}
+                  onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
                 >
                   <Ionicons
-                    name={rsvp === 'INTERESTED' ? 'star' : 'star-outline'}
+                    name={rsvp === "INTERESTED" ? "star" : "star-outline"}
                     size={16}
-                    color={rsvp === 'INTERESTED' ? Colors.textInverse : Colors.textSecondary}
+                    color={
+                      rsvp === "INTERESTED"
+                        ? Colors.textInverse
+                        : Colors.textSecondary
+                    }
                   />
-                  <Text style={[styles.rsvpButtonText, rsvp === 'INTERESTED' && styles.rsvpButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.rsvpButtonText,
+                      rsvp === "INTERESTED" && styles.rsvpButtonTextActive,
+                    ]}
+                  >
                     Interested
                   </Text>
                 </TouchableOpacity>
-                {rsvp === null || rsvp === 'INTERESTED' ? (
+                {rsvp === null || rsvp === "INTERESTED" ? (
                   <TouchableOpacity
-                    style={[styles.rsvpButton, styles.rsvpButtonExclusiveAccess]}
-                    onPress={() => handleRSVP('REQUESTED')}
+                    style={[
+                      styles.rsvpButton,
+                      styles.rsvpButtonExclusiveAccess,
+                    ]}
+                    onPress={() => handleRSVP("REQUESTED")}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="lock-open-outline" size={16} color={Colors.primary} />
-                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextPrimary]}>Request Access</Text>
+                    <Ionicons
+                      name="lock-open-outline"
+                      size={16}
+                      color={Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.rsvpButtonText,
+                        styles.rsvpButtonTextPrimary,
+                      ]}
+                    >
+                      Request Access
+                    </Text>
                   </TouchableOpacity>
-                ) : rsvp === 'REQUESTED' ? (
+                ) : rsvp === "REQUESTED" ? (
                   <View style={[styles.rsvpButton, styles.rsvpButtonDisabled]}>
-                    <Ionicons name="time-outline" size={16} color={Colors.textTertiary} />
-                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextDisabled]}>Pending…</Text>
+                    <Ionicons
+                      name="time-outline"
+                      size={16}
+                      color={Colors.textTertiary}
+                    />
+                    <Text
+                      style={[
+                        styles.rsvpButtonText,
+                        styles.rsvpButtonTextDisabled,
+                      ]}
+                    >
+                      Pending…
+                    </Text>
                   </View>
                 ) : (
                   <TouchableOpacity
                     style={[styles.rsvpButton, styles.rsvpButtonGoing]}
-                    onPress={() => handleRSVP('GOING')}
+                    onPress={() => handleRSVP("GOING")}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="checkmark-circle" size={16} color={Colors.textInverse} />
-                    <Text style={[styles.rsvpButtonText, styles.rsvpButtonTextActive]}>Going ✓</Text>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={Colors.textInverse}
+                    />
+                    <Text
+                      style={[
+                        styles.rsvpButtonText,
+                        styles.rsvpButtonTextActive,
+                      ]}
+                    >
+                      Going ✓
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -294,7 +429,7 @@ export default function EventDetailScreen() {
         )}
 
         {/* Manage Requests (host only, exclusive events) */}
-        {isHost && event.privacy === 'EXCLUSIVE' && (
+        {isHost && event.privacy === "EXCLUSIVE" && (
           <View style={styles.section}>
             <View style={styles.manageHeader}>
               <Text style={styles.sectionTitle}>Attendance Requests</Text>
@@ -311,7 +446,7 @@ export default function EventDetailScreen() {
               </View>
             ) : (
               <View style={styles.requestorList}>
-                {requestors.map(requestor => (
+                {requestors.map((requestor) => (
                   <View key={requestor.id} style={styles.requestorRow}>
                     {requestor.profile_picture_url ? (
                       <Image
@@ -319,7 +454,12 @@ export default function EventDetailScreen() {
                         style={styles.requestorAvatar}
                       />
                     ) : (
-                      <View style={[styles.requestorAvatar, styles.requestorAvatarPlaceholder]}>
+                      <View
+                        style={[
+                          styles.requestorAvatar,
+                          styles.requestorAvatarPlaceholder,
+                        ]}
+                      >
                         <Text style={styles.requestorAvatarInitial}>
                           {requestor.display_name.charAt(0).toUpperCase()}
                         </Text>
@@ -330,7 +470,9 @@ export default function EventDetailScreen() {
                         {requestor.display_name}
                       </Text>
                       <Text style={styles.requestorType}>
-                        {requestor.profile_type === 'CREATOR' ? 'Creator' : 'Business'}
+                        {requestor.profile_type === "CREATOR"
+                          ? "Creator"
+                          : "Business"}
                       </Text>
                     </View>
                     <View style={styles.requestorActions}>
@@ -339,7 +481,11 @@ export default function EventDetailScreen() {
                         onPress={() => handleApprove(requestor.id)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="checkmark" size={16} color={Colors.going} />
+                        <Ionicons
+                          name="checkmark"
+                          size={16}
+                          color={Colors.going}
+                        />
                         <Text style={styles.approveText}>Approve</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -347,7 +493,11 @@ export default function EventDetailScreen() {
                         onPress={() => handleDecline(requestor.id)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="close" size={16} color={Colors.cancelled} />
+                        <Ionicons
+                          name="close"
+                          size={16}
+                          color={Colors.cancelled}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -378,22 +528,21 @@ export default function EventDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
-              {event.niches.map(niche => (
+              {event.niches.map((niche) => (
                 <NicheTag key={niche.id} name={niche.name} />
               ))}
             </View>
           </View>
         )}
 
-        {/* Map Teaser */}
+        {/* Map Preview */}
         <View style={styles.section}>
-          <View style={styles.mapTeaser}>
-            <Ionicons name="map-outline" size={32} color={Colors.textTertiary} />
-            <Text style={styles.mapAddress} numberOfLines={2}>{event.address_name}</Text>
-            <TouchableOpacity onPress={() => router.push(`/(tabs)/map?eventId=${event.id}`)}>
-              <Text style={styles.mapLink}>View on Map →</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Location</Text>
+          <LocationMapPreview
+            latitude={event.latitude}
+            longitude={event.longitude}
+            height={180}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -407,8 +556,8 @@ const styles = StyleSheet.create({
   centered: {
     flex: 1,
     backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   errorText: { color: Colors.textSecondary, fontSize: Typography.size.base },
@@ -417,33 +566,43 @@ const styles = StyleSheet.create({
 
   // Nav header
   navHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: Spacing.sm,
   },
-  backButton: { width: 40, height: 40, justifyContent: 'center' },
+  backButton: { width: 40, height: 40, justifyContent: "center" },
   navTitle: {
     flex: 1,
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
   },
-  shareButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
-  editButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
+  shareButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
 
   // Cancelled banner
   cancelledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
-    backgroundColor: Colors.cancelled + '15',
+    backgroundColor: Colors.cancelled + "15",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.cancelled + '30',
+    borderBottomColor: Colors.cancelled + "30",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },
@@ -456,38 +615,41 @@ const styles = StyleSheet.create({
   // Banner
   banner: {
     height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   bannerImage: {
     ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-  bannerCenter: { alignItems: 'center' },
+  bannerCenter: { alignItems: "center" },
   bannerBottomLeft: {
-    position: 'absolute',
+    position: "absolute",
     bottom: Spacing.sm,
     left: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   bannerBottomRight: {
-    position: 'absolute',
+    position: "absolute",
     bottom: Spacing.sm,
     right: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   bannerLabel: { fontSize: Typography.size.xs, color: Colors.textSecondary },
-  bannerLabelOnImage: { fontSize: Typography.size.xs, color: Colors.textPrimary },
+  bannerLabelOnImage: {
+    fontSize: Typography.size.xs,
+    color: Colors.textPrimary,
+  },
 
   // Sections
   section: {
@@ -502,8 +664,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   metaText: {
@@ -514,14 +676,14 @@ const styles = StyleSheet.create({
   recurrenceText: {
     fontSize: Typography.size.sm,
     color: Colors.textTertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     flex: 1,
   },
 
   // Stats
   statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
     borderTopWidth: 1,
@@ -529,8 +691,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingVertical: Spacing.md,
   },
-  statItem: { flex: 1, alignItems: 'center', gap: 2 },
-  statNumber: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold },
+  statItem: { flex: 1, alignItems: "center", gap: 2 },
+  statNumber: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
+  },
   statLabel: { fontSize: Typography.size.xs, color: Colors.textTertiary },
   statDivider: { width: 1, height: 32, backgroundColor: Colors.border },
 
@@ -539,18 +704,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
   },
-  rsvpRow: { flexDirection: 'row', gap: Spacing.sm },
+  rsvpRow: { flexDirection: "row", gap: Spacing.sm },
   rsvpButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.sm + 2,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   rsvpButtonInterested: {
     backgroundColor: Colors.interested,
@@ -567,27 +732,30 @@ const styles = StyleSheet.create({
   },
   rsvpButtonTextActive: { color: Colors.textInverse },
   rsvpButtonExclusiveAccess: {
-    borderColor: Colors.primary + '60',
-    backgroundColor: Colors.primary + '15',
+    borderColor: Colors.primary + "60",
+    backgroundColor: Colors.primary + "15",
   },
   rsvpButtonDisabled: {
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceElevated,
   },
   rsvpButtonTextPrimary: { color: Colors.primary },
-  rsvpButtonTextDisabled: { color: Colors.textTertiary, fontWeight: Typography.weight.medium },
+  rsvpButtonTextDisabled: {
+    color: Colors.textTertiary,
+    fontWeight: Typography.weight.medium,
+  },
 
   // Manage requests
   manageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   sectionTitle: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.textTertiary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   pendingCountBadge: {
@@ -595,8 +763,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     minWidth: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 6,
   },
   pendingCountText: {
@@ -606,7 +774,7 @@ const styles = StyleSheet.create({
   },
   manageEmpty: {
     paddingVertical: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   manageEmptyText: {
     fontSize: Typography.size.sm,
@@ -616,8 +784,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   requestorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.md,
@@ -632,8 +800,8 @@ const styles = StyleSheet.create({
   },
   requestorAvatarPlaceholder: {
     backgroundColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   requestorAvatarInitial: {
     fontSize: Typography.size.base,
@@ -654,20 +822,20 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   requestorActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   approveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     paddingVertical: 6,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.going + '15',
+    backgroundColor: Colors.going + "15",
     borderWidth: 1,
-    borderColor: Colors.going + '40',
+    borderColor: Colors.going + "40",
   },
   approveText: {
     fontSize: Typography.size.sm,
@@ -677,12 +845,12 @@ const styles = StyleSheet.create({
   declineButton: {
     width: 32,
     height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.cancelled + '15',
+    backgroundColor: Colors.cancelled + "15",
     borderWidth: 1,
-    borderColor: Colors.cancelled + '40',
+    borderColor: Colors.cancelled + "40",
   },
 
   description: {
@@ -691,31 +859,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   niches: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
-  },
-
-  // Map teaser
-  mapTeaser: {
-    height: 140,
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-  },
-  mapAddress: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  mapLink: {
-    fontSize: Typography.size.base,
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
   },
 });

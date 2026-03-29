@@ -26,15 +26,23 @@ type SelectedPin =
   | { type: 'EVENT'; data: EventWithHost }
   | null;
 
-const CreatorPin = memo(({ initial, isSelected }: { initial: string; isSelected: boolean }) => (
+const CreatorPin = memo(({ initial, imageUrl, isSelected }: { initial: string; imageUrl?: string; isSelected: boolean }) => (
   <View style={[styles.pin, styles.creatorPin, isSelected && styles.pinSelected]}>
-    <Text style={styles.pinInitial}>{initial}</Text>
+    {imageUrl ? (
+      <Image source={{ uri: imageUrl }} style={styles.pinImage} />
+    ) : (
+      <Text style={styles.pinInitial}>{initial}</Text>
+    )}
   </View>
 ));
 
-const EventPin = memo(({ initial, color, isSelected }: { initial: string; color: string; isSelected: boolean }) => (
-  <View style={[styles.pin, { backgroundColor: color }, isSelected && styles.pinSelected]}>
-    <Text style={styles.pinInitial}>{initial}</Text>
+const EventPin = memo(({ initial, imageUrl, color, isSelected }: { initial: string; imageUrl?: string; color: string; isSelected: boolean }) => (
+  <View style={[styles.pin, styles.eventPin, { backgroundColor: color }, isSelected && styles.eventPinSelected]}>
+    {imageUrl ? (
+      <Image source={{ uri: imageUrl }} style={[styles.pinImage, styles.eventPinImage]} />
+    ) : (
+      <Text style={styles.pinInitial}>{initial}</Text>
+    )}
   </View>
 ));
 
@@ -225,6 +233,7 @@ export default function MapScreen() {
                 >
                   <CreatorPin
                     initial={profile.display_name.charAt(0).toUpperCase()}
+                    imageUrl={profile.profile_picture_url}
                     isSelected={isSelected}
                   />
                 </TouchableOpacity>
@@ -251,6 +260,7 @@ export default function MapScreen() {
                 >
                   <EventPin
                     initial={event.event_type.charAt(0)}
+                    imageUrl={event.cover_image_url ?? undefined}
                     color={color}
                     isSelected={isSelected}
                   />
@@ -343,7 +353,10 @@ export default function MapScreen() {
             />
           )}
           {selectedPin.type === 'EVENT' && (
-            <EventCard event={selectedPin.data} />
+            <EventCard
+            event={selectedPin.data}
+            onViewEvent={() => router.push(`/event/${selectedPin.data.id}`)}
+          />
           )}
         </View>
       )}
@@ -409,14 +422,26 @@ function CreatorCard({
 
 // ─── Event card ───────────────────────────────────────────────────────────────
 
-function EventCard({ event }: { event: EventWithHost }) {
-  const color = EVENT_TYPE_COLOR[event.event_type];
+function EventCard({
+  event,
+  onViewEvent,
+}: {
+  event: EventWithHost;
+  onViewEvent: () => void;
+}) {
+  const color = EVENT_TYPE_COLOR[event.event_type] ?? Colors.textTertiary;
   const label = EVENT_TYPE_LABEL[event.event_type];
 
   return (
     <>
       <View style={styles.cardRow}>
-        <View style={[styles.eventTypeDot, { backgroundColor: color }]} />
+        {event.cover_image_url ? (
+          <Image source={{ uri: event.cover_image_url }} style={styles.eventCoverThumb} />
+        ) : (
+          <View style={[styles.eventTypeDot, { backgroundColor: color }]}>
+            <Text style={styles.eventTypeDotInitial}>{label.charAt(0)}</Text>
+          </View>
+        )}
         <View style={styles.cardInfo}>
           <View style={styles.eventTitleRow}>
             <Text style={[styles.cardName, { flex: 1 }]} numberOfLines={2}>{event.title}</Text>
@@ -425,7 +450,7 @@ function EventCard({ event }: { event: EventWithHost }) {
             )}
           </View>
           <View style={styles.eventBadges}>
-            <View style={[styles.eventTypeBadge, { backgroundColor: color + '20', borderColor: color + '50' }]}>
+            <View style={[styles.eventTypeBadge, { backgroundColor: color + '25', borderColor: color + '60' }]}>
               <Text style={[styles.eventTypeBadgeText, { color }]}>{label}</Text>
             </View>
             {event.privacy === 'EXCLUSIVE' && (
@@ -456,6 +481,11 @@ function EventCard({ event }: { event: EventWithHost }) {
           <Text style={styles.eventCountNumber}>{event.going_count}</Text> going
         </Text>
       </View>
+
+      <TouchableOpacity style={styles.viewButton} onPress={onViewEvent} activeOpacity={0.8}>
+        <Text style={styles.viewButtonText}>View Event</Text>
+        <Ionicons name="arrow-forward" size={14} color={Colors.textInverse} />
+      </TouchableOpacity>
     </>
   );
 }
@@ -478,9 +508,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   creatorPin: {
     backgroundColor: Colors.primary,
+  },
+  eventPin: {
+    borderRadius: 8,
   },
   pinSelected: {
     width: 44,
@@ -489,10 +523,25 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#ffffff',
   },
+  eventPinSelected: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+  },
   pinInitial: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
     color: '#ffffff',
+  },
+  pinImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  eventPinImage: {
+    borderRadius: 8,
   },
 
   // Recenter button
@@ -682,6 +731,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  eventTypeDotInitial: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: '#ffffff',
+  },
+  eventCoverThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
   },
   eventTitleRow: {
     flexDirection: 'row',

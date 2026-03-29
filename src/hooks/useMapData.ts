@@ -50,7 +50,13 @@ export function useMapEvents() {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      return (data ?? []) as EventWithHost[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        niches: (row.niches ?? []).map((n: any) => ({
+          id: String(n.id),
+          name: n.name,
+        })),
+      })) as EventWithHost[];
     },
     staleTime: 2 * 60 * 1000,
   });

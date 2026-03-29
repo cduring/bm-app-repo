@@ -166,7 +166,7 @@ export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onTog
                   activeOpacity={0.8}
                 >
                   <Ionicons name="lock-open-outline" size={16} color={Colors.primary} />
-                  <Text style={[styles.rsvpBtnText, styles.rsvpBtnTextPrimary]}>Request Access</Text>
+                  <Text style={[styles.rsvpBtnText, styles.rsvpBtnTextPrimary]}>Request Invite</Text>
                 </TouchableOpacity>
               ) : rsvp === 'REQUESTED' ? (
                 <View style={[styles.rsvpBtn, styles.rsvpBtnDisabled]}>

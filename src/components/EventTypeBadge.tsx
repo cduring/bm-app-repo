@@ -3,36 +3,36 @@ import { Colors, Typography, BorderRadius, Spacing } from '../constants/theme';
 import type { EventType } from '../types';
 
 export const EVENT_TYPE_COLOR: Record<EventType, string> = {
-  FASHION_SHOW: Colors.fashionShow,
-  LISTENING_PARTY: Colors.listeningParty,
-  NETWORKING: Colors.networking,
-  WORKSHOP: Colors.workshop,
-  MASTERCLASS: Colors.workshop,
-  COMMUNITY: Colors.community,
-  PERFORMANCE: Colors.other,
-  OPEN_MIC: Colors.other,
-  SCREENING: Colors.other,
-  STUDIO_SESSION: Colors.other,
-  PANEL: Colors.other,
-  CRITIQUE_SESSION: Colors.other,
-  HACKATHON: Colors.other,
-  COLLAB_SESSION: Colors.other,
-  OPEN_CALL: Colors.other,
-  POP_UP: Colors.other,
-  MARKET: Colors.other,
-  LAUNCH_PARTY: Colors.other,
-  EXHIBITION: Colors.other,
-  OPEN_STUDIO: Colors.other,
-  PHOTOSHOOT: Colors.other,
-  GROUP_RUN: Colors.other,
-  FITNESS_CLASS: Colors.other,
-  RETREAT: Colors.other,
-  GAME_NIGHT: Colors.other,
-  BLOCK_PARTY: Colors.other,
-  COMPETITION: Colors.other,
-  CHARITY: Colors.other,
-  VIRTUAL_EVENT: Colors.other,
-  OTHER: Colors.other,
+  FASHION_SHOW: Colors.fashionShow,      // '#EC4899' pink
+  LISTENING_PARTY: Colors.listeningParty, // '#8B5CF6' violet
+  NETWORKING: Colors.networking,          // '#3B82F6' blue
+  WORKSHOP: Colors.workshop,              // '#F59E0B' amber
+  MASTERCLASS: Colors.workshop,           // '#F59E0B' amber
+  COMMUNITY: Colors.community,            // '#22C55E' green
+  PERFORMANCE: '#EC4899',   // pink — live arts
+  OPEN_MIC: '#A855F7',      // purple — spoken/music
+  SCREENING: '#06B6D4',     // cyan — film/visual
+  STUDIO_SESSION: '#10B981', // emerald — production
+  PANEL: '#3B82F6',          // blue — discussion
+  CRITIQUE_SESSION: '#F97316', // orange — feedback
+  HACKATHON: '#EF4444',     // red — intense/competitive
+  COLLAB_SESSION: '#22C55E', // green — collaborative
+  OPEN_CALL: '#F59E0B',     // amber — opportunity
+  POP_UP: '#EC4899',        // pink — retail/fashion
+  MARKET: '#10B981',        // emerald — commerce
+  LAUNCH_PARTY: '#8B5CF6',  // violet — celebration
+  EXHIBITION: '#06B6D4',    // cyan — gallery/art
+  OPEN_STUDIO: '#10B981',   // emerald — creative space
+  PHOTOSHOOT: '#F43F5E',    // rose — visual/photo
+  GROUP_RUN: '#22C55E',     // green — fitness
+  FITNESS_CLASS: '#EF4444', // red — active/energy
+  RETREAT: '#6366F1',       // indigo — calm/reflective
+  GAME_NIGHT: '#F59E0B',    // amber — fun
+  BLOCK_PARTY: '#F97316',   // orange — outdoor/community
+  COMPETITION: '#EF4444',   // red — competitive
+  CHARITY: '#22C55E',       // green — giving
+  VIRTUAL_EVENT: '#6366F1', // indigo — digital
+  OTHER: Colors.other,      // '#6B7280' gray
 };
 
 export const EVENT_TYPE_LABEL: Record<EventType, string> = {

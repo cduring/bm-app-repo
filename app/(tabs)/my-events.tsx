@@ -472,6 +472,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    marginBottom: Spacing.sm,
   },
   modeTab: {
     flex: 1,
