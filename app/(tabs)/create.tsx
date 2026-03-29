@@ -29,6 +29,7 @@ import {
 import { useAuth } from "../../src/context/auth";
 import { useProfile } from "../../src/hooks/useProfile";
 import { supabase } from "../../src/lib/supabase";
+import { ALL_NICHES } from "../../src/constants/niches";
 import type { EventPrivacy, EventType } from "../../src/types";
 
 const RECURRENCE_OPTIONS: { label: string; rule: string }[] = [
@@ -478,6 +479,7 @@ export default function CreateScreen() {
   const [geocoded, setGeocoded] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [coverUri, setCoverUri] = useState<string | null>(null);
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
 
   // UI state
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -514,6 +516,15 @@ export default function CreateScreen() {
   function openPicker(target: DatePickerTarget) {
     setPickerTarget(target);
     setShowDatePicker(true);
+  }
+
+  function toggleNiche(id: string) {
+    setSelectedNicheIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function handlePickerConfirm(selected: Date) {
@@ -616,6 +627,7 @@ export default function CreateScreen() {
     setGeocoded(false);
     setIsRecurring(false);
     setCoverUri(null);
+    setSelectedNicheIds(new Set());
     setLocationError(null);
     setRecurrenceRule("");
     setRecurrenceEndDate(null);
@@ -683,6 +695,18 @@ export default function CreateScreen() {
             "Image upload failed. The event was not saved — please try again.",
           );
         }
+      }
+
+      // Insert event niches
+      if (selectedNicheIds.size > 0) {
+        const nicheRows = [...selectedNicheIds].map(nicheId => ({
+          event_id: newEvent.id,
+          niche_id: nicheId,
+        }));
+        const { error: nicheError } = await supabase
+          .from("event_niches")
+          .insert(nicheRows);
+        if (nicheError) throw nicheError;
       }
 
       queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -890,6 +914,29 @@ export default function CreateScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+
+          {/* ── Niches ── */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Niches</Text>
+            <Text style={styles.nicheHint}>Tag what your event is about</Text>
+            <View style={styles.nicheGrid}>
+              {ALL_NICHES.map(niche => {
+                const active = selectedNicheIds.has(niche.id);
+                return (
+                  <TouchableOpacity
+                    key={niche.id}
+                    style={[styles.nicheChip, active && styles.nicheChipActive]}
+                    onPress={() => toggleNiche(niche.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.nicheChipText, active && styles.nicheChipTextActive]}>
+                      {niche.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -1573,6 +1620,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   typeChipTextSelected: {
+    color: Colors.primary,
+    fontWeight: Typography.weight.medium,
+  },
+
+  // Niche chips
+  nicheHint: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+    marginTop: -Spacing.xs,
+  },
+  nicheGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  nicheChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.chip,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
+  },
+  nicheChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "20",
+  },
+  nicheChipText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+  },
+  nicheChipTextActive: {
     color: Colors.primary,
     fontWeight: Typography.weight.medium,
   },

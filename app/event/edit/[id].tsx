@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,29 +15,43 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEventById } from '../../../src/hooks/useEvents';
-import { useRSVP } from '../../../src/context/rsvp';
+import { supabase } from '../../../src/lib/supabase';
+import { ALL_NICHES } from '../../../src/constants/niches';
 import { EventTypeBadge } from '../../../src/components/EventTypeBadge';
 import { Colors, Typography, Spacing, BorderRadius } from '../../../src/constants/theme';
-import { MOCK_EVENTS } from '../../../src/mock/events';
 import { formatDayDate, formatTimeRange } from '../../../src/utils/date';
 import type { EventPrivacy } from '../../../src/types';
 
 export default function EventEditScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: supabaseData, isLoading } = useEventById(id);
-  const { getEffectiveEvent, updateEventLocally, cancelEvent } = useRSVP();
-
-  const mockEvent = MOCK_EVENTS.find(e => e.id === id);
-  const rawEvent = supabaseData ?? mockEvent ?? null;
-  const event = rawEvent ? getEffectiveEvent(rawEvent) : null;
+  const { data: event, isLoading } = useEventById(id);
+  const qc = useQueryClient();
 
   const [title, setTitle] = useState(event?.title ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
   const [addressName, setAddressName] = useState(event?.address_name ?? '');
   const [privacy, setPrivacy] = useState<EventPrivacy>(event?.privacy ?? 'PUBLIC');
   const [coverUri, setCoverUri] = useState<string | null>(event?.cover_image_url ?? null);
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (event) setSelectedNicheIds(new Set(event.niches.map(n => n.id)));
+  }, [event?.id]);
+
+  async function uploadCover(uri: string, eventId: string): Promise<string> {
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const path = `${eventId}/cover.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('event-covers')
+      .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
+    if (uploadError) throw uploadError;
+    const { data: urlData } = supabase.storage.from('event-covers').getPublicUrl(path);
+    return `${urlData.publicUrl}?t=${Date.now()}`;
+  }
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -51,7 +65,7 @@ export default function EventEditScreen() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!id) return;
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
@@ -71,20 +85,44 @@ export default function EventEditScreen() {
     }
 
     setSaving(true);
-    // In Stage 7 this will persist to Supabase; for now update local context
-    updateEventLocally(id, {
-      title: trimmedTitle,
-      description: trimmedDescription,
-      address_name: trimmedAddress,
-      privacy,
-      cover_image_url: coverUri,
-    });
+    try {
+      // Upload new cover image if the user picked a local file
+      let finalCoverUrl = coverUri;
+      if (coverUri && !coverUri.startsWith('http')) {
+        finalCoverUrl = await uploadCover(coverUri, id);
+      }
 
-    // Simulate brief network delay for UX feedback
-    setTimeout(() => {
-      setSaving(false);
+      const { error } = await supabase
+        .from('events')
+        .update({
+          title: trimmedTitle,
+          description: trimmedDescription,
+          address_name: trimmedAddress,
+          privacy,
+          cover_image_url: finalCoverUrl,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Sync event niches: delete all then re-insert
+      await supabase.from('event_niches').delete().eq('event_id', id);
+      if (selectedNicheIds.size > 0) {
+        const { error: nicheError } = await supabase.from('event_niches').insert(
+          [...selectedNicheIds].map(nicheId => ({ event_id: id, niche_id: nicheId }))
+        );
+        if (nicheError) throw nicheError;
+      }
+
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['event', id] });
+      qc.invalidateQueries({ queryKey: ['hostedEvents'] });
       router.back();
-    }, 400);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleCancelEvent() {
@@ -120,14 +158,24 @@ export default function EventEditScreen() {
     Alert.alert('Cancel Event', message, buttons);
   }
 
-  function confirmCancel() {
+  async function confirmCancel() {
     if (!id) return;
-    cancelEvent(id);
-    // Navigate back to the event detail, which will show the cancelled state
-    router.back();
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'CANCELLED' })
+        .eq('id', id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['event', id] });
+      qc.invalidateQueries({ queryKey: ['hostedEvents'] });
+      router.back();
+    } catch (err) {
+      Alert.alert('Error', 'Failed to cancel event. Please try again.');
+    }
   }
 
-  if (isLoading && !mockEvent) {
+  if (isLoading && !event) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -199,6 +247,35 @@ export default function EventEditScreen() {
           <View style={styles.typeRow}>
             <EventTypeBadge eventType={event.event_type} />
             <Text style={styles.typeNote}>Type cannot be changed after creation</Text>
+          </View>
+        </View>
+
+        {/* Niches */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Niches</Text>
+          <View style={styles.nicheGrid}>
+            {ALL_NICHES.map(niche => {
+              const active = selectedNicheIds.has(niche.id);
+              return (
+                <TouchableOpacity
+                  key={niche.id}
+                  style={[styles.nicheChip, active && styles.nicheChipActive]}
+                  onPress={() => {
+                    setSelectedNicheIds(prev => {
+                      const next = new Set(prev);
+                      if (next.has(niche.id)) next.delete(niche.id);
+                      else next.add(niche.id);
+                      return next;
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.nicheChipText, active && styles.nicheChipTextActive]}>
+                    {niche.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -522,5 +599,32 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     lineHeight: 18,
     textAlign: 'center',
+  },
+
+  // Niche chips
+  nicheGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  nicheChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.chip,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
+  },
+  nicheChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '20',
+  },
+  nicheChipText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+  },
+  nicheChipTextActive: {
+    color: Colors.primary,
+    fontWeight: Typography.weight.medium,
   },
 });

@@ -1,6 +1,6 @@
 import type { Niche } from "../types";
 
-export const MOCK_NICHES: Niche[] = [
+export const ALL_NICHES: Niche[] = [
   { id: "1", name: "Streetwear" },
   { id: "2", name: "Cinematography" },
   { id: "3", name: "Barbering" },

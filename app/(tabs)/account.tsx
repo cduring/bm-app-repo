@@ -25,8 +25,7 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
-import { useRSVP } from "../../src/context/rsvp";
-import { useEvents } from "../../src/hooks/useEvents";
+import { useHostedEvents } from "../../src/hooks/useEvents";
 import {
   useAddPortfolioImage,
   usePortfolio,
@@ -34,30 +33,20 @@ import {
 } from "../../src/hooks/usePortfolio";
 import { useProfile } from "../../src/hooks/useProfile";
 import { supabase } from "../../src/lib/supabase";
-import { MOCK_EVENTS } from "../../src/mock/events";
-import type { EventWithHost } from "../../src/types";
 import { formatDayDate } from "../../src/utils/date";
 
 export default function AccountScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const { data, isLoading, error } = useProfile(userId);
-  const { data: supabaseEvents } = useEvents();
-  const { getEffectiveEvent } = useRSVP();
   const profileId = data?.profile?.id;
+  const { data: hostedEvents = [] } = useHostedEvents(profileId);
   const { data: portfolioImages } = usePortfolio(profileId);
   const addPortfolioImage = useAddPortfolioImage();
   const removePortfolioImage = useRemovePortfolioImage();
   const [signingOut, setSigningOut] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
-
-  const allEvents: EventWithHost[] = (supabaseEvents ?? MOCK_EVENTS).map(
-    getEffectiveEvent,
-  );
-  const hostedEvents = data
-    ? allEvents.filter((e) => e.host_id === data.profile.id)
-    : [];
 
   async function handleAddPortfolioImage() {
     if (!profileId) return;

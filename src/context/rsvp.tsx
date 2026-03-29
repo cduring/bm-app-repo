@@ -1,12 +1,21 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './auth';
+import { useProfile } from '../hooks/useProfile';
+import {
+  useMyRSVPs,
+  useSetRSVP,
+  useEventRequestors,
+  useApproveRequest,
+  useDeclineRequest,
+} from '../hooks/useRSVP';
 import type { RSVPStatus, Profile, EventWithHost, Event } from '../types';
-import { MOCK_MY_RSVPS, MOCK_EVENT_REQUESTORS } from '../mock/rsvps';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RSVPMap = Record<string, RSVPStatus>;
 type RequestorMap = Record<string, Profile[]>;
-type EventEditsMap = Record<string, Partial<Event>>;
 
 interface RSVPContextValue {
   // Current user's RSVPs
@@ -20,10 +29,10 @@ interface RSVPContextValue {
   declineRequest: (eventId: string, profileId: string) => void;
   getPendingCount: (eventId: string) => number;
 
-  // In-memory event edits / cancellations (cleared on app restart)
+  // Event edits / cancellations (now persisted to Supabase)
   cancelledEventIds: string[];
-  cancelEvent: (eventId: string) => void;
-  updateEventLocally: (eventId: string, updates: Partial<Event>) => void;
+  cancelEvent: (eventId: string) => Promise<void>;
+  updateEventLocally: (eventId: string, updates: Partial<Event>) => Promise<void>;
   getEffectiveEvent: (event: EventWithHost) => EventWithHost;
 }
 
@@ -32,13 +41,43 @@ interface RSVPContextValue {
 const RSVPContext = createContext<RSVPContextValue | null>(null);
 
 export function RSVPProvider({ children }: { children: ReactNode }) {
-  const [myRSVPs, setMyRSVPs] = useState<RSVPMap>(MOCK_MY_RSVPS);
-  const [eventRequestors, setEventRequestors] = useState<RequestorMap>(MOCK_EVENT_REQUESTORS);
-  const [cancelledEventIds, setCancelledEventIds] = useState<string[]>([]);
-  const [eventEdits, setEventEdits] = useState<EventEditsMap>({});
+  const qc = useQueryClient();
+  const { session } = useAuth();
+  const userId = session?.user?.id;
+
+  // Get current user's profile ID
+  const { data: profileData } = useProfile(userId);
+  const profileId = profileData?.profile.id;
+
+  // ── RSVP data from Supabase ──
+  const { data: rsvpData } = useMyRSVPs(profileId);
+  const { data: requestorData } = useEventRequestors(profileId);
+
+  // Local optimistic state (mirrors Supabase, updated immediately on mutation)
+  const [localRSVPs, setLocalRSVPs] = useState<RSVPMap>({});
+  const [localRequestors, setLocalRequestors] = useState<RequestorMap>({});
+
+  // Sync local state when Supabase data arrives
+  useEffect(() => {
+    if (rsvpData) setLocalRSVPs(rsvpData);
+  }, [rsvpData]);
+
+  useEffect(() => {
+    if (requestorData) setLocalRequestors(requestorData);
+  }, [requestorData]);
+
+  // ── Mutations ──
+  const setRSVPMutation = useSetRSVP();
+  const approveMutation = useApproveRequest();
+  const declineMutation = useDeclineRequest();
+
+  // ── RSVP actions ──
 
   function setRSVP(eventId: string, status: RSVPStatus | null) {
-    setMyRSVPs(prev => {
+    if (!profileId) return;
+
+    // Optimistic update
+    setLocalRSVPs(prev => {
       const next = { ...prev };
       if (status === null) {
         delete next[eventId];
@@ -47,64 +86,87 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+
+    // Persist to Supabase
+    setRSVPMutation.mutate({ eventId, profileId, status });
   }
 
   function getRSVP(eventId: string): RSVPStatus | null {
-    return myRSVPs[eventId] ?? null;
+    return localRSVPs[eventId] ?? null;
   }
 
-  function approveRequest(eventId: string, profileId: string) {
-    setEventRequestors(prev => ({
+  // ── Request management ──
+
+  function approveRequest(eventId: string, requestorProfileId: string) {
+    if (!profileId) return;
+
+    // Optimistic update
+    setLocalRequestors(prev => ({
       ...prev,
-      [eventId]: (prev[eventId] ?? []).filter(p => p.id !== profileId),
+      [eventId]: (prev[eventId] ?? []).filter(p => p.id !== requestorProfileId),
     }));
+
+    approveMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId });
   }
 
-  function declineRequest(eventId: string, profileId: string) {
-    setEventRequestors(prev => ({
+  function declineRequest(eventId: string, requestorProfileId: string) {
+    if (!profileId) return;
+
+    // Optimistic update
+    setLocalRequestors(prev => ({
       ...prev,
-      [eventId]: (prev[eventId] ?? []).filter(p => p.id !== profileId),
+      [eventId]: (prev[eventId] ?? []).filter(p => p.id !== requestorProfileId),
     }));
+
+    declineMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId });
   }
 
   function getPendingCount(eventId: string): number {
-    return (eventRequestors[eventId] ?? []).length;
+    return (localRequestors[eventId] ?? []).length;
   }
 
-  function cancelEvent(eventId: string) {
-    setCancelledEventIds(prev =>
-      prev.includes(eventId) ? prev : [...prev, eventId]
-    );
+  // ── Event cancel / edit (writes to Supabase, then invalidates queries) ──
+
+  async function cancelEvent(eventId: string) {
+    const { error } = await supabase
+      .from('events')
+      .update({ status: 'CANCELLED' })
+      .eq('id', eventId);
+    if (!error) {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['event', eventId] });
+      qc.invalidateQueries({ queryKey: ['hostedEvents'] });
+    }
   }
 
-  function updateEventLocally(eventId: string, updates: Partial<Event>) {
-    setEventEdits(prev => ({
-      ...prev,
-      [eventId]: { ...(prev[eventId] ?? {}), ...updates },
-    }));
+  async function updateEventLocally(eventId: string, updates: Partial<Event>) {
+    const { error } = await supabase
+      .from('events')
+      .update(updates)
+      .eq('id', eventId);
+    if (!error) {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['event', eventId] });
+      qc.invalidateQueries({ queryKey: ['hostedEvents'] });
+    }
   }
 
+  // Events now come from Supabase with the correct status — no local override needed
   function getEffectiveEvent(event: EventWithHost): EventWithHost {
-    const edits = eventEdits[event.id] ?? {};
-    const isCancelled = cancelledEventIds.includes(event.id);
-    return {
-      ...event,
-      ...edits,
-      status: isCancelled ? 'CANCELLED' : (edits.status ?? event.status),
-    };
+    return event;
   }
 
   return (
     <RSVPContext.Provider
       value={{
-        myRSVPs,
+        myRSVPs: localRSVPs,
         setRSVP,
         getRSVP,
-        eventRequestors,
+        eventRequestors: localRequestors,
         approveRequest,
         declineRequest,
         getPendingCount,
-        cancelledEventIds,
+        cancelledEventIds: [],
         cancelEvent,
         updateEventLocally,
         getEffectiveEvent,

@@ -15,8 +15,7 @@ import * as Location from 'expo-location';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
 import { NicheTag } from '../../src/components/NicheTag';
 import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from '../../src/components/EventTypeBadge';
-import { MOCK_PROFILES } from '../../src/mock/profiles';
-import { MOCK_EVENTS } from '../../src/mock/events';
+import { useMapProfiles, useMapEvents } from '../../src/hooks/useMapData';
 import type { ProfileWithNiches, EventWithHost, Niche } from '../../src/types';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN!);
@@ -64,6 +63,9 @@ export default function MapScreen() {
   const userCoordsRef = useRef<[number, number] | null>(null);
   const hasInitiallyCentered = useRef(false);
 
+  const { data: mapProfiles = [] } = useMapProfiles();
+  const { data: mapEvents = [] } = useMapEvents();
+
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status }) => {
       if (status === 'granted') setLocationGranted(true);
@@ -71,8 +73,8 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
-    if (!eventId) return;
-    const target = MOCK_EVENTS.find(e => e.id === eventId);
+    if (!eventId || mapEvents.length === 0) return;
+    const target = mapEvents.find(e => e.id === eventId);
     if (!target) return;
     setMode('EVENTS');
     setSelectedNicheIds(new Set());
@@ -84,13 +86,13 @@ export default function MapScreen() {
         animationDuration: 800,
       });
     }, 300);
-  }, [eventId]);
+  }, [eventId, mapEvents]);
 
-  // Unique niches across all mock profiles (deduplicated by id)
+  // Unique niches across real profiles (deduplicated by id)
   const allProfileNiches = useMemo<Niche[]>(() => {
     const seen = new Set<string>();
     const result: Niche[] = [];
-    for (const profile of MOCK_PROFILES) {
+    for (const profile of mapProfiles) {
       for (const niche of profile.niches) {
         if (!seen.has(niche.id)) {
           seen.add(niche.id);
@@ -99,13 +101,13 @@ export default function MapScreen() {
       }
     }
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
+  }, [mapProfiles]);
 
-  // Unique niches across all mock events (deduplicated by id)
+  // Unique niches across real events (deduplicated by id)
   const allEventNiches = useMemo<Niche[]>(() => {
     const seen = new Set<string>();
     const result: Niche[] = [];
-    for (const event of MOCK_EVENTS) {
+    for (const event of mapEvents) {
       for (const niche of event.niches) {
         if (!seen.has(niche.id)) {
           seen.add(niche.id);
@@ -114,25 +116,25 @@ export default function MapScreen() {
       }
     }
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
+  }, [mapEvents]);
 
   const allNiches = mode === 'CREATORS' ? allProfileNiches : allEventNiches;
 
   // Filtered profiles based on selected niches
   const visibleProfiles = useMemo(() => {
-    if (selectedNicheIds.size === 0) return MOCK_PROFILES;
-    return MOCK_PROFILES.filter(p =>
+    if (selectedNicheIds.size === 0) return mapProfiles;
+    return mapProfiles.filter(p =>
       p.niches.some(n => selectedNicheIds.has(n.id))
     );
-  }, [selectedNicheIds]);
+  }, [selectedNicheIds, mapProfiles]);
 
   // Filtered events based on selected niches
   const visibleEvents = useMemo(() => {
-    if (selectedNicheIds.size === 0) return MOCK_EVENTS;
-    return MOCK_EVENTS.filter(e =>
+    if (selectedNicheIds.size === 0) return mapEvents;
+    return mapEvents.filter(e =>
       e.niches.some(n => selectedNicheIds.has(n.id))
     );
-  }, [selectedNicheIds]);
+  }, [selectedNicheIds, mapEvents]);
 
   function handleToggleNiche(nicheId: string) {
     setSelectedNicheIds(prev => {

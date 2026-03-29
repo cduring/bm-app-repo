@@ -6,32 +6,33 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEvents } from '../../src/hooks/useEvents';
+import { useRSVP } from '../../src/context/rsvp';
 import { EventFullCard } from '../../src/components/EventFullCard';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import { MOCK_EVENTS } from '../../src/mock/events';
-import type { EventType, EventWithHost, RSVPStatus } from '../../src/types';
+import type { EventType } from '../../src/types';
 
 type TimeFilter = 'all' | 'this_week';
 
 export default function HomeScreen() {
-  const { data: supabaseData } = useEvents();
+  const { data: eventsData, isLoading, isError, refetch } = useEvents();
+  const { getRSVP, setRSVP } = useRSVP();
+  const [refreshing, setRefreshing] = useState(false);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [selectedTypes, setSelectedTypes] = useState<Set<EventType>>(new Set());
-  const [rsvpMap, setRsvpMap] = useState<Record<string, RSVPStatus | null>>({});
-  const [interestedMap, setInterestedMap] = useState<Record<string, boolean>>({});
   const [cardHeight, setCardHeight] = useState(0);
 
-  const allEvents: EventWithHost[] = useMemo(() => {
-    const base = supabaseData ?? MOCK_EVENTS;
-    return base
+  const allEvents = useMemo(() => {
+    return (eventsData ?? [])
       .slice()
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  }, [supabaseData]);
+  }, [eventsData]);
 
   const availableTypes = useMemo<EventType[]>(
     () => [...new Set(allEvents.map(e => e.event_type))],
@@ -65,18 +66,46 @@ export default function HomeScreen() {
     setSelectedTypes(new Set());
   }
 
-  function handleRSVP(eventId: string, status: RSVPStatus) {
-    setRsvpMap(prev => ({
-      ...prev,
-      [eventId]: prev[eventId] === status ? null : status,
-    }));
-  }
-
-  function handleToggleInterested(eventId: string) {
-    setInterestedMap(prev => ({ ...prev, [eventId]: !prev[eventId] }));
+  async function handleRefresh() {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   }
 
   const hasActiveFilters = timeFilter !== 'all' || selectedTypes.size > 0;
+
+  // ── Loading state ──
+  if (isLoading && !eventsData) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Discover</Text>
+        </View>
+        <View style={styles.centered}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Error state ──
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Discover</Text>
+        </View>
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textTertiary} />
+          <Text style={styles.emptyTitle}>Couldn't load events</Text>
+          <Text style={styles.emptySubtitle}>Check your connection and try again</Text>
+          <TouchableOpacity style={styles.clearBtn} onPress={() => refetch()}>
+            <Text style={styles.clearBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -147,20 +176,32 @@ export default function HomeScreen() {
           <FlatList
             data={filteredEvents}
             keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <EventFullCard
-                event={item}
-                height={cardHeight}
-                rsvp={rsvpMap[item.id] ?? null}
-                isInterested={interestedMap[item.id] ?? false}
-                onRSVP={status => handleRSVP(item.id, status)}
-                onToggleInterested={() => handleToggleInterested(item.id)}
-                onViewDetails={() => router.push(`/event/${item.id}`)}
-              />
-            )}
+            renderItem={({ item }) => {
+              const rsvp = getRSVP(item.id);
+              return (
+                <EventFullCard
+                  event={item}
+                  height={cardHeight}
+                  rsvp={rsvp}
+                  isInterested={rsvp === 'INTERESTED'}
+                  onRSVP={status => setRSVP(item.id, rsvp === status ? null : status)}
+                  onToggleInterested={() =>
+                    setRSVP(item.id, rsvp === 'INTERESTED' ? null : 'INTERESTED')
+                  }
+                  onViewDetails={() => router.push(`/event/${item.id}`)}
+                />
+              );
+            }}
             snapToInterval={cardHeight}
             decelerationRate="fast"
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+              />
+            }
           />
         ) : null}
       </View>
@@ -193,6 +234,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   stackContainer: { flex: 1 },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',

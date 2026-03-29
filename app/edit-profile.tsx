@@ -21,7 +21,7 @@ import { DraggablePinMap } from '../src/components/DraggablePinMap';
 import { useAuth } from '../src/context/auth';
 import { supabase } from '../src/lib/supabase';
 import { useProfile } from '../src/hooks/useProfile';
-import { MOCK_NICHES } from '../src/mock/niches';
+import { ALL_NICHES } from '../src/constants/niches';
 import { Colors, Typography, Spacing, BorderRadius } from '../src/constants/theme';
 import { PLATFORM_ICONS } from '../src/constants/platformIcons';
 import type { PlatformName, ExternalLink } from '../src/types';
@@ -430,7 +430,7 @@ export default function EditProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.nichesGrid}>
-              {MOCK_NICHES.map(niche => {
+              {ALL_NICHES.map(niche => {
                 const selected = selectedNicheIds.includes(niche.id);
                 return (
                   <TouchableOpacity

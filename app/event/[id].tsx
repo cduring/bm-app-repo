@@ -19,7 +19,6 @@ import { NicheTag } from '../../src/components/NicheTag';
 import { ProfileCard } from '../../src/components/ProfileCard';
 import { EventTypeBadge, EVENT_TYPE_COLOR } from '../../src/components/EventTypeBadge';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import { MOCK_EVENTS } from '../../src/mock/events';
 import { formatDayDate, formatTimeRange, formatRecurrenceLabel } from '../../src/utils/date';
 import type { RSVPStatus } from '../../src/types';
 
@@ -27,21 +26,16 @@ import type { RSVPStatus } from '../../src/types';
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
-  const { data: supabaseData, isLoading } = useEventById(id);
+  const { data: event, isLoading } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
   const {
     getRSVP,
     setRSVP,
-    getEffectiveEvent,
     eventRequestors,
     approveRequest,
     declineRequest,
     getPendingCount,
   } = useRSVP();
-
-  const mockEvent = MOCK_EVENTS.find(e => e.id === id);
-  const rawEvent = supabaseData ?? mockEvent ?? null;
-  const event = rawEvent ? getEffectiveEvent(rawEvent) : null;
 
   const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
 
@@ -67,7 +61,7 @@ export default function EventDetailScreen() {
     ]);
   }
 
-  if (isLoading && !mockEvent) {
+  if (isLoading && !event) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />

@@ -31,16 +31,6 @@ import {
 } from "../../src/hooks/useFollow";
 import { usePortfolio } from "../../src/hooks/usePortfolio";
 import { useProfile, useProfileById } from "../../src/hooks/useProfile";
-import { MOCK_PROFILES } from "../../src/mock/profiles";
-import type { ProfileWithNiches } from "../../src/types";
-
-function mockToProfileData(p: ProfileWithNiches) {
-  return {
-    profile: p,
-    niches: p.niches,
-    externalLinks: p.external_links ?? [],
-  };
-}
 
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -72,9 +62,7 @@ export default function ViewProfileScreen() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
 
-  const mockProfile = MOCK_PROFILES.find((p) => p.id === id);
-  const data =
-    supabaseData ?? (mockProfile ? mockToProfileData(mockProfile) : null);
+  const data = supabaseData ?? null;
 
   function openLink(url: string) {
     const full = url.startsWith("http") ? url : `https://${url}`;
@@ -83,7 +71,7 @@ export default function ViewProfileScreen() {
     );
   }
 
-  if (isLoading && !mockProfile) {
+  if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />

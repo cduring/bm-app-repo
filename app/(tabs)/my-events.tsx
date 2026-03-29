@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,9 +21,8 @@ import {
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
 import { useRSVP } from "../../src/context/rsvp";
-import { useEvents } from "../../src/hooks/useEvents";
+import { useEvents, useHostedEvents } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
-import { MOCK_EVENTS } from "../../src/mock/events";
 import type { EventWithHost } from "../../src/types";
 import { formatDayDate } from "../../src/utils/date";
 
@@ -35,15 +36,16 @@ type AttendingTab = "interested" | "requested" | "going";
 export default function MyEventsScreen() {
   const { session } = useAuth();
   const { data: profileData } = useProfile(session?.user?.id);
-  const { myRSVPs, getEffectiveEvent } = useRSVP();
-  const { data: supabaseEvents } = useEvents();
+  const profileId = profileData?.profile.id;
+  const { myRSVPs } = useRSVP();
+  const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useEvents();
+  const { data: hostedEventsData, isLoading: hostedLoading, refetch: refetchHosted } = useHostedEvents(profileId);
 
   const [mode, setMode] = useState<Mode>("attending");
   const [activeTab, setActiveTab] = useState<AttendingTab>("interested");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const allEvents: EventWithHost[] = (supabaseEvents ?? MOCK_EVENTS).map(
-    getEffectiveEvent,
-  );
+  const allEvents: EventWithHost[] = eventsData ?? [];
 
   // Attending — three separate buckets
   const interestedEvents = allEvents.filter(
@@ -56,10 +58,14 @@ export default function MyEventsScreen() {
     (e) => myRSVPs[e.id] === "GOING" && e.status !== "CANCELLED",
   );
 
-  // Hosting
-  const hostedEvents = profileData
-    ? allEvents.filter((e) => e.host_id === profileData.profile.id)
-    : [];
+  // Hosting — uses dedicated hook that includes DRAFT/CANCELLED (with RSVP counts)
+  const hostedEvents: EventWithHost[] = hostedEventsData ?? [];
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([refetchEvents(), refetchHosted()]);
+    setRefreshing(false);
+  }
 
   return (
     <View style={styles.root}>
@@ -141,15 +147,25 @@ export default function MyEventsScreen() {
         )}
 
         {/* ── Content ── */}
-        {mode === "attending" ? (
+        {(eventsLoading && !eventsData) || (hostedLoading && !hostedEventsData) ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color={Colors.primary} size="large" />
+          </View>
+        ) : mode === "attending" ? (
           <AttendingView
             activeTab={activeTab}
             interestedEvents={interestedEvents}
             requestedEvents={requestedEvents}
             goingEvents={goingEvents}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
           />
         ) : (
-          <HostingView hostedEvents={hostedEvents} />
+          <HostingView
+            hostedEvents={hostedEvents}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+          />
         )}
       </SafeAreaView>
     </View>
@@ -203,11 +219,15 @@ function AttendingView({
   interestedEvents,
   requestedEvents,
   goingEvents,
+  refreshing,
+  onRefresh,
 }: {
   activeTab: AttendingTab;
   interestedEvents: EventWithHost[];
   requestedEvents: EventWithHost[];
   goingEvents: EventWithHost[];
+  refreshing: boolean;
+  onRefresh: () => void;
 }) {
   const events =
     activeTab === "interested"
@@ -246,6 +266,13 @@ function AttendingView({
         events.length === 0 ? styles.emptyContainer : styles.listContent
       }
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.primary}
+        />
+      }
       renderItem={({ item }) => (
         <View style={styles.cardWrapper}>
           <EventCard
@@ -278,27 +305,46 @@ function AttendingView({
 
 // ─── Hosting View ─────────────────────────────────────────────────────────────
 
-function HostingView({ hostedEvents }: { hostedEvents: EventWithHost[] }) {
+function HostingView({
+  hostedEvents,
+  refreshing,
+  onRefresh,
+}: {
+  hostedEvents: EventWithHost[];
+  refreshing: boolean;
+  onRefresh: () => void;
+}) {
   if (hostedEvents.length === 0) {
     return (
-      <View style={styles.emptyState}>
-        <Ionicons
-          name="megaphone-outline"
-          size={48}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.emptyTitle}>No hosted events yet</Text>
-        <Text style={styles.emptySubtitle}>
-          Events you create will appear here so you can manage them.
-        </Text>
-        <TouchableOpacity
-          style={styles.emptyAction}
-          onPress={() => router.push("/(tabs)/create")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.emptyActionText}>Create an Event →</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.emptyContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+        <View style={styles.emptyState}>
+          <Ionicons
+            name="megaphone-outline"
+            size={48}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.emptyTitle}>No hosted events yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Events you create will appear here so you can manage them.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyAction}
+            onPress={() => router.push("/(tabs)/create")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.emptyActionText}>Create an Event →</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -306,6 +352,13 @@ function HostingView({ hostedEvents }: { hostedEvents: EventWithHost[] }) {
     <ScrollView
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.primary}
+        />
+      }
     >
       {hostedEvents.map((event) => (
         <TouchableOpacity
@@ -443,6 +496,12 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: Colors.textPrimary,
     borderRadius: 1,
+  },
+
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Segmented control (3 tabs) ──

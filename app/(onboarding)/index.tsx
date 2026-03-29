@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DraggablePinMap } from "../../src/components/DraggablePinMap";
+import { ALL_NICHES } from "../../src/constants/niches";
 import {
   BorderRadius,
   Colors,
@@ -23,7 +24,6 @@ import {
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
 import { supabase } from "../../src/lib/supabase";
-import { MOCK_NICHES } from "../../src/mock/niches";
 import type { ProfileType } from "../../src/types";
 
 const TOTAL_STEPS = 5;
@@ -41,9 +41,11 @@ interface OnboardingData {
 }
 
 /** Geocodes a Canadian FSA via Mapbox Places and returns a privacy-jittered pin. */
-async function resolvePostalCode(
-  fsa: string,
-): Promise<{ latitude: number; longitude: number; locationLabel: string } | null> {
+async function resolvePostalCode(fsa: string): Promise<{
+  latitude: number;
+  longitude: number;
+  locationLabel: string;
+} | null> {
   const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
   if (!token) return null;
 
@@ -58,12 +60,15 @@ async function resolvePostalCode(
   const [lng, lat] = feature.center as [number, number];
 
   // Build a clean "City, Province" label from the context hierarchy
-  const ctx: Array<{ id: string; text: string }> = feature.context ?? [];
-  const city = ctx.find((c) => c.id.startsWith('place.'))?.text;
-  const province = ctx.find((c) => c.id.startsWith('region.'))?.text;
+  const ctx: { id: string; text: string }[] = feature.context ?? [];
+  const city = ctx.find((c) => c.id.startsWith("place."))?.text;
+  const province = ctx.find((c) => c.id.startsWith("region."))?.text;
   const locationLabel =
-    city && province ? `${city}, ${province}`
-    : city ?? feature.place_name?.split(',').slice(1, 3).join(',').trim() ?? fsa;
+    city && province
+      ? `${city}, ${province}`
+      : (city ??
+        feature.place_name?.split(",").slice(1, 3).join(",").trim() ??
+        fsa);
 
   // ±0.009 degrees ≈ ±~900 m privacy jitter
   const jitter = () => (Math.random() - 0.5) * 0.018;
@@ -180,7 +185,9 @@ export default function OnboardingScreen() {
           );
         }
       } catch {
-        setError("Couldn't look up that location. Check your connection and try again.");
+        setError(
+          "Couldn't look up that location. Check your connection and try again.",
+        );
       } finally {
         setGeocoding(false);
       }
@@ -479,7 +486,7 @@ export default function OnboardingScreen() {
                 Select all that apply. This helps others find you.
               </Text>
               <View style={styles.chipGrid}>
-                {MOCK_NICHES.map((niche) => {
+                {ALL_NICHES.map((niche) => {
                   const selected = data.selectedNicheIds.includes(niche.id);
                   return (
                     <TouchableOpacity
@@ -575,8 +582,13 @@ export default function OnboardingScreen() {
 
                 {geocoding && (
                   <View style={styles.geocodingRow}>
-                    <ActivityIndicator size="small" color={Colors.textTertiary} />
-                    <Text style={styles.geocodingText}>Looking up location…</Text>
+                    <ActivityIndicator
+                      size="small"
+                      color={Colors.textTertiary}
+                    />
+                    <Text style={styles.geocodingText}>
+                      Looking up location…
+                    </Text>
                   </View>
                 )}
 
@@ -887,8 +899,8 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   locationNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginTop: Spacing.xs,
   },
