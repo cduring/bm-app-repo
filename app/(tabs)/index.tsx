@@ -1,59 +1,67 @@
-import { useState, useMemo } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
+  FlatList,
   RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEvents } from '../../src/hooks/useEvents';
-import { useRSVP } from '../../src/context/rsvp';
-import { EventFullCard } from '../../src/components/EventFullCard';
-import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { EventType } from '../../src/types';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { EventFullCard } from "../../src/components/EventFullCard";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../../src/constants/theme";
+import { useRSVP } from "../../src/context/rsvp";
+import { useEvents } from "../../src/hooks/useEvents";
+import type { EventType } from "../../src/types";
 
-type TimeFilter = 'all' | 'this_week';
+type TimeFilter = "all" | "this_week";
 
 export default function HomeScreen() {
   const { data: eventsData, isLoading, isError, refetch } = useEvents();
   const { getRSVP, setRSVP } = useRSVP();
   const [refreshing, setRefreshing] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [selectedTypes, setSelectedTypes] = useState<Set<EventType>>(new Set());
   const [cardHeight, setCardHeight] = useState(0);
 
   const allEvents = useMemo(() => {
     return (eventsData ?? [])
       .slice()
-      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      .sort(
+        (a, b) =>
+          new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
+      );
   }, [eventsData]);
 
   const availableTypes = useMemo<EventType[]>(
-    () => [...new Set(allEvents.map(e => e.event_type))],
+    () => [...new Set(allEvents.map((e) => e.event_type))],
     [allEvents],
   );
 
   const filteredEvents = useMemo(() => {
     let result = allEvents;
-    if (timeFilter === 'this_week') {
+    if (timeFilter === "this_week") {
       const weekFromNow = new Date();
       weekFromNow.setDate(weekFromNow.getDate() + 7);
-      result = result.filter(e => new Date(e.start_time) <= weekFromNow);
+      result = result.filter((e) => new Date(e.start_time) <= weekFromNow);
     }
     if (selectedTypes.size > 0) {
-      result = result.filter(e => selectedTypes.has(e.event_type));
+      result = result.filter((e) => selectedTypes.has(e.event_type));
     }
     return result;
   }, [allEvents, timeFilter, selectedTypes]);
 
   function toggleType(type: EventType) {
-    setSelectedTypes(prev => {
+    setSelectedTypes((prev) => {
       const next = new Set(prev);
       if (next.has(type)) next.delete(type);
       else next.add(type);
@@ -62,7 +70,7 @@ export default function HomeScreen() {
   }
 
   function clearFilters() {
-    setTimeFilter('all');
+    setTimeFilter("all");
     setSelectedTypes(new Set());
   }
 
@@ -72,14 +80,14 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  const hasActiveFilters = timeFilter !== 'all' || selectedTypes.size > 0;
+  const hasActiveFilters = timeFilter !== "all" || selectedTypes.size > 0;
 
   // ── Loading state ──
   if (isLoading && !eventsData) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Discover</Text>
+          <Text style={styles.headerTitle}>Event Feed</Text>
         </View>
         <View style={styles.centered}>
           <ActivityIndicator color={Colors.primary} size="large" />
@@ -91,14 +99,20 @@ export default function HomeScreen() {
   // ── Error state ──
   if (isError) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Discover</Text>
+          <Text style={styles.headerTitle}>Event Feed</Text>
         </View>
         <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textTertiary} />
+          <Ionicons
+            name="cloud-offline-outline"
+            size={48}
+            color={Colors.textTertiary}
+          />
           <Text style={styles.emptyTitle}>Couldn't load events</Text>
-          <Text style={styles.emptySubtitle}>Check your connection and try again</Text>
+          <Text style={styles.emptySubtitle}>
+            Check your connection and try again
+          </Text>
           <TouchableOpacity style={styles.clearBtn} onPress={() => refetch()}>
             <Text style={styles.clearBtnText}>Retry</Text>
           </TouchableOpacity>
@@ -108,12 +122,17 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover</Text>
-        <TouchableOpacity style={styles.filterIconBtn}>
-          <Ionicons name="options-outline" size={22} color={Colors.textPrimary} />
-          {hasActiveFilters && <View style={styles.filterDot} />}
+        <Text style={styles.headerTitle}>Event Feed</Text>
+        <TouchableOpacity
+          style={styles.searchIconBtn}
+          onPress={() => router.push("/search")}
+          activeOpacity={0.7}
+          accessibilityLabel="Search creators and events"
+          accessibilityRole="button"
+        >
+          <Ionicons name="search" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -123,22 +142,31 @@ export default function HomeScreen() {
         contentContainerStyle={filterStyles.row}
         style={filterStyles.scroll}
       >
-        {(['all', 'this_week'] as TimeFilter[]).map(f => (
+        {(["all", "this_week"] as TimeFilter[]).map((f) => (
           <TouchableOpacity
             key={f}
-            style={[filterStyles.pill, timeFilter === f && filterStyles.pillActive]}
+            style={[
+              filterStyles.pill,
+              timeFilter === f && filterStyles.pillActive,
+            ]}
             onPress={() => setTimeFilter(f)}
             activeOpacity={0.7}
           >
-            <Text style={[filterStyles.pillText, timeFilter === f && filterStyles.pillTextActive]}>
-              {f === 'all' ? 'All Dates' : 'This Week'}
+            <Text
+              style={[
+                filterStyles.pillText,
+                timeFilter === f && filterStyles.pillTextActive,
+              ]}
+            >
+              {f === "all" ? "All Dates" : "This Week"}
             </Text>
           </TouchableOpacity>
         ))}
         <View style={filterStyles.divider} />
-        {availableTypes.map(type => {
+        {availableTypes.map((type) => {
           const active = selectedTypes.has(type);
-          const label = type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, ' ');
+          const label =
+            type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, " ");
           return (
             <TouchableOpacity
               key={type}
@@ -146,7 +174,12 @@ export default function HomeScreen() {
               onPress={() => toggleType(type)}
               activeOpacity={0.7}
             >
-              <Text style={[filterStyles.pillText, active && filterStyles.pillTextActive]}>
+              <Text
+                style={[
+                  filterStyles.pillText,
+                  active && filterStyles.pillTextActive,
+                ]}
+              >
                 {label}
               </Text>
             </TouchableOpacity>
@@ -156,14 +189,18 @@ export default function HomeScreen() {
 
       <View
         style={styles.stackContainer}
-        onLayout={e => {
+        onLayout={(e) => {
           const h = e.nativeEvent.layout.height;
           if (h > 0) setCardHeight(h);
         }}
       >
         {filteredEvents.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color={Colors.textTertiary} />
+            <Ionicons
+              name="calendar-outline"
+              size={48}
+              color={Colors.textTertiary}
+            />
             <Text style={styles.emptyTitle}>No events found</Text>
             <Text style={styles.emptySubtitle}>Try adjusting your filters</Text>
             {hasActiveFilters && (
@@ -175,7 +212,7 @@ export default function HomeScreen() {
         ) : cardHeight > 0 ? (
           <FlatList
             data={filteredEvents}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             renderItem={({ item }) => {
               const rsvp = getRSVP(item.id);
               return (
@@ -183,10 +220,19 @@ export default function HomeScreen() {
                   event={item}
                   height={cardHeight}
                   rsvp={rsvp}
-                  isInterested={rsvp === 'INTERESTED'}
-                  onRSVP={status => setRSVP(item.id, rsvp === status ? null : status)}
+                  isInterested={rsvp === "INTERESTED"}
+                  onRSVP={(status) =>
+                    setRSVP(item.id, rsvp === status ? null : status, {
+                      title: item.title,
+                      startTime: item.start_time,
+                    })
+                  }
                   onToggleInterested={() =>
-                    setRSVP(item.id, rsvp === 'INTERESTED' ? null : 'INTERESTED')
+                    setRSVP(
+                      item.id,
+                      rsvp === "INTERESTED" ? null : "INTERESTED",
+                      { title: item.title, startTime: item.start_time },
+                    )
                   }
                   onViewDetails={() => router.push(`/event/${item.id}`)}
                 />
@@ -212,38 +258,29 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
   },
   headerTitle: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size["xl"],
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
-  filterIconBtn: { position: 'relative', padding: 4 },
-  filterDot: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
-  },
+  searchIconBtn: { padding: 4 },
   stackContainer: { flex: 1 },
   centered: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   emptyState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   emptyTitle: {
@@ -273,11 +310,11 @@ const styles = StyleSheet.create({
 const filterStyles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.sm,
     gap: Spacing.xs,
-    alignItems: 'center',
+    alignItems: "center",
   },
   divider: {
     width: 1,
@@ -294,8 +331,8 @@ const filterStyles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   pillActive: {
-    backgroundColor: Colors.primary + '20',
-    borderColor: Colors.primary + '60',
+    backgroundColor: Colors.primary + "20",
+    borderColor: Colors.primary + "60",
   },
   pillText: {
     fontSize: Typography.size.sm,

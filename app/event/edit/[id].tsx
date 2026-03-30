@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { LocationMapPreview } from '../../../src/components/LocationMapPreview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -32,6 +33,11 @@ export default function EventEditScreen() {
   const [title, setTitle] = useState(event?.title ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
   const [addressName, setAddressName] = useState(event?.address_name ?? '');
+  const [latitude, setLatitude] = useState(event?.latitude ?? 43.6532);
+  const [longitude, setLongitude] = useState(event?.longitude ?? -79.3832);
+  const [geocoded, setGeocoded] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [privacy, setPrivacy] = useState<EventPrivacy>(event?.privacy ?? 'PUBLIC');
   const [coverUri, setCoverUri] = useState<string | null>(event?.cover_image_url ?? null);
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
@@ -62,6 +68,32 @@ export default function EventEditScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       setCoverUri(result.assets[0].uri);
+    }
+  }
+
+  async function geocodeAddress(text: string) {
+    if (!text.trim()) return;
+    setGeocoding(true);
+    setLocationError(null);
+    try {
+      const query = encodeURIComponent(text.trim());
+      const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&country=ca&limit=1`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const feature = data.features?.[0];
+      if (feature && feature.relevance >= 0.6) {
+        const [lng, lat] = feature.center;
+        setLatitude(lat);
+        setLongitude(lng);
+        setGeocoded(true);
+      } else {
+        setLocationError('Location not found. Try a more specific address (e.g. 55 Mill St, Toronto).');
+      }
+    } catch {
+      setLocationError('Could not look up location. Check your connection.');
+    } finally {
+      setGeocoding(false);
     }
   }
 
@@ -98,6 +130,7 @@ export default function EventEditScreen() {
           title: trimmedTitle,
           description: trimmedDescription,
           address_name: trimmedAddress,
+          ...(geocoded ? { latitude, longitude } : {}),
           privacy,
           cover_image_url: finalCoverUrl,
         })
@@ -325,13 +358,33 @@ export default function EventEditScreen() {
         {/* Location */}
         <View style={styles.section}>
           <Text style={styles.label}>Location</Text>
-          <TextInput
-            style={styles.textInput}
-            value={addressName}
-            onChangeText={setAddressName}
-            placeholder="Address or venue name"
-            placeholderTextColor={Colors.textTertiary}
-          />
+          <View style={styles.locationRow}>
+            <TextInput
+              style={[styles.textInput, styles.locationInput]}
+              value={addressName}
+              onChangeText={(t) => {
+                setAddressName(t);
+                setGeocoded(false);
+                setLocationError(null);
+              }}
+              onEndEditing={(e) => geocodeAddress(e.nativeEvent.text)}
+              placeholder="Address or venue name"
+              placeholderTextColor={Colors.textTertiary}
+              autoCorrect={false}
+              returnKeyType="done"
+            />
+            {geocoding ? (
+              <ActivityIndicator style={styles.locationStatus} color={Colors.textTertiary} size="small" />
+            ) : geocoded ? (
+              <Ionicons name="checkmark-circle" style={styles.locationStatus} size={20} color="#4CAF50" />
+            ) : null}
+          </View>
+          {locationError && (
+            <Text style={styles.locationErrorText}>{locationError}</Text>
+          )}
+          {geocoded && !locationError && (
+            <LocationMapPreview latitude={latitude} longitude={longitude} />
+          )}
         </View>
 
         {/* Privacy */}
@@ -532,6 +585,18 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 120,
     paddingTop: Spacing.sm + 2,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  locationInput: { flex: 1 },
+  locationStatus: { width: 20 },
+  locationErrorText: {
+    fontSize: Typography.size.sm,
+    color: Colors.cancelled,
+    marginTop: Spacing.xs,
   },
 
   // Privacy toggle

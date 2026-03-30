@@ -1,5 +1,6 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
 import { Colors } from '../../src/constants/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -44,9 +45,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Discover',
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} />
+            <TabIcon name={focused ? 'compass' : 'compass-outline'} focused={focused} />
           ),
         }}
       />
@@ -65,6 +66,17 @@ export default function TabLayout() {
           title: 'Host',
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'add-circle' : 'add-circle-outline'} focused={focused} />
+          ),
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              style={props.style}
+              onPress={() => router.push('/host')}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Host an event"
+            >
+              {props.children}
+            </TouchableOpacity>
           ),
         }}
       />

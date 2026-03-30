@@ -38,7 +38,14 @@ export function EventCard({ event, onPress }: EventCardProps) {
   const weekday = WEEKDAYS[startDate.getUTCDay()];
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`${event.title}, ${event.event_type.replace(/_/g, ' ').toLowerCase()}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view event details"
+    >
       {/* Date column */}
       <View style={styles.dateCol}>
         <Text style={styles.month}>{month}</Text>

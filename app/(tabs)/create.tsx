@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +19,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LocationMapPreview } from "../../src/components/LocationMapPreview";
+import { ALL_NICHES } from "../../src/constants/niches";
 import {
   BorderRadius,
   Colors,
@@ -29,7 +30,6 @@ import {
 import { useAuth } from "../../src/context/auth";
 import { useProfile } from "../../src/hooks/useProfile";
 import { supabase } from "../../src/lib/supabase";
-import { ALL_NICHES } from "../../src/constants/niches";
 import type { EventPrivacy, EventType } from "../../src/types";
 
 const RECURRENCE_OPTIONS: { label: string; rule: string }[] = [
@@ -479,7 +479,9 @@ export default function CreateScreen() {
   const [geocoded, setGeocoded] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [coverUri, setCoverUri] = useState<string | null>(null);
-  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // UI state
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -519,7 +521,7 @@ export default function CreateScreen() {
   }
 
   function toggleNiche(id: string) {
-    setSelectedNicheIds(prev => {
+    setSelectedNicheIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -564,7 +566,7 @@ export default function CreateScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images' as ImagePicker.MediaType,
+      mediaTypes: "images" as ImagePicker.MediaType,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -699,7 +701,7 @@ export default function CreateScreen() {
 
       // Insert event niches
       if (selectedNicheIds.size > 0) {
-        const nicheRows = [...selectedNicheIds].map(nicheId => ({
+        const nicheRows = [...selectedNicheIds].map((nicheId) => ({
           event_id: newEvent.id,
           niche_id: nicheId,
         }));
@@ -750,407 +752,417 @@ export default function CreateScreen() {
 
         {/* Event creation form */}
         <>
-
-        {/* Sticky error banner — outside ScrollView so it stays visible */}
-        {error && (
-          <View style={styles.errorBox}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={16}
-              color={Colors.cancelled}
-            />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              onPress={() => setError(null)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="close" size={16} color={Colors.cancelled} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ── Cover Image ── */}
-          <TouchableOpacity
-            style={styles.coverPicker}
-            onPress={pickCover}
-            activeOpacity={0.8}
-          >
-            {coverUri ? (
-              <>
-                <Image
-                  source={{ uri: coverUri }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                />
-                <View style={styles.coverOverlay}>
-                  <Ionicons name="camera" size={22} color="#fff" />
-                  <Text style={styles.coverChangeText}>Change Cover</Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <Ionicons
-                  name="image-outline"
-                  size={30}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.coverPlaceholder}>Add Cover Image</Text>
-                <Text style={styles.coverSub}>Optional</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* ── Details ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Details</Text>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Title</Text>
-              <TextInput
-                style={styles.input}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Event name"
-                placeholderTextColor={Colors.textTertiary}
-                autoCorrect={false}
-                returnKeyType="next"
+          {/* Sticky error banner — outside ScrollView so it stays visible */}
+          {error && (
+            <View style={styles.errorBox}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={16}
+                color={Colors.cancelled}
               />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="What's happening? Who should come?"
-                placeholderTextColor={Colors.textTertiary}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-
-          {/* ── Event Info ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Event Info</Text>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Type</Text>
+              <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity
-                style={styles.selectRow}
-                onPress={() => setShowTypePicker(true)}
-                activeOpacity={0.8}
+                onPress={() => setError(null)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.selectValue}>{selectedTypeLabel}</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={Colors.textTertiary}
-                />
+                <Ionicons name="close" size={16} color={Colors.cancelled} />
               </TouchableOpacity>
             </View>
+          )}
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Access</Text>
-              <View style={styles.privacyToggle}>
-                <TouchableOpacity
-                  style={[
-                    styles.privacyOption,
-                    privacy === "PUBLIC" && styles.privacyOptionActive,
-                  ]}
-                  onPress={() => setPrivacy("PUBLIC")}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="globe-outline"
-                    size={15}
-                    color={
-                      privacy === "PUBLIC"
-                        ? Colors.textInverse
-                        : Colors.textSecondary
-                    }
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* ── Cover Image ── */}
+            <TouchableOpacity
+              style={styles.coverPicker}
+              onPress={pickCover}
+              activeOpacity={0.8}
+            >
+              {coverUri ? (
+                <>
+                  <Image
+                    source={{ uri: coverUri }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode="cover"
                   />
-                  <Text
-                    style={[
-                      styles.privacyText,
-                      privacy === "PUBLIC" && styles.privacyTextActive,
-                    ]}
-                  >
-                    Public
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.privacyOption,
-                    privacy === "EXCLUSIVE" && styles.privacyOptionActive,
-                  ]}
-                  onPress={() => setPrivacy("EXCLUSIVE")}
-                  activeOpacity={0.8}
-                >
+                  <View style={styles.coverOverlay}>
+                    <Ionicons name="camera" size={22} color="#fff" />
+                    <Text style={styles.coverChangeText}>Change Cover</Text>
+                  </View>
+                </>
+              ) : (
+                <>
                   <Ionicons
-                    name="lock-closed-outline"
-                    size={15}
-                    color={
-                      privacy === "EXCLUSIVE"
-                        ? Colors.textInverse
-                        : Colors.textSecondary
-                    }
+                    name="image-outline"
+                    size={30}
+                    color={Colors.textTertiary}
                   />
-                  <Text
-                    style={[
-                      styles.privacyText,
-                      privacy === "EXCLUSIVE" && styles.privacyTextActive,
-                    ]}
-                  >
-                    Exclusive
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* ── Niches ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Niches</Text>
-            <Text style={styles.nicheHint}>Tag what your event is about</Text>
-            <View style={styles.nicheGrid}>
-              {ALL_NICHES.map(niche => {
-                const active = selectedNicheIds.has(niche.id);
-                return (
-                  <TouchableOpacity
-                    key={niche.id}
-                    style={[styles.nicheChip, active && styles.nicheChipActive]}
-                    onPress={() => toggleNiche(niche.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.nicheChipText, active && styles.nicheChipTextActive]}>
-                      {niche.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* ── Schedule ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Schedule</Text>
-
-            <TouchableOpacity
-              style={styles.scheduleRow}
-              onPress={() => openPicker("date")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.scheduleRowLeft}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={18}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.scheduleLabel}>Date</Text>
-              </View>
-              <View style={styles.scheduleRowRight}>
-                <Text style={styles.scheduleValue}>{fmtDate(startDate)}</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={Colors.textTertiary}
-                />
-              </View>
+                  <Text style={styles.coverPlaceholder}>Add Cover Image</Text>
+                  <Text style={styles.coverSub}>Optional</Text>
+                </>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.scheduleRow}
-              onPress={() => openPicker("start-time")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.scheduleRowLeft}>
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.scheduleLabel}>Start Time</Text>
-              </View>
-              <View style={styles.scheduleRowRight}>
-                <Text style={styles.scheduleValue}>{fmtTime(startDate)}</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={Colors.textTertiary}
-                />
-              </View>
-            </TouchableOpacity>
+            {/* ── Details ── */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Details</Text>
 
-            <TouchableOpacity
-              style={styles.scheduleRow}
-              onPress={() => openPicker("end-time")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.scheduleRowLeft}>
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.scheduleLabel}>End Time</Text>
-              </View>
-              <View style={styles.scheduleRowRight}>
-                <Text style={styles.scheduleValue}>{fmtTime(endDate)}</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={Colors.textTertiary}
-                />
-              </View>
-            </TouchableOpacity>
-
-            <View style={[styles.scheduleRow, styles.scheduleRowSwitch]}>
-              <View style={styles.scheduleRowLeft}>
-                <Ionicons
-                  name="repeat-outline"
-                  size={18}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.scheduleLabel}>Recurring Event</Text>
-              </View>
-              <Switch
-                value={isRecurring}
-                onValueChange={setIsRecurring}
-                trackColor={{ false: Colors.border, true: Colors.primary }}
-                thumbColor={Colors.textPrimary}
-              />
-            </View>
-
-            {isRecurring && (
-              <>
-                <View style={styles.field}>
-                  <View style={styles.recurrenceChips}>
-                    {RECURRENCE_OPTIONS.map(({ label, rule }) => (
-                      <TouchableOpacity
-                        key={rule}
-                        style={[
-                          styles.recurrenceChip,
-                          recurrenceRule === rule &&
-                            styles.recurrenceChipActive,
-                        ]}
-                        onPress={() => setRecurrenceRule(rule)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.recurrenceChipText,
-                            recurrenceRule === rule &&
-                              styles.recurrenceChipTextActive,
-                          ]}
-                        >
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.scheduleRow}
-                  onPress={() => setShowRecurrenceEndPicker(true)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.scheduleRowLeft}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={18}
-                      color={Colors.textTertiary}
-                    />
-                    <Text style={styles.scheduleLabel}>End Date</Text>
-                  </View>
-                  <View style={styles.scheduleRowRight}>
-                    <Text
-                      style={[
-                        styles.scheduleValue,
-                        !recurrenceEndDate && { color: Colors.textTertiary },
-                      ]}
-                    >
-                      {recurrenceEndDate
-                        ? fmtDate(recurrenceEndDate)
-                        : "Optional"}
-                    </Text>
-                    {recurrenceEndDate ? (
-                      <TouchableOpacity
-                        onPress={() => setRecurrenceEndDate(null)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons
-                          name="close-circle"
-                          size={18}
-                          color={Colors.textTertiary}
-                        />
-                      </TouchableOpacity>
-                    ) : (
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={Colors.textTertiary}
-                      />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-
-          {/* ── Location ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Location</Text>
-            <View style={styles.field}>
-              <Text style={styles.label}>Venue / Address</Text>
-              <View style={styles.locationRow}>
+              <View style={styles.field}>
+                <Text style={styles.label}>Title</Text>
                 <TextInput
-                  style={[styles.input, styles.locationInput]}
-                  value={addressName}
-                  onChangeText={(t) => {
-                    setAddressName(t);
-                    setGeocoded(false);
-                    setLocationError(null);
-                  }}
-                  onEndEditing={(e) => geocodeAddress(e.nativeEvent.text)}
-                  placeholder="e.g. Distillery District, 55 Mill St"
+                  style={styles.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Event name"
                   placeholderTextColor={Colors.textTertiary}
                   autoCorrect={false}
-                  returnKeyType="done"
+                  returnKeyType="next"
                 />
-                {geocoding ? (
-                  <ActivityIndicator
-                    style={styles.locationStatus}
-                    color={Colors.textTertiary}
-                    size="small"
-                  />
-                ) : geocoded ? (
-                  <Ionicons
-                    name="checkmark-circle"
-                    style={styles.locationStatus}
-                    size={20}
-                    color={Colors.going}
-                  />
-                ) : null}
               </View>
-              {locationError && (
-                <Text style={styles.locationErrorText}>{locationError}</Text>
-              )}
-              {geocoded && !locationError && (
-                <LocationMapPreview latitude={latitude} longitude={longitude} />
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="What's happening? Who should come?"
+                  placeholderTextColor={Colors.textTertiary}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+
+            {/* ── Event Info ── */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Event Info</Text>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Type</Text>
+                <TouchableOpacity
+                  style={styles.selectRow}
+                  onPress={() => setShowTypePicker(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.selectValue}>{selectedTypeLabel}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Access</Text>
+                <View style={styles.privacyToggle}>
+                  <TouchableOpacity
+                    style={[
+                      styles.privacyOption,
+                      privacy === "PUBLIC" && styles.privacyOptionActive,
+                    ]}
+                    onPress={() => setPrivacy("PUBLIC")}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="globe-outline"
+                      size={15}
+                      color={
+                        privacy === "PUBLIC"
+                          ? Colors.textInverse
+                          : Colors.textSecondary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.privacyText,
+                        privacy === "PUBLIC" && styles.privacyTextActive,
+                      ]}
+                    >
+                      Public
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.privacyOption,
+                      privacy === "EXCLUSIVE" && styles.privacyOptionActive,
+                    ]}
+                    onPress={() => setPrivacy("EXCLUSIVE")}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={15}
+                      color={
+                        privacy === "EXCLUSIVE"
+                          ? Colors.textInverse
+                          : Colors.textSecondary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.privacyText,
+                        privacy === "EXCLUSIVE" && styles.privacyTextActive,
+                      ]}
+                    >
+                      Exclusive
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Niches ── */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Niches</Text>
+              <Text style={styles.nicheHint}>Tag what your event is about</Text>
+              <View style={styles.nicheGrid}>
+                {ALL_NICHES.map((niche) => {
+                  const active = selectedNicheIds.has(niche.id);
+                  return (
+                    <TouchableOpacity
+                      key={niche.id}
+                      style={[
+                        styles.nicheChip,
+                        active && styles.nicheChipActive,
+                      ]}
+                      onPress={() => toggleNiche(niche.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.nicheChipText,
+                          active && styles.nicheChipTextActive,
+                        ]}
+                      >
+                        {niche.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── Schedule ── */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Schedule</Text>
+
+              <TouchableOpacity
+                style={styles.scheduleRow}
+                onPress={() => openPicker("date")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.scheduleRowLeft}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.scheduleLabel}>Date</Text>
+                </View>
+                <View style={styles.scheduleRowRight}>
+                  <Text style={styles.scheduleValue}>{fmtDate(startDate)}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={Colors.textTertiary}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.scheduleRow}
+                onPress={() => openPicker("start-time")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.scheduleRowLeft}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.scheduleLabel}>Start Time</Text>
+                </View>
+                <View style={styles.scheduleRowRight}>
+                  <Text style={styles.scheduleValue}>{fmtTime(startDate)}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={Colors.textTertiary}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.scheduleRow}
+                onPress={() => openPicker("end-time")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.scheduleRowLeft}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.scheduleLabel}>End Time</Text>
+                </View>
+                <View style={styles.scheduleRowRight}>
+                  <Text style={styles.scheduleValue}>{fmtTime(endDate)}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={Colors.textTertiary}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <View style={[styles.scheduleRow, styles.scheduleRowSwitch]}>
+                <View style={styles.scheduleRowLeft}>
+                  <Ionicons
+                    name="repeat-outline"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.scheduleLabel}>Recurring Event</Text>
+                </View>
+                <Switch
+                  value={isRecurring}
+                  onValueChange={setIsRecurring}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.textPrimary}
+                />
+              </View>
+
+              {isRecurring && (
+                <>
+                  <View style={styles.field}>
+                    <View style={styles.recurrenceChips}>
+                      {RECURRENCE_OPTIONS.map(({ label, rule }) => (
+                        <TouchableOpacity
+                          key={rule}
+                          style={[
+                            styles.recurrenceChip,
+                            recurrenceRule === rule &&
+                              styles.recurrenceChipActive,
+                          ]}
+                          onPress={() => setRecurrenceRule(rule)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.recurrenceChipText,
+                              recurrenceRule === rule &&
+                                styles.recurrenceChipTextActive,
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.scheduleRow}
+                    onPress={() => setShowRecurrenceEndPicker(true)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.scheduleRowLeft}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color={Colors.textTertiary}
+                      />
+                      <Text style={styles.scheduleLabel}>End Date</Text>
+                    </View>
+                    <View style={styles.scheduleRowRight}>
+                      <Text
+                        style={[
+                          styles.scheduleValue,
+                          !recurrenceEndDate && { color: Colors.textTertiary },
+                        ]}
+                      >
+                        {recurrenceEndDate
+                          ? fmtDate(recurrenceEndDate)
+                          : "Optional"}
+                      </Text>
+                      {recurrenceEndDate ? (
+                        <TouchableOpacity
+                          onPress={() => setRecurrenceEndDate(null)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color={Colors.textTertiary}
+                          />
+                        </TouchableOpacity>
+                      ) : (
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color={Colors.textTertiary}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
-          </View>
-        </ScrollView>
+
+            {/* ── Location ── */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Location</Text>
+              <View style={styles.field}>
+                <Text style={styles.label}>Venue / Address</Text>
+                <View style={styles.locationRow}>
+                  <TextInput
+                    style={[styles.input, styles.locationInput]}
+                    value={addressName}
+                    onChangeText={(t) => {
+                      setAddressName(t);
+                      setGeocoded(false);
+                      setLocationError(null);
+                    }}
+                    onEndEditing={(e) => geocodeAddress(e.nativeEvent.text)}
+                    placeholder="e.g. Distillery District, 55 Mill St"
+                    placeholderTextColor={Colors.textTertiary}
+                    autoCorrect={false}
+                    returnKeyType="done"
+                  />
+                  {geocoding ? (
+                    <ActivityIndicator
+                      style={styles.locationStatus}
+                      color={Colors.textTertiary}
+                      size="small"
+                    />
+                  ) : geocoded ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      style={styles.locationStatus}
+                      size={20}
+                      color={Colors.going}
+                    />
+                  ) : null}
+                </View>
+                {locationError && (
+                  <Text style={styles.locationErrorText}>{locationError}</Text>
+                )}
+                {geocoded && !locationError && (
+                  <LocationMapPreview
+                    latitude={latitude}
+                    longitude={longitude}
+                  />
+                )}
+              </View>
+            </View>
+          </ScrollView>
         </>
       </KeyboardAvoidingView>
 
@@ -1655,5 +1667,4 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: Typography.weight.medium,
   },
-
 });

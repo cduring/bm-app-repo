@@ -1,4 +1,5 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
 import { EventTypeBadge } from './EventTypeBadge';
@@ -39,7 +40,7 @@ export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onTog
         <Image
           source={{ uri: event.cover_image_url }}
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
+          contentFit="cover"
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: bannerColor + '25' }]} />

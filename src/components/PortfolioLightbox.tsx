@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
   Dimensions,
-  Image,
   Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Typography } from "../constants/theme";
 import type { PortfolioImage } from "../types";
@@ -63,7 +63,7 @@ export function PortfolioLightbox({ images, initialIndex, visible, onClose }: Pr
           <Image
             source={{ uri: images[currentIndex].image_url }}
             style={styles.image}
-            resizeMode="contain"
+            contentFit="contain"
           />
         )}
 

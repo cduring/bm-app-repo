@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -12,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from 'expo-image';
 import { useState } from "react";
+import { EventCard } from "../../src/components/EventCard";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NicheTag } from "../../src/components/NicheTag";
@@ -29,6 +30,7 @@ import {
   useIsFollowing,
   useUnfollowMutation,
 } from "../../src/hooks/useFollow";
+import { useHostedEvents } from "../../src/hooks/useEvents";
 import { usePortfolio } from "../../src/hooks/usePortfolio";
 import { useProfile, useProfileById } from "../../src/hooks/useProfile";
 
@@ -59,6 +61,8 @@ export default function ViewProfileScreen() {
   }
 
   const { data: portfolioImages } = usePortfolio(id);
+  const { data: hostedEventsRaw = [] } = useHostedEvents(id);
+  const hostedEvents = hostedEventsRaw.filter((e) => e.status !== "DRAFT");
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
 
@@ -301,6 +305,28 @@ export default function ViewProfileScreen() {
           visible={lightboxVisible}
           onClose={() => setLightboxVisible(false)}
         />
+
+        {/* Hosted Events */}
+        {hostedEvents.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Events</Text>
+            {hostedEvents.map((event) => (
+              <View key={event.id} style={event.status === "CANCELLED" && styles.cancelledCard}>
+                <EventCard
+                  event={event}
+                  onPress={() => router.push(`/event/${event.id}` as any)}
+                />
+                {event.status === "CANCELLED" && (
+                  <View style={styles.cancelledOverlay}>
+                    <View style={styles.cancelledBadge}>
+                      <Text style={styles.cancelledBadgeText}>Cancelled</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -540,5 +566,28 @@ const styles = StyleSheet.create({
     height: "100%" as any,
     borderRadius: BorderRadius.sm,
     backgroundColor: Colors.surfaceElevated,
+  },
+
+  // Hosted events
+  cancelledCard: {
+    opacity: 0.55,
+  },
+  cancelledOverlay: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.xl,
+  },
+  cancelledBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.cancelled + "25",
+    borderWidth: 1,
+    borderColor: Colors.cancelled + "60",
+  },
+  cancelledBadgeText: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.medium,
+    color: Colors.cancelled,
   },
 });

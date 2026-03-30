@@ -3,13 +3,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from 'expo-image';
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   EVENT_TYPE_COLOR,
@@ -161,6 +161,7 @@ export default function EventDetailScreen() {
             <Image
               source={{ uri: event.cover_image_url }}
               style={styles.bannerImage}
+              contentFit="cover"
             />
             {event.is_recurring && (
               <View style={styles.bannerBottomLeft}>
@@ -623,7 +624,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
+    // contentFit="cover" is passed as prop to expo-image
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,

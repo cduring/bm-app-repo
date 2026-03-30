@@ -2,16 +2,24 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../src/lib/supabase';
 import { AuthContext } from '../src/context/auth';
 import { RSVPProvider } from '../src/context/rsvp';
+import { useNotifications } from '../src/hooks/useNotifications';
+
+function NotificationSetup({ profileId }: { profileId: string | null }) {
+  useNotifications(profileId ?? undefined);
+  return null;
+}
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const router = useRouter();
   const segments = useSegments();
 
@@ -64,6 +72,7 @@ export default function RootLayout() {
       .maybeSingle()
       .then(({ data }) => {
         setProfileExists(!!data);
+        setProfileId(data?.id ?? null);
       });
   }, [userId]);
 
@@ -94,17 +103,19 @@ export default function RootLayout() {
     setProfileExists(true);
   }
 
-  // Render nothing while the initial session is being read
-  if (session === undefined) return null;
-
   return (
-    <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
-      <QueryClientProvider client={queryClient}>
-        <RSVPProvider>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false }} />
-        </RSVPProvider>
-      </QueryClientProvider>
-    </AuthContext.Provider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
+        <QueryClientProvider client={queryClient}>
+          <RSVPProvider>
+            <NotificationSetup profileId={profileId} />
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="host" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+            </Stack>
+          </RSVPProvider>
+        </QueryClientProvider>
+      </AuthContext.Provider>
+    </GestureHandlerRootView>
   );
 }

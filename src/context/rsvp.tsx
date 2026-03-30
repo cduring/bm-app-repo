@@ -10,6 +10,7 @@ import {
   useApproveRequest,
   useDeclineRequest,
 } from '../hooks/useRSVP';
+import { scheduleEventReminder, cancelEventReminder } from '../hooks/useNotifications';
 import type { RSVPStatus, Profile, EventWithHost, Event } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ type RequestorMap = Record<string, Profile[]>;
 interface RSVPContextValue {
   // Current user's RSVPs
   myRSVPs: RSVPMap;
-  setRSVP: (eventId: string, status: RSVPStatus | null) => void;
+  setRSVP: (eventId: string, status: RSVPStatus | null, eventMeta?: { title: string; startTime: string }) => void;
   getRSVP: (eventId: string) => RSVPStatus | null;
 
   // Attendance requests for exclusive events the user hosts
@@ -73,7 +74,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
 
   // ── RSVP actions ──
 
-  function setRSVP(eventId: string, status: RSVPStatus | null) {
+  function setRSVP(eventId: string, status: RSVPStatus | null, eventMeta?: { title: string; startTime: string }) {
     if (!profileId) return;
 
     // Optimistic update
@@ -86,6 +87,13 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+
+    // Schedule / cancel event reminder notification
+    if (status === 'GOING' && eventMeta) {
+      scheduleEventReminder(eventId, eventMeta.title, eventMeta.startTime);
+    } else if (status === null || status === 'INTERESTED') {
+      cancelEventReminder(eventId);
+    }
 
     // Persist to Supabase
     setRSVPMutation.mutate({ eventId, profileId, status });

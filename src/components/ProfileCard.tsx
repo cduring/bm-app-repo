@@ -1,4 +1,5 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Colors, Typography, BorderRadius, Spacing } from '../constants/theme';
 import { NicheTag } from './NicheTag';
 import type { Profile, Niche } from '../types';
@@ -19,6 +20,9 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
       style={styles.card}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
+      accessibilityLabel={`${profile.display_name}, ${profile.profile_type === 'CREATOR' ? 'Creator' : 'Business'}`}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityHint={onPress ? 'Double tap to view profile' : undefined}
     >
       {profile.profile_picture_url ? (
         <Image source={{ uri: profile.profile_picture_url }} style={styles.avatar} />

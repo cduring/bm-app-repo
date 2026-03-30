@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from 'expo-image';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NicheTag } from "../../src/components/NicheTag";
 import { PLATFORM_ICONS } from "../../src/constants/platformIcons";
@@ -127,6 +127,8 @@ export default function AccountScreen() {
             style={styles.editButton}
             onPress={() => router.push("/edit-profile")}
             activeOpacity={0.7}
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
           >
             <Ionicons name="create-outline" size={18} color={Colors.primary} />
             <Text style={styles.editButtonText}>Edit</Text>
@@ -191,6 +193,8 @@ export default function AccountScreen() {
               )
             }
             activeOpacity={0.7}
+            accessibilityLabel={`${profile.follower_count} followers`}
+            accessibilityRole="button"
           >
             <Text style={styles.statNumber}>{profile.follower_count}</Text>
             <Text style={styles.statLabel}>Followers</Text>
@@ -204,6 +208,8 @@ export default function AccountScreen() {
               )
             }
             activeOpacity={0.7}
+            accessibilityLabel={`${profile.following_count} following`}
+            accessibilityRole="button"
           >
             <Text style={styles.statNumber}>{profile.following_count}</Text>
             <Text style={styles.statLabel}>Following</Text>
@@ -455,6 +461,8 @@ export default function AccountScreen() {
           onPress={handleSignOut}
           disabled={signingOut}
           activeOpacity={0.7}
+          accessibilityLabel="Log out"
+          accessibilityRole="button"
         >
           {signingOut ? (
             <ActivityIndicator color={Colors.cancelled} size="small" />
