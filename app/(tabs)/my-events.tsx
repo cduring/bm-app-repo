@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  Animated,
   ActivityIndicator,
   FlatList,
   RefreshControl,
@@ -44,6 +45,23 @@ export default function MyEventsScreen() {
   const [mode, setMode] = useState<Mode>("attending");
   const [activeTab, setActiveTab] = useState<AttendingTab>("interested");
   const [refreshing, setRefreshing] = useState(false);
+  const [headerWidth, setHeaderWidth] = useState(0);
+  const indicatorAnim = useRef(new Animated.Value(0)).current;
+
+  function handleModeChange(newMode: Mode) {
+    setMode(newMode);
+    Animated.spring(indicatorAnim, {
+      toValue: newMode === "attending" ? 0 : 1,
+      useNativeDriver: true,
+      tension: 70,
+      friction: 9,
+    }).start();
+  }
+
+  const indicatorX = indicatorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, headerWidth / 2],
+  });
 
   const allEvents: EventWithHost[] = eventsData ?? [];
 
@@ -71,10 +89,13 @@ export default function MyEventsScreen() {
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         {/* ── Header: Uber-style mode tabs ── */}
-        <View style={styles.header}>
+        <View
+          style={styles.header}
+          onLayout={(e) => setHeaderWidth(e.nativeEvent.layout.width)}
+        >
           <TouchableOpacity
             style={styles.modeTab}
-            onPress={() => setMode("attending")}
+            onPress={() => handleModeChange("attending")}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -92,12 +113,11 @@ export default function MyEventsScreen() {
             >
               Attending
             </Text>
-            {mode === "attending" && <View style={styles.modeTabIndicator} />}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.modeTab}
-            onPress={() => setMode("hosting")}
+            onPress={() => handleModeChange("hosting")}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -115,8 +135,18 @@ export default function MyEventsScreen() {
             >
               Hosting
             </Text>
-            {mode === "hosting" && <View style={styles.modeTabIndicator} />}
           </TouchableOpacity>
+
+          {/* Sliding indicator */}
+          <Animated.View
+            style={[
+              styles.modeTabIndicator,
+              {
+                width: headerWidth > 0 ? headerWidth / 2 - Spacing.lg * 2 : 0,
+                transform: [{ translateX: indicatorX }],
+              },
+            ]}
+          />
         </View>
 
         {/* ── Attending: 3-tab segmented control ── */}
@@ -493,7 +523,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     left: Spacing.lg,
-    right: Spacing.lg,
     height: 2,
     backgroundColor: Colors.textPrimary,
     borderRadius: 1,

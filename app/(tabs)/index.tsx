@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -12,334 +13,629 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EventFullCard } from "../../src/components/EventFullCard";
+import { NicheTag } from "../../src/components/NicheTag";
+import { ALL_NICHES } from "../../src/constants/niches";
 import {
   BorderRadius,
   Colors,
   Spacing,
   Typography,
 } from "../../src/constants/theme";
-import { useRSVP } from "../../src/context/rsvp";
 import { useEvents } from "../../src/hooks/useEvents";
-import type { EventType } from "../../src/types";
+import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
+import type { EventWithHost, ProfileWithNiches } from "../../src/types";
 
-type TimeFilter = "all" | "this_week";
+type ActiveView = "CREATORS" | "EVENTS";
 
-export default function HomeScreen() {
-  const { data: eventsData, isLoading, isError, refetch } = useEvents();
-  const { getRSVP, setRSVP } = useRSVP();
+type ListItem =
+  | { _type: "dateHeader"; label: string }
+  | { _type: "event"; data: EventWithHost }
+  | { _type: "creator"; data: ProfileWithNiches }
+  | { _type: "empty" };
+
+function groupEventsByDate(
+  events: EventWithHost[],
+): { label: string; items: EventWithHost[] }[] {
+  const groups: { label: string; items: EventWithHost[] }[] = [];
+  const seen: Record<string, number> = {};
+  for (const e of events) {
+    const label = new Date(e.start_time).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    });
+    if (seen[label] === undefined) {
+      seen[label] = groups.length;
+      groups.push({ label, items: [] });
+    }
+    groups[seen[label]].items.push(e);
+  }
+  return groups;
+}
+
+function formatEventTime(start_time: string): string {
+  return new Date(start_time).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export default function DiscoverScreen() {
+  const [activeView, setActiveView] = useState<ActiveView>("EVENTS");
+  const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
-  const [selectedTypes, setSelectedTypes] = useState<Set<EventType>>(new Set());
-  const [cardHeight, setCardHeight] = useState(0);
 
-  const allEvents = useMemo(() => {
-    return (eventsData ?? [])
+  const {
+    data: eventsData = [],
+    isLoading: loadingEvents,
+    refetch: refetchEvents,
+  } = useEvents();
+  const {
+    data: creatorsData = [],
+    isLoading: loadingCreators,
+    refetch: refetchCreators,
+  } = useDiscoveryProfiles();
+
+  const isLoading = activeView === "EVENTS" ? loadingEvents : loadingCreators;
+
+  const filteredEvents = useMemo(() => {
+    let result = (eventsData as EventWithHost[])
       .slice()
       .sort(
         (a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
       );
-  }, [eventsData]);
-
-  const availableTypes = useMemo<EventType[]>(
-    () => [...new Set(allEvents.map((e) => e.event_type))],
-    [allEvents],
-  );
-
-  const filteredEvents = useMemo(() => {
-    let result = allEvents;
-    if (timeFilter === "this_week") {
-      const weekFromNow = new Date();
-      weekFromNow.setDate(weekFromNow.getDate() + 7);
-      result = result.filter((e) => new Date(e.start_time) <= weekFromNow);
-    }
-    if (selectedTypes.size > 0) {
-      result = result.filter((e) => selectedTypes.has(e.event_type));
+    if (selectedNicheId) {
+      result = result.filter((e) =>
+        e.niches.some((n) => n.id === selectedNicheId),
+      );
     }
     return result;
-  }, [allEvents, timeFilter, selectedTypes]);
+  }, [eventsData, selectedNicheId]);
 
-  function toggleType(type: EventType) {
-    setSelectedTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
-      return next;
-    });
-  }
+  const filteredCreators = useMemo(() => {
+    let result = creatorsData as ProfileWithNiches[];
+    if (selectedNicheId) {
+      result = result.filter((p) =>
+        p.niches.some((n) => n.id === selectedNicheId),
+      );
+    }
+    return result;
+  }, [creatorsData, selectedNicheId]);
 
-  function clearFilters() {
-    setTimeFilter("all");
-    setSelectedTypes(new Set());
-  }
+  const groupedEvents = useMemo(
+    () => groupEventsByDate(filteredEvents),
+    [filteredEvents],
+  );
+
+  const listData: ListItem[] = useMemo(() => {
+    if (isLoading) return [];
+    if (activeView === "EVENTS") {
+      const items: ListItem[] = [];
+      for (const { label, items: evts } of groupedEvents) {
+        items.push({ _type: "dateHeader", label });
+        for (const e of evts) {
+          items.push({ _type: "event", data: e });
+        }
+      }
+      if (items.length === 0) items.push({ _type: "empty" });
+      return items;
+    } else {
+      if (filteredCreators.length === 0) return [{ _type: "empty" }];
+      return filteredCreators.map((p) => ({
+        _type: "creator" as const,
+        data: p,
+      }));
+    }
+  }, [activeView, groupedEvents, filteredCreators, isLoading]);
 
   async function handleRefresh() {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetchEvents(), refetchCreators()]);
     setRefreshing(false);
   }
 
-  const hasActiveFilters = timeFilter !== "all" || selectedTypes.size > 0;
-
-  // ── Loading state ──
-  if (isLoading && !eventsData) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Event Feed</Text>
-        </View>
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
-      </SafeAreaView>
-    );
+  function toggleNiche(id: string) {
+    setSelectedNicheId((prev) => (prev === id ? null : id));
   }
 
-  // ── Error state ──
-  if (isError) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Event Feed</Text>
+  function renderItem({ item }: { item: ListItem }) {
+    if (item._type === "dateHeader") {
+      return (
+        <View style={styles.dateHeader}>
+          <Text style={styles.dateHeaderText}>{item.label}</Text>
         </View>
-        <View style={styles.centered}>
+      );
+    }
+
+    if (item._type === "event") {
+      const event = item.data;
+      return (
+        <TouchableOpacity
+          style={styles.eventRow}
+          onPress={() => router.push(`/event/${event.id}`)}
+          activeOpacity={0.75}
+          accessibilityLabel={`${event.title}, hosted by ${event.host.display_name}`}
+          accessibilityRole="button"
+        >
+          {event.cover_image_url ? (
+            <Image
+              source={{ uri: event.cover_image_url }}
+              style={styles.eventThumb}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={[styles.eventThumb, styles.eventThumbPlaceholder]}>
+              <Text style={styles.eventThumbInitial}>
+                {event.title.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={styles.eventInfo}>
+            <Text style={styles.eventTitle} numberOfLines={2}>
+              {event.title}
+            </Text>
+            <Text style={styles.eventHost} numberOfLines={1}>
+              {event.host.display_name}
+            </Text>
+            <View style={styles.eventMeta}>
+              <Ionicons
+                name="time-outline"
+                size={12}
+                color={Colors.textTertiary}
+              />
+              <Text style={styles.eventMetaText}>
+                {formatEventTime(event.start_time)}
+              </Text>
+              <Ionicons
+                name="location-outline"
+                size={12}
+                color={Colors.textTertiary}
+              />
+              <Text style={styles.eventMetaText} numberOfLines={1}>
+                {event.address_name}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (item._type === "creator") {
+      const profile = item.data;
+      const visibleNiches = profile.niches.slice(0, 2);
+      return (
+        <TouchableOpacity
+          style={styles.creatorRow}
+          onPress={() => router.push(`/profile/${profile.id}`)}
+          activeOpacity={0.75}
+          accessibilityLabel={`${profile.display_name}, ${profile.profile_type === "CREATOR" ? "Creator" : "Business"}`}
+          accessibilityRole="button"
+        >
+          {profile.profile_picture_url ? (
+            <Image
+              source={{ uri: profile.profile_picture_url }}
+              style={styles.creatorAvatar}
+              contentFit="cover"
+            />
+          ) : (
+            <View
+              style={[styles.creatorAvatar, styles.creatorAvatarPlaceholder]}
+            >
+              <Text style={styles.creatorAvatarInitial}>
+                {profile.display_name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={styles.creatorInfo}>
+            <Text style={styles.creatorName} numberOfLines={1}>
+              {profile.display_name}
+            </Text>
+            {visibleNiches.length > 0 && (
+              <View style={styles.creatorNiches}>
+                {visibleNiches.map((n) => (
+                  <NicheTag key={n.id} name={n.name} small />
+                ))}
+              </View>
+            )}
+            <View style={styles.creatorMeta}>
+              <Ionicons
+                name="location-outline"
+                size={12}
+                color={Colors.textTertiary}
+              />
+              <Text style={styles.creatorMetaText}>
+                {profile.location_name ?? "Toronto"}
+              </Text>
+              <Text style={styles.creatorMetaDot}>·</Text>
+              <Text style={styles.creatorMetaText}>
+                {profile.follower_count} followers
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (item._type === "empty") {
+      return (
+        <View style={styles.emptyState}>
           <Ionicons
-            name="cloud-offline-outline"
+            name="compass-outline"
             size={48}
             color={Colors.textTertiary}
           />
-          <Text style={styles.emptyTitle}>Couldn't load events</Text>
+          <Text style={styles.emptyTitle}>Nothing here yet</Text>
           <Text style={styles.emptySubtitle}>
-            Check your connection and try again
+            {selectedNicheId
+              ? "Try a different niche filter"
+              : activeView === "EVENTS"
+                ? "No upcoming events right now"
+                : "No creators found"}
           </Text>
-          <TouchableOpacity style={styles.clearBtn} onPress={() => refetch()}>
-            <Text style={styles.clearBtnText}>Retry</Text>
-          </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    );
+      );
+    }
+
+    return null;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Event Feed</Text>
-        <TouchableOpacity
-          style={styles.searchIconBtn}
-          onPress={() => router.push("/search")}
-          activeOpacity={0.7}
-          accessibilityLabel="Search creators and events"
-          accessibilityRole="button"
-        >
-          <Ionicons name="search" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={filterStyles.row}
-        style={filterStyles.scroll}
-      >
-        {(["all", "this_week"] as TimeFilter[]).map((f) => (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Top row: mode toggle + search button */}
+      <View style={styles.topRow}>
+        <View style={styles.modeToggle}>
           <TouchableOpacity
-            key={f}
             style={[
-              filterStyles.pill,
-              timeFilter === f && filterStyles.pillActive,
+              styles.modeButton,
+              activeView === "CREATORS" && styles.modeButtonActive,
             ]}
-            onPress={() => setTimeFilter(f)}
-            activeOpacity={0.7}
+            onPress={() => setActiveView("CREATORS")}
+            activeOpacity={0.8}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeView === "CREATORS" }}
           >
             <Text
               style={[
-                filterStyles.pillText,
-                timeFilter === f && filterStyles.pillTextActive,
+                styles.modeButtonText,
+                activeView === "CREATORS" && styles.modeButtonTextActive,
               ]}
             >
-              {f === "all" ? "All Dates" : "This Week"}
+              Creators
             </Text>
           </TouchableOpacity>
-        ))}
-        <View style={filterStyles.divider} />
-        {availableTypes.map((type) => {
-          const active = selectedTypes.has(type);
-          const label =
-            type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, " ");
+          <TouchableOpacity
+            style={[
+              styles.modeButton,
+              activeView === "EVENTS" && styles.modeButtonActive,
+            ]}
+            onPress={() => setActiveView("EVENTS")}
+            activeOpacity={0.8}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeView === "EVENTS" }}
+          >
+            <Text
+              style={[
+                styles.modeButtonText,
+                activeView === "EVENTS" && styles.modeButtonTextActive,
+              ]}
+            >
+              Events
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={() => router.push("/search")}
+          activeOpacity={0.8}
+          accessibilityLabel="Search creators and events"
+          accessibilityRole="button"
+        >
+          <Ionicons name="search" size={18} color={Colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Niche filter chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={filterStyles.nichesRow}
+        style={filterStyles.nichesScroll}
+      >
+        <TouchableOpacity
+          style={[
+            filterStyles.nicheChip,
+            selectedNicheId === null && filterStyles.nicheChipActive,
+          ]}
+          onPress={() => setSelectedNicheId(null)}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              filterStyles.nicheChipText,
+              selectedNicheId === null && filterStyles.nicheChipTextActive,
+            ]}
+          >
+            All
+          </Text>
+        </TouchableOpacity>
+        {ALL_NICHES.map((niche) => {
+          const active = selectedNicheId === niche.id;
           return (
             <TouchableOpacity
-              key={type}
-              style={[filterStyles.pill, active && filterStyles.pillActive]}
-              onPress={() => toggleType(type)}
+              key={niche.id}
+              style={[filterStyles.nicheChip, active && filterStyles.nicheChipActive]}
+              onPress={() => toggleNiche(niche.id)}
               activeOpacity={0.7}
+              accessibilityLabel={`Filter by ${niche.name}`}
             >
               <Text
                 style={[
-                  filterStyles.pillText,
-                  active && filterStyles.pillTextActive,
+                  filterStyles.nicheChipText,
+                  active && filterStyles.nicheChipTextActive,
                 ]}
               >
-                {label}
+                {niche.name}
               </Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      <View
-        style={styles.stackContainer}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          if (h > 0) setCardHeight(h);
-        }}
-      >
-        {filteredEvents.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="calendar-outline"
-              size={48}
-              color={Colors.textTertiary}
+      {/* Feed */}
+      {isLoading && !refreshing ? (
+        <View style={styles.loadingState}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={listData}
+          keyExtractor={(item, index) => {
+            if (item._type === "event") return `event-${item.data.id}`;
+            if (item._type === "creator") return `creator-${item.data.id}`;
+            if (item._type === "dateHeader") return `header-${item.label}`;
+            return `empty-${index}`;
+          }}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.primary}
             />
-            <Text style={styles.emptyTitle}>No events found</Text>
-            <Text style={styles.emptySubtitle}>Try adjusting your filters</Text>
-            {hasActiveFilters && (
-              <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
-                <Text style={styles.clearBtnText}>Clear Filters</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : cardHeight > 0 ? (
-          <FlatList
-            data={filteredEvents}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              const rsvp = getRSVP(item.id);
-              return (
-                <EventFullCard
-                  event={item}
-                  height={cardHeight}
-                  rsvp={rsvp}
-                  isInterested={rsvp === "INTERESTED"}
-                  onRSVP={(status) =>
-                    setRSVP(item.id, rsvp === status ? null : status, {
-                      title: item.title,
-                      startTime: item.start_time,
-                    })
-                  }
-                  onToggleInterested={() =>
-                    setRSVP(
-                      item.id,
-                      rsvp === "INTERESTED" ? null : "INTERESTED",
-                      { title: item.title, startTime: item.start_time },
-                    )
-                  }
-                  onViewDetails={() => router.push(`/event/${item.id}`)}
-                />
-              );
-            }}
-            snapToInterval={cardHeight}
-            decelerationRate="fast"
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={Colors.primary}
-              />
-            }
-          />
-        ) : null}
-      </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
   },
-  headerTitle: {
-    fontSize: Typography.size["xl"],
+  modeToggle: {
+    flexDirection: "row",
+    flex: 1,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 3,
+    gap: 2,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+  },
+  modeButtonActive: {
+    backgroundColor: Colors.primary,
+  },
+  modeButtonText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textTertiary,
+  },
+  modeButtonTextActive: {
+    color: Colors.textPrimary,
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listContent: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xl,
+  },
+  // Date header
+  dateHeader: {
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+  dateHeaderText: {
+    fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
-  searchIconBtn: { padding: 4 },
-  stackContainer: { flex: 1 },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
+  // Event row
+  eventRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  emptyState: {
-    flex: 1,
+  eventThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.md,
+    flexShrink: 0,
+  },
+  eventThumbPlaceholder: {
+    backgroundColor: Colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.sm,
+  },
+  eventThumbInitial: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
+    color: Colors.primary,
+  },
+  eventInfo: {
+    flex: 1,
+    gap: 3,
+    paddingTop: 2,
+  },
+  eventTitle: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+    lineHeight: 20,
+  },
+  eventHost: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+  },
+  eventMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexWrap: "wrap",
+    marginTop: 2,
+  },
+  eventMetaText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+    flexShrink: 1,
+  },
+  // Creator row
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  creatorAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.avatar,
+    flexShrink: 0,
+  },
+  creatorAvatarPlaceholder: {
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  creatorAvatarInitial: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.primary,
+  },
+  creatorInfo: {
+    flex: 1,
+    gap: 4,
+    paddingTop: 2,
+  },
+  creatorName: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+  },
+  creatorNiches: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  creatorMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  creatorMetaText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  creatorMetaDot: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  // Empty state
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    gap: Spacing.md,
   },
   emptyTitle: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
+    textAlign: "center",
   },
   emptySubtitle: {
     fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-  },
-  clearBtn: {
-    marginTop: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  clearBtnText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
+    color: Colors.textSecondary,
+    textAlign: "center",
   },
 });
 
 const filterStyles = StyleSheet.create({
-  scroll: { flexGrow: 0 },
-  row: {
-    flexDirection: "row",
+  nichesScroll: {
+    height: 36,
+    marginBottom: Spacing.sm,
+    flexShrink: 0,
+  },
+  nichesRow: {
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
     alignItems: "center",
   },
-  divider: {
-    width: 1,
-    height: 20,
-    backgroundColor: Colors.border,
-    marginHorizontal: 4,
-  },
-  pill: {
-    paddingHorizontal: Spacing.sm + 2,
+  nicheChip: {
     paddingVertical: 6,
-    borderRadius: BorderRadius.chip,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceElevated,
+    alignSelf: "flex-start",
   },
-  pillActive: {
-    backgroundColor: Colors.primary + "20",
-    borderColor: Colors.primary + "60",
+  nicheChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
-  pillText: {
+  nicheChipText: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.medium,
     color: Colors.textSecondary,
   },
-  pillTextActive: {
-    color: Colors.primary,
+  nicheChipTextActive: {
+    color: Colors.textPrimary,
   },
 });

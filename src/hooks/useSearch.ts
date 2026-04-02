@@ -66,3 +66,33 @@ export function useSearchEvents(query: string) {
     staleTime: 30 * 1000,
   });
 }
+
+async function fetchDiscoveryProfiles(): Promise<ProfileWithNiches[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      *,
+      profile_niches (
+        niches (id, name)
+      ),
+      external_links (*)
+    `)
+    .order('follower_count', { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    niches: (row.profile_niches ?? []).map((pn: any) => pn.niches).filter(Boolean),
+    external_links: row.external_links ?? [],
+  })) as ProfileWithNiches[];
+}
+
+export function useDiscoveryProfiles() {
+  return useQuery<ProfileWithNiches[]>({
+    queryKey: ['discoveryProfiles'],
+    queryFn: fetchDiscoveryProfiles,
+    staleTime: 5 * 60 * 1000,
+  });
+}
