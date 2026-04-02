@@ -14,7 +14,15 @@ function NotificationSetup({ profileId }: { profileId: string | null }) {
   return null;
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      staleTime: 30_000,
+    },
+  },
+});
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);

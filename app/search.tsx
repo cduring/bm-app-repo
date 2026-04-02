@@ -27,10 +27,11 @@ export default function SearchScreen() {
   const [activeTab, setActiveTab] = useState<ResultTab>('ALL');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: profileResults = [], isFetching: fetchingProfiles } = useSearchProfiles(query);
-  const { data: eventResults = [], isFetching: fetchingEvents } = useSearchEvents(query);
+  const { data: profileResults = [], isFetching: fetchingProfiles, error: profileSearchError, refetch: refetchProfiles } = useSearchProfiles(query);
+  const { data: eventResults = [], isFetching: fetchingEvents, error: eventSearchError, refetch: refetchEvents } = useSearchEvents(query);
 
   const isLoading = query.length > 0 && (fetchingProfiles || fetchingEvents);
+  const searchError = profileSearchError || eventSearchError;
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -227,6 +228,14 @@ export default function SearchScreen() {
           <View style={styles.loadingState}>
             <ActivityIndicator color={Colors.primary} size="large" />
           </View>
+        ) : searchError ? (
+          <View style={styles.loadingState}>
+            <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
+            <Text style={styles.errorText}>Search unavailable</Text>
+            <TouchableOpacity onPress={() => { refetchProfiles(); refetchEvents(); }} style={styles.retryLink}>
+              <Text style={styles.retryLinkText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             data={listData}
@@ -406,5 +415,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  errorText: {
+    fontSize: Typography.size.base,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
+  },
+  retryLink: {
+    marginTop: Spacing.sm,
+  },
+  retryLinkText: {
+    fontSize: Typography.size.base,
+    color: Colors.primary,
+    fontWeight: Typography.weight.semibold as any,
   },
 });

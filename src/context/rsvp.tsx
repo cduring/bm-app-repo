@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
@@ -96,7 +97,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     }
 
     // Persist to Supabase
-    setRSVPMutation.mutate({ eventId, profileId, status });
+    setRSVPMutation.mutate({ eventId, profileId, status }, {
+      onError: () => Alert.alert('Action failed', 'Could not update your RSVP. Please try again.'),
+    });
   }
 
   function getRSVP(eventId: string): RSVPStatus | null {
@@ -114,7 +117,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       [eventId]: (prev[eventId] ?? []).filter(p => p.id !== requestorProfileId),
     }));
 
-    approveMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId });
+    approveMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
+      onError: () => Alert.alert('Action failed', 'Could not approve request. Please try again.'),
+    });
   }
 
   function declineRequest(eventId: string, requestorProfileId: string) {
@@ -126,7 +131,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       [eventId]: (prev[eventId] ?? []).filter(p => p.id !== requestorProfileId),
     }));
 
-    declineMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId });
+    declineMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
+      onError: () => Alert.alert('Action failed', 'Could not decline request. Please try again.'),
+    });
   }
 
   function getPendingCount(eventId: string): number {
@@ -140,7 +147,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .from('events')
       .update({ status: 'CANCELLED' })
       .eq('id', eventId);
-    if (!error) {
+    if (error) {
+      Alert.alert('Action failed', 'Could not cancel event. Please try again.');
+    } else {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', eventId] });
       qc.invalidateQueries({ queryKey: ['hostedEvents'] });
@@ -152,7 +161,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .from('events')
       .update(updates)
       .eq('id', eventId);
-    if (!error) {
+    if (error) {
+      Alert.alert('Action failed', 'Could not save changes. Please try again.');
+    } else {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', eventId] });
       qc.invalidateQueries({ queryKey: ['hostedEvents'] });

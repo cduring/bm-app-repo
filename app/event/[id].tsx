@@ -15,6 +15,7 @@ import {
   EVENT_TYPE_COLOR,
   EventTypeBadge,
 } from "../../src/components/EventTypeBadge";
+import { ErrorState } from "../../src/components/ErrorState";
 import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import { NicheTag } from "../../src/components/NicheTag";
 import { ProfileCard } from "../../src/components/ProfileCard";
@@ -38,7 +39,7 @@ import {
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
-  const { data: event, isLoading } = useEventById(id);
+  const { data: event, isLoading, error: eventError, refetch: refetchEvent } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
   const {
     getRSVP,
@@ -85,19 +86,12 @@ export default function EventDetailScreen() {
     );
   }
 
-  if (!event) {
+  if (eventError || !event) {
     return (
-      <View style={styles.centered}>
-        <Ionicons
-          name="alert-circle-outline"
-          size={32}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.errorText}>Event not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>Go back</Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorState
+        message={eventError ? "Couldn't load event" : "Event not found"}
+        onRetry={eventError ? refetchEvent : undefined}
+      />
     );
   }
 
@@ -561,10 +555,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
   },
-  errorText: { color: Colors.textSecondary, fontSize: Typography.size.base },
-  backLink: { marginTop: Spacing.sm },
-  backLinkText: { color: Colors.primary, fontSize: Typography.size.base },
-
   // Nav header
   navHeader: {
     flexDirection: "row",

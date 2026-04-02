@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ErrorState } from "../../src/components/ErrorState";
 import { EventCard } from "../../src/components/EventCard";
 import {
   BorderRadius,
@@ -39,8 +40,8 @@ export default function MyEventsScreen() {
   const { data: profileData } = useProfile(session?.user?.id);
   const profileId = profileData?.profile.id;
   const { myRSVPs } = useRSVP();
-  const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useEvents();
-  const { data: hostedEventsData, isLoading: hostedLoading, refetch: refetchHosted } = useHostedEvents(profileId);
+  const { data: eventsData, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useEvents();
+  const { data: hostedEventsData, isLoading: hostedLoading, error: hostedError, refetch: refetchHosted } = useHostedEvents(profileId);
 
   const [mode, setMode] = useState<Mode>("attending");
   const [activeTab, setActiveTab] = useState<AttendingTab>("interested");
@@ -181,6 +182,11 @@ export default function MyEventsScreen() {
           <View style={styles.loadingState}>
             <ActivityIndicator color={Colors.primary} size="large" />
           </View>
+        ) : (mode === "attending" ? eventsError : hostedError) ? (
+          <ErrorState
+            message="Couldn't load your events"
+            onRetry={mode === "attending" ? refetchEvents : refetchHosted}
+          />
         ) : mode === "attending" ? (
           <AttendingView
             activeTab={activeTab}

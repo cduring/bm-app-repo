@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import { ALL_NICHES } from "../../src/constants/niches";
 import {
@@ -67,15 +68,19 @@ export default function DiscoverScreen() {
   const {
     data: eventsData = [],
     isLoading: loadingEvents,
+    error: eventsError,
     refetch: refetchEvents,
   } = useEvents();
   const {
     data: creatorsData = [],
     isLoading: loadingCreators,
+    error: creatorsError,
     refetch: refetchCreators,
   } = useDiscoveryProfiles();
 
   const isLoading = activeView === "EVENTS" ? loadingEvents : loadingCreators;
+  const activeError = activeView === "EVENTS" ? eventsError : creatorsError;
+  const activeRefetch = activeView === "EVENTS" ? refetchEvents : refetchCreators;
 
   const filteredEvents = useMemo(() => {
     let result = (eventsData as EventWithHost[])
@@ -386,6 +391,11 @@ export default function DiscoverScreen() {
         <View style={styles.loadingState}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
+      ) : activeError ? (
+        <ErrorState
+          message={activeView === "EVENTS" ? "Couldn't load events" : "Couldn't load creators"}
+          onRetry={activeRefetch}
+        />
       ) : (
         <FlatList
           data={listData}

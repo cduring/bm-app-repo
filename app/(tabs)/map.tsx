@@ -33,6 +33,7 @@ import {
   EVENT_TYPE_COLOR,
   EVENT_TYPE_LABEL,
 } from "../../src/components/EventTypeBadge";
+import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import {
   BorderRadius,
@@ -378,8 +379,8 @@ export default function MapScreen() {
   const lastZoomRef = useRef(12);
   const topPinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: mapProfiles = [] } = useMapProfiles();
-  const { data: mapEvents = [] } = useMapEvents();
+  const { data: mapProfiles = [], error: profilesError, refetch: refetchProfiles } = useMapProfiles();
+  const { data: mapEvents = [], error: eventsError, refetch: refetchMapEvents } = useMapEvents();
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status }) => {
@@ -569,6 +570,15 @@ export default function MapScreen() {
 
   function handleMapPress() {
     deselectPin();
+  }
+
+  if (profilesError && eventsError) {
+    return (
+      <ErrorState
+        message="Couldn't load map data"
+        onRetry={() => { refetchProfiles(); refetchMapEvents(); }}
+      />
+    );
   }
 
   return (

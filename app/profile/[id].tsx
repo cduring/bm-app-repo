@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Image } from 'expo-image';
 import { useState } from "react";
+import { ErrorState } from "../../src/components/ErrorState";
 import { EventCard } from "../../src/components/EventCard";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -40,7 +41,7 @@ export default function ViewProfileScreen() {
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
 
-  const { data: supabaseData, isLoading } = useProfileById(id);
+  const { data: supabaseData, isLoading, error: profileError, refetch: refetchProfile } = useProfileById(id);
   const { data: isFollowing, isLoading: followLoading } = useIsFollowing(
     myProfileId,
     id,
@@ -83,19 +84,12 @@ export default function ViewProfileScreen() {
     );
   }
 
-  if (!data) {
+  if (profileError || !data) {
     return (
-      <View style={styles.centered}>
-        <Ionicons
-          name="alert-circle-outline"
-          size={32}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.errorText}>Profile not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>Go back</Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorState
+        message={profileError ? "Couldn't load profile" : "Profile not found"}
+        onRetry={profileError ? refetchProfile : undefined}
+      />
     );
   }
 
@@ -350,18 +344,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
   },
-  errorText: {
-    color: Colors.textSecondary,
-    fontSize: Typography.size.base,
-  },
-  backLink: {
-    marginTop: Spacing.sm,
-  },
-  backLinkText: {
-    color: Colors.primary,
-    fontSize: Typography.size.base,
-  },
-
   // Nav header
   navHeader: {
     flexDirection: "row",

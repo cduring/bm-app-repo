@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
+import { ErrorState } from "../../src/components/ErrorState";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import {
   ActivityIndicator,
@@ -38,7 +39,7 @@ import { formatDayDate } from "../../src/utils/date";
 export default function AccountScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
-  const { data, isLoading, error } = useProfile(userId);
+  const { data, isLoading, error, refetch } = useProfile(userId);
   const profileId = data?.profile?.id;
   const { data: hostedEvents = [] } = useHostedEvents(profileId);
   const { data: portfolioImages } = usePortfolio(profileId);
@@ -98,16 +99,7 @@ export default function AccountScreen() {
   }
 
   if (error || !data) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons
-          name="alert-circle-outline"
-          size={32}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.errorText}>Could not load profile.</Text>
-      </View>
-    );
+    return <ErrorState message="Couldn't load profile" onRetry={refetch} />;
   }
 
   const { profile, niches, externalLinks } = data;
@@ -500,11 +492,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
   },
-  errorText: {
-    color: Colors.textSecondary,
-    fontSize: Typography.size.base,
-  },
-
   // Header
   header: {
     flexDirection: "row",
