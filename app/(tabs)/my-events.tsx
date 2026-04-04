@@ -5,6 +5,7 @@ import {
   Animated,
   ActivityIndicator,
   FlatList,
+  PanResponder,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -32,6 +33,20 @@ import { formatDayDate } from "../../src/utils/date";
 
 type Mode = "attending" | "hosting";
 type AttendingTab = "interested" | "requested" | "going";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TAB_ORDER: AttendingTab[] = ["interested", "requested", "going"];
+const TAB_ICONS: Record<AttendingTab, string> = {
+  interested: "star",
+  requested: "time-outline",
+  going: "checkmark-circle",
+};
+const TAB_LABELS: Record<AttendingTab, string> = {
+  interested: "Interested",
+  requested: "Requested",
+  going: "Going",
+};
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -150,31 +165,9 @@ export default function MyEventsScreen() {
           />
         </View>
 
-        {/* ── Attending: 3-tab segmented control ── */}
+        {/* ── Attending: arrow + title + long-press picker ── */}
         {mode === "attending" && (
-          <View style={styles.segmentedControl}>
-            <SegmentTab
-              label="Interested"
-              icon="star"
-              active={activeTab === "interested"}
-              count={interestedEvents.length}
-              onPress={() => setActiveTab("interested")}
-            />
-            <SegmentTab
-              label="Requested"
-              icon="time-outline"
-              active={activeTab === "requested"}
-              count={requestedEvents.length}
-              onPress={() => setActiveTab("requested")}
-            />
-            <SegmentTab
-              label="Going"
-              icon="checkmark-circle"
-              active={activeTab === "going"}
-              count={goingEvents.length}
-              onPress={() => setActiveTab("going")}
-            />
-          </View>
+          <AttendingTabHeader activeTab={activeTab} setActiveTab={setActiveTab} />
         )}
 
         {/* ── Content ── */}
@@ -208,43 +201,150 @@ export default function MyEventsScreen() {
   );
 }
 
-// ─── Segment Tab ─────────────────────────────────────────────────────────────
+// ─── Attending Tab Header ─────────────────────────────────────────────────────
 
-function SegmentTab({
-  label,
-  icon,
-  active,
-  count,
-  onPress,
+function AttendingTabHeader({
+  activeTab,
+  setActiveTab,
 }: {
-  label: string;
-  icon: string;
-  active: boolean;
-  count: number;
-  onPress: () => void;
+  activeTab: AttendingTab;
+  setActiveTab: (tab: AttendingTab) => void;
 }) {
+  const [pickerHighlight, setPickerHighlight] = useState<AttendingTab>(activeTab);
+
+  const isPickerActiveRef = useRef(false);
+  const pickerHighlightRef = useRef<AttendingTab>(activeTab);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iconLayouts = useRef<{ tab: AttendingTab; pageX: number; width: number }[]>([]);
+
+  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const pickerOpacity = useRef(new Animated.Value(0)).current;
+  const arrowOpacity = useRef(new Animated.Value(1)).current;
+
+  function cycleTab(dir: 1 | -1) {
+    const idx = TAB_ORDER.indexOf(activeTab);
+    const next = TAB_ORDER[(idx + dir + 3) % 3];
+    setActiveTab(next);
+  }
+
+  function activatePicker() {
+    isPickerActiveRef.current = true;
+    pickerHighlightRef.current = activeTab;
+    setPickerHighlight(activeTab);
+    Animated.parallel([
+      Animated.timing(titleOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(pickerOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(arrowOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start();
+  }
+
+  function deactivatePicker() {
+    isPickerActiveRef.current = false;
+    setActiveTab(pickerHighlightRef.current);
+    Animated.parallel([
+      Animated.timing(titleOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(pickerOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(arrowOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  }
+
+  function updateHighlightFromX(pageX: number) {
+    for (const layout of iconLayouts.current) {
+      if (pageX >= layout.pageX && pageX <= layout.pageX + layout.width) {
+        if (pickerHighlightRef.current !== layout.tab) {
+          pickerHighlightRef.current = layout.tab;
+          setPickerHighlight(layout.tab);
+        }
+        return;
+      }
+    }
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => isPickerActiveRef.current,
+      onPanResponderGrant: () => {
+        longPressTimer.current = setTimeout(activatePicker, 500);
+      },
+      onPanResponderMove: (e) => {
+        if (isPickerActiveRef.current) {
+          updateHighlightFromX(e.nativeEvent.pageX);
+        }
+      },
+      onPanResponderRelease: () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        if (isPickerActiveRef.current) deactivatePicker();
+      },
+      onPanResponderTerminate: () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        if (isPickerActiveRef.current) deactivatePicker();
+      },
+    })
+  ).current;
+
   return (
-    <TouchableOpacity
-      style={[styles.segment, active && styles.segmentActive]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <Ionicons
-        name={icon as any}
-        size={13}
-        color={active ? Colors.textInverse : Colors.textTertiary}
-      />
-      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-        {label}
-      </Text>
-      {count > 0 && (
-        <View style={[styles.badge, active && styles.badgeActive]}>
-          <Text style={[styles.badgeText, active && styles.badgeTextActive]}>
-            {count}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    <View style={styles.attendingTabHeader}>
+      {/* Left arrow */}
+      <Animated.View style={{ opacity: arrowOpacity }}>
+        <TouchableOpacity
+          onPress={() => cycleTab(-1)}
+          style={styles.tabArrow}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="chevron-back" size={20} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Center: title + picker overlay */}
+      <View style={styles.tabTitleArea} {...panResponder.panHandlers}>
+        {/* Title */}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.tabTitleContainer, { opacity: titleOpacity }]}
+        >
+          <Text style={styles.tabTitleText}>{TAB_LABELS[activeTab]}</Text>
+        </Animated.View>
+
+        {/* Icon picker */}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.pickerContainer, { opacity: pickerOpacity }]}
+        >
+          {TAB_ORDER.map((tab) => (
+            <View
+              key={tab}
+              style={[styles.pickerIcon, pickerHighlight === tab && styles.pickerIconActive]}
+              onLayout={(e) => {
+                (e.target as any).measure(
+                  (_x: number, _y: number, width: number, _h: number, pageX: number) => {
+                    const idx = iconLayouts.current.findIndex((l) => l.tab === tab);
+                    const entry = { tab, pageX, width };
+                    if (idx >= 0) iconLayouts.current[idx] = entry;
+                    else iconLayouts.current.push(entry);
+                  }
+                );
+              }}
+            >
+              <Ionicons
+                name={TAB_ICONS[tab] as any}
+                size={18}
+                color={pickerHighlight === tab ? Colors.primary : Colors.textTertiary}
+              />
+            </View>
+          ))}
+        </Animated.View>
+      </View>
+
+      {/* Right arrow */}
+      <Animated.View style={{ opacity: arrowOpacity }}>
+        <TouchableOpacity
+          onPress={() => cycleTab(1)}
+          style={styles.tabArrow}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -540,57 +640,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // ── Segmented control (3 tabs) ──
-  segmentedControl: {
+  // ── Attending tab header (arrow + title + picker) ──
+  attendingTabHeader: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginHorizontal: Spacing.md,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: BorderRadius.md,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    height: 40,
   },
-  segment: {
-    flex: 1,
+  tabArrow: {
+    width: 28,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabTitleArea: {
+    width: 120,
+    height: 40,
+    position: "relative",
+  },
+  tabTitleContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabTitleText: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+  },
+  pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
-    paddingVertical: Spacing.sm - 1,
-    borderRadius: BorderRadius.sm,
+    gap: Spacing.lg,
   },
-  segmentActive: {
-    backgroundColor: Colors.primary,
-  },
-  segmentText: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textTertiary,
-  },
-  segmentTextActive: {
-    color: Colors.textInverse,
-  },
-  badge: {
-    backgroundColor: Colors.border,
-    borderRadius: BorderRadius.full,
-    minWidth: 16,
-    height: 16,
+  pickerIcon: {
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 3,
+    borderRadius: BorderRadius.full,
   },
-  badgeActive: {
-    backgroundColor: Colors.textInverse + "30",
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: Typography.weight.bold,
-    color: Colors.textTertiary,
-  },
-  badgeTextActive: {
-    color: Colors.textInverse,
+  pickerIconActive: {
+    backgroundColor: Colors.primary + "20",
   },
 
   // ── Lists ──

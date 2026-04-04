@@ -65,10 +65,16 @@ type PinGroup<T> =
   | { kind: "cluster"; count: number; lng: number; lat: number; items: T[] }
   | { kind: "single"; item: T };
 
+// At zoom >= 14 the visible width at Toronto's latitude is ~1km — disable clustering.
+const CLUSTER_MAX_ZOOM = 14;
+
 function clusterPoints<T>(
   points: { lng: number; lat: number; item: T }[],
   zoom: number,
 ): PinGroup<T>[] {
+  if (zoom >= CLUSTER_MAX_ZOOM) {
+    return points.map((p) => ({ kind: "single", item: p.item }));
+  }
   // Convert a 50px screen-radius to geographic degrees at this zoom level
   // (Mapbox uses 512px tiles)
   const threshold = (50 * 360) / (Math.pow(2, zoom) * 512);

@@ -106,7 +106,7 @@ export default function AccountScreen() {
   const isCreator = profile.profile_type === "CREATOR";
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
