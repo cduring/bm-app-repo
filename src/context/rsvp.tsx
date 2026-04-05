@@ -98,7 +98,10 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
 
     // Persist to Supabase
     setRSVPMutation.mutate({ eventId, profileId, status }, {
-      onError: () => Alert.alert('Action failed', 'Could not update your RSVP. Please try again.'),
+      onError: (err) => {
+        console.error('[rsvp] set RSVP error:', err);
+        Alert.alert('Action failed', 'We encountered an error trying to update your RSVP. Please try again.');
+      },
     });
   }
 
@@ -118,7 +121,10 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     }));
 
     approveMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
-      onError: () => Alert.alert('Action failed', 'Could not approve request. Please try again.'),
+      onError: (err) => {
+        console.error('[rsvp] approve request error:', err);
+        Alert.alert('Action failed', 'We encountered an error trying to approve this request. Please try again.');
+      },
     });
   }
 
@@ -132,7 +138,10 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     }));
 
     declineMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
-      onError: () => Alert.alert('Action failed', 'Could not decline request. Please try again.'),
+      onError: (err) => {
+        console.error('[rsvp] decline request error:', err);
+        Alert.alert('Action failed', 'We encountered an error trying to decline this request. Please try again.');
+      },
     });
   }
 
@@ -148,7 +157,8 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .update({ status: 'CANCELLED' })
       .eq('id', eventId);
     if (error) {
-      Alert.alert('Action failed', 'Could not cancel event. Please try again.');
+      console.error('[rsvp] cancel event error:', error);
+      Alert.alert('Action failed', 'We encountered an error trying to cancel your event. Please try again.');
     } else {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', eventId] });
@@ -162,7 +172,8 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .update(updates)
       .eq('id', eventId);
     if (error) {
-      Alert.alert('Action failed', 'Could not save changes. Please try again.');
+      console.error('[rsvp] update event error:', error);
+      Alert.alert('Action failed', 'We encountered an error trying to save your changes. Please try again.');
     } else {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', eventId] });

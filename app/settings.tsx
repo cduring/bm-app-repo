@@ -361,7 +361,8 @@ export default function SettingsScreen() {
           onPress: async () => {
             const { error } = await supabase.rpc('delete_account');
             if (error) {
-              Alert.alert('Error', error.message);
+              console.error('[settings] delete_account error:', error);
+              Alert.alert('Error', 'We encountered an error trying to delete your account. Please try again.');
               return;
             }
             await supabase.auth.signOut();

@@ -245,7 +245,8 @@ export default function EditProfileScreen() {
       queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       router.back();
     } catch (e: any) {
-      setError(e?.message ?? 'Something went wrong. Please try again.');
+      console.error('[edit-profile] save error:', e);
+      setError('We encountered an error trying to save your profile. Please try again.');
     } finally {
       setSaving(false);
     }

@@ -58,7 +58,12 @@ export default function AccountScreen() {
     if (!result.canceled && result.assets[0]) {
       addPortfolioImage.mutate(
         { profileId, imageUri: result.assets[0].uri },
-        { onError: (err) => Alert.alert("Upload failed", err.message) },
+        {
+          onError: (err) => {
+            console.error('[account] portfolio upload error:', err);
+            Alert.alert('Upload failed', 'We encountered an error trying to upload your image. Please try again.');
+          },
+        },
       );
     }
   }

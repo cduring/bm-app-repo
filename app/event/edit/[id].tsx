@@ -152,7 +152,8 @@ export default function EventEditScreen() {
       qc.invalidateQueries({ queryKey: ['hostedEvents'] });
       router.back();
     } catch (err) {
-      Alert.alert('Error', 'Failed to save changes. Please try again.');
+      console.error('[event-edit] save error:', err);
+      Alert.alert('Error', 'We encountered an error trying to save your changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -204,7 +205,8 @@ export default function EventEditScreen() {
       qc.invalidateQueries({ queryKey: ['hostedEvents'] });
       router.back();
     } catch (err) {
-      Alert.alert('Error', 'Failed to cancel event. Please try again.');
+      console.error('[event-edit] cancel error:', err);
+      Alert.alert('Error', 'We encountered an error trying to cancel your event. Please try again.');
     }
   }
 
