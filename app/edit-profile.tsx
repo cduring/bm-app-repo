@@ -99,7 +99,7 @@ export default function EditProfileScreen() {
     setLocationFsa(profile.location_fsa ?? '');
     setLatitude(profile.latitude ?? null);
     setLongitude(profile.longitude ?? null);
-    setSelectedNicheIds(niches.map(n => n.id));
+    setSelectedNicheIds(niches.map(n => String(n.id)));
     setLinks(externalLinks.map(l => ({ id: l.id, platform_name: l.platform_name, url: l.url })));
   }, [data]);
 

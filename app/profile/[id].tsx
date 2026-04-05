@@ -49,11 +49,12 @@ export default function ViewProfileScreen() {
   const followMutation = useFollowMutation();
   const unfollowMutation = useUnfollowMutation();
 
-  const isOwnProfile = myProfileId === id;
+  const isOwnProfile =
+    supabaseData?.profile?.user_id === session?.user?.id;
   const isMutating = followMutation.isPending || unfollowMutation.isPending;
 
   function handleFollowToggle() {
-    if (!myProfileId || !id || isMutating) return;
+    if (!myProfileId || !id || isMutating || isOwnProfile) return;
     if (isFollowing) {
       unfollowMutation.mutate({ followerId: myProfileId, followingId: id });
     } else {
@@ -89,6 +90,7 @@ export default function ViewProfileScreen() {
       <ErrorState
         message={profileError ? "Couldn't load profile" : "Profile not found"}
         onRetry={profileError ? refetchProfile : undefined}
+        onBack={() => router.back()}
       />
     );
   }

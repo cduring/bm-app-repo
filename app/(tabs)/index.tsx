@@ -61,7 +61,7 @@ function formatEventTime(start_time: string): string {
 }
 
 export default function DiscoverScreen() {
-  const [activeView, setActiveView] = useState<ActiveView>("EVENTS");
+  const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
   const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 

@@ -1,34 +1,49 @@
-import { useState, useEffect, useRef } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Colors, Typography, Spacing, BorderRadius } from '../src/constants/theme';
-import { ProfileCard } from '../src/components/ProfileCard';
-import { EventCard } from '../src/components/EventCard';
-import { useSearchProfiles, useSearchEvents } from '../src/hooks/useSearch';
-import type { ProfileWithNiches, EventWithHost } from '../src/types';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { EventCard } from "../src/components/EventCard";
+import { ProfileCard } from "../src/components/ProfileCard";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../src/constants/theme";
+import { useSearchEvents, useSearchProfiles } from "../src/hooks/useSearch";
+import type { EventWithHost, ProfileWithNiches } from "../src/types";
 
-type ResultTab = 'ALL' | 'CREATORS' | 'EVENTS';
+type ResultTab = "ALL" | "CREATORS" | "EVENTS";
 
 export default function SearchScreen() {
-  const [inputValue, setInputValue] = useState('');
-  const [query, setQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<ResultTab>('ALL');
+  const [inputValue, setInputValue] = useState("");
+  const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<ResultTab>("ALL");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: profileResults = [], isFetching: fetchingProfiles, error: profileSearchError, refetch: refetchProfiles } = useSearchProfiles(query);
-  const { data: eventResults = [], isFetching: fetchingEvents, error: eventSearchError, refetch: refetchEvents } = useSearchEvents(query);
+  const {
+    data: profileResults = [],
+    isFetching: fetchingProfiles,
+    error: profileSearchError,
+    refetch: refetchProfiles,
+  } = useSearchProfiles(query);
+  const {
+    data: eventResults = [],
+    isFetching: fetchingEvents,
+    error: eventSearchError,
+    refetch: refetchEvents,
+  } = useSearchEvents(query);
 
   const isLoading = query.length > 0 && (fetchingProfiles || fetchingEvents);
   const searchError = profileSearchError || eventSearchError;
@@ -44,51 +59,61 @@ export default function SearchScreen() {
   }, [inputValue]);
 
   function handleClear() {
-    setInputValue('');
-    setQuery('');
+    setInputValue("");
+    setQuery("");
   }
 
   // Combine all results into a single list for FlatList
   type ListItem =
-    | { _type: 'sectionHeader'; label: string; count: number }
-    | { _type: 'profile'; data: ProfileWithNiches }
-    | { _type: 'event'; data: EventWithHost }
-    | { _type: 'noResults' };
+    | { _type: "sectionHeader"; label: string; count: number }
+    | { _type: "profile"; data: ProfileWithNiches }
+    | { _type: "event"; data: EventWithHost }
+    | { _type: "noResults" };
 
   const listData: ListItem[] = (() => {
     if (!query) return [];
 
-    const showProfiles = activeTab === 'ALL' || activeTab === 'CREATORS';
-    const showEvents = activeTab === 'ALL' || activeTab === 'EVENTS';
+    const showProfiles = activeTab === "ALL" || activeTab === "CREATORS";
+    const showEvents = activeTab === "ALL" || activeTab === "EVENTS";
     const items: ListItem[] = [];
 
     if (showProfiles) {
       if (profileResults.length > 0) {
-        if (activeTab === 'ALL') {
-          items.push({ _type: 'sectionHeader', label: 'People', count: profileResults.length });
+        if (activeTab === "ALL") {
+          items.push({
+            _type: "sectionHeader",
+            label: "People",
+            count: profileResults.length,
+          });
         }
-        profileResults.forEach(p => items.push({ _type: 'profile', data: p }));
+        profileResults.forEach((p) =>
+          items.push({ _type: "profile", data: p }),
+        );
       }
     }
 
     if (showEvents) {
       if (eventResults.length > 0) {
-        if (activeTab === 'ALL') {
-          items.push({ _type: 'sectionHeader', label: 'Events', count: eventResults.length });
+        if (activeTab === "ALL") {
+          items.push({
+            _type: "sectionHeader",
+            label: "Events",
+            count: eventResults.length,
+          });
         }
-        eventResults.forEach(e => items.push({ _type: 'event', data: e }));
+        eventResults.forEach((e) => items.push({ _type: "event", data: e }));
       }
     }
 
     if (items.length === 0 && !isLoading) {
-      items.push({ _type: 'noResults' });
+      items.push({ _type: "noResults" });
     }
 
     return items;
   })();
 
   function renderItem({ item }: { item: ListItem }) {
-    if (item._type === 'sectionHeader') {
+    if (item._type === "sectionHeader") {
       return (
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.label}</Text>
@@ -96,7 +121,7 @@ export default function SearchScreen() {
         </View>
       );
     }
-    if (item._type === 'profile') {
+    if (item._type === "profile") {
       return (
         <TouchableOpacity
           onPress={() => router.push(`/profile/${item.data.id}`)}
@@ -105,14 +130,11 @@ export default function SearchScreen() {
           accessibilityLabel={`View ${item.data.display_name}'s profile`}
           accessibilityRole="button"
         >
-          <ProfileCard
-            profile={item.data}
-            niches={item.data.niches}
-          />
+          <ProfileCard profile={item.data} niches={item.data.niches} />
         </TouchableOpacity>
       );
     }
-    if (item._type === 'event') {
+    if (item._type === "event") {
       return (
         <View style={styles.resultItem}>
           <EventCard
@@ -122,12 +144,20 @@ export default function SearchScreen() {
         </View>
       );
     }
-    if (item._type === 'noResults') {
+    if (item._type === "noResults") {
       return (
         <View style={styles.noResults}>
-          <Ionicons name="search-outline" size={40} color={Colors.textTertiary} />
-          <Text style={styles.noResultsTitle}>No results for "{query}"</Text>
-          <Text style={styles.noResultsSubtitle}>Try a different name, niche, or event title</Text>
+          <Ionicons
+            name="search-outline"
+            size={40}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.noResultsTitle}>
+            No results for &quot;{query}&quot;
+          </Text>
+          <Text style={styles.noResultsSubtitle}>
+            Try a different name, niche, or event title
+          </Text>
         </View>
       );
     }
@@ -135,10 +165,10 @@ export default function SearchScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -157,7 +187,12 @@ export default function SearchScreen() {
         {/* Search bar */}
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color={Colors.textTertiary} style={styles.searchIcon} />
+            <Ionicons
+              name="search"
+              size={18}
+              color={Colors.textTertiary}
+              style={styles.searchIcon}
+            />
             <TextInput
               style={styles.searchInput}
               placeholder="Search creators & events…"
@@ -178,7 +213,11 @@ export default function SearchScreen() {
                 accessibilityLabel="Clear search"
                 accessibilityRole="button"
               >
-                <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color={Colors.textTertiary}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -187,7 +226,7 @@ export default function SearchScreen() {
         {/* Result tabs — only shown when there's a query */}
         {query.length > 0 && (
           <View style={styles.tabs}>
-            {(['ALL', 'CREATORS', 'EVENTS'] as ResultTab[]).map(tab => (
+            {(["ALL", "CREATORS", "EVENTS"] as ResultTab[]).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -197,17 +236,30 @@ export default function SearchScreen() {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: activeTab === tab }}
               >
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tab === 'ALL' ? 'All' : tab === 'CREATORS' ? 'People' : 'Events'}
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === tab && styles.tabTextActive,
+                  ]}
+                >
+                  {tab === "ALL"
+                    ? "All"
+                    : tab === "CREATORS"
+                      ? "People"
+                      : "Events"}
                 </Text>
-                {tab === 'CREATORS' && profileResults.length > 0 && (
+                {tab === "CREATORS" && profileResults.length > 0 && (
                   <View style={styles.tabBadge}>
-                    <Text style={styles.tabBadgeText}>{profileResults.length}</Text>
+                    <Text style={styles.tabBadgeText}>
+                      {profileResults.length}
+                    </Text>
                   </View>
                 )}
-                {tab === 'EVENTS' && eventResults.length > 0 && (
+                {tab === "EVENTS" && eventResults.length > 0 && (
                   <View style={styles.tabBadge}>
-                    <Text style={styles.tabBadgeText}>{eventResults.length}</Text>
+                    <Text style={styles.tabBadgeText}>
+                      {eventResults.length}
+                    </Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -218,10 +270,15 @@ export default function SearchScreen() {
         {/* Content */}
         {!query ? (
           <View style={styles.emptyState}>
-            <Ionicons name="compass-outline" size={56} color={Colors.textTertiary} />
+            <Ionicons
+              name="compass-outline"
+              size={56}
+              color={Colors.textTertiary}
+            />
             <Text style={styles.emptyTitle}>Find your community</Text>
             <Text style={styles.emptySubtitle}>
-              Search for creators by name or niche,{'\n'}or find events happening around Toronto
+              Search for creators by name or niche,{"\n"}or find events
+              happening around Toronto
             </Text>
           </View>
         ) : isLoading ? (
@@ -230,9 +287,19 @@ export default function SearchScreen() {
           </View>
         ) : searchError ? (
           <View style={styles.loadingState}>
-            <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
+            <Ionicons
+              name="cloud-offline-outline"
+              size={36}
+              color={Colors.textTertiary}
+            />
             <Text style={styles.errorText}>Search unavailable</Text>
-            <TouchableOpacity onPress={() => { refetchProfiles(); refetchEvents(); }} style={styles.retryLink}>
+            <TouchableOpacity
+              onPress={() => {
+                refetchProfiles();
+                refetchEvents();
+              }}
+              style={styles.retryLink}
+            >
               <Text style={styles.retryLinkText}>Try Again</Text>
             </TouchableOpacity>
           </View>
@@ -240,8 +307,8 @@ export default function SearchScreen() {
           <FlatList
             data={listData}
             keyExtractor={(item, index) => {
-              if (item._type === 'profile') return `profile-${item.data.id}`;
-              if (item._type === 'event') return `event-${item.data.id}`;
+              if (item._type === "profile") return `profile-${item.data.id}`;
+              if (item._type === "event") return `event-${item.data.id}`;
               return `${item._type}-${index}`;
             }}
             renderItem={renderItem}
@@ -264,8 +331,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xs,
@@ -276,7 +343,7 @@ const styles = StyleSheet.create({
     marginLeft: -Spacing.xs,
   },
   headerTitle: {
-    fontSize: Typography.size['2xl'],
+    fontSize: Typography.size["2xl"],
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
@@ -285,8 +352,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
@@ -305,14 +372,14 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   tabs: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: Spacing.md,
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
   tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingVertical: 7,
     paddingHorizontal: Spacing.md,
@@ -335,12 +402,12 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.semibold,
   },
   tabBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: BorderRadius.full,
     minWidth: 18,
     height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
   tabBadgeText: {
@@ -356,9 +423,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
   },
@@ -366,7 +433,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   sectionCount: {
@@ -375,8 +442,8 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.xl,
     gap: Spacing.md,
     paddingBottom: 80,
@@ -385,35 +452,35 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptySubtitle: {
     fontSize: Typography.size.base,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
   loadingState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingBottom: 80,
   },
   noResults: {
-    alignItems: 'center',
-    paddingTop: Spacing['2xl'],
+    alignItems: "center",
+    paddingTop: Spacing["2xl"],
     gap: Spacing.md,
   },
   noResultsTitle: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   noResultsSubtitle: {
     fontSize: Typography.size.base,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
   errorText: {

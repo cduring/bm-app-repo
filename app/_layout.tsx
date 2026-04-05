@@ -120,6 +120,8 @@ export default function RootLayout() {
             <StatusBar style="light" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="host" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+              <Stack.Screen name="settings" options={{ headerShown: false }} />
+              <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
             </Stack>
           </RSVPProvider>
         </QueryClientProvider>

@@ -33,7 +33,6 @@ import {
   useRemovePortfolioImage,
 } from "../../src/hooks/usePortfolio";
 import { useProfile } from "../../src/hooks/useProfile";
-import { supabase } from "../../src/lib/supabase";
 import { formatDayDate } from "../../src/utils/date";
 
 export default function AccountScreen() {
@@ -45,7 +44,6 @@ export default function AccountScreen() {
   const { data: portfolioImages } = usePortfolio(profileId);
   const addPortfolioImage = useAddPortfolioImage();
   const removePortfolioImage = useRemovePortfolioImage();
-  const [signingOut, setSigningOut] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
 
@@ -75,12 +73,6 @@ export default function AccountScreen() {
         onPress: () => removePortfolioImage.mutate({ imageId, profileId }),
       },
     ]);
-  }
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    await supabase.auth.signOut();
-    // onAuthStateChange in _layout.tsx fires, nav guard redirects to /(auth)
   }
 
   function openLink(url: string) {
@@ -116,14 +108,13 @@ export default function AccountScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Account</Text>
           <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => router.push("/edit-profile")}
+            style={styles.gearButton}
+            onPress={() => router.push("/settings" as any)}
             activeOpacity={0.7}
-            accessibilityLabel="Edit profile"
+            accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Ionicons name="create-outline" size={18} color={Colors.primary} />
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Ionicons name="settings-outline" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -447,28 +438,6 @@ export default function AccountScreen() {
           )}
         </View>
 
-        {/* Log Out */}
-        <TouchableOpacity
-          style={styles.logOutButton}
-          onPress={handleSignOut}
-          disabled={signingOut}
-          activeOpacity={0.7}
-          accessibilityLabel="Log out"
-          accessibilityRole="button"
-        >
-          {signingOut ? (
-            <ActivityIndicator color={Colors.cancelled} size="small" />
-          ) : (
-            <>
-              <Ionicons
-                name="log-out-outline"
-                size={18}
-                color={Colors.cancelled}
-              />
-              <Text style={styles.logOutText}>Log Out</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -506,21 +475,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary + "50",
-    backgroundColor: Colors.primary + "10",
-  },
-  editButtonText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
+  gearButton: {
+    padding: 6,
   },
 
   // Avatar section
