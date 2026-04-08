@@ -20,7 +20,7 @@ async function fetchProfileData(
 
   if (profileError) throw profileError;
 
-  const [nicheResult, linkResult] = await Promise.all([
+  const [nicheResult, linkResult, followerResult, followingResult] = await Promise.all([
     supabase
       .from('profile_niches')
       .select('niche_id, niches(id, name)')
@@ -29,6 +29,14 @@ async function fetchProfileData(
       .from('external_links')
       .select('*')
       .eq('profile_id', profile.id),
+    supabase
+      .from('follows')
+      .select('follower_id', { count: 'exact', head: true })
+      .eq('following_id', profile.id),
+    supabase
+      .from('follows')
+      .select('following_id', { count: 'exact', head: true })
+      .eq('follower_id', profile.id),
   ]);
 
   const niches: Niche[] = (nicheResult.data ?? [])
@@ -36,7 +44,11 @@ async function fetchProfileData(
     .filter(Boolean);
 
   return {
-    profile: profile as Profile,
+    profile: {
+      ...profile,
+      follower_count: followerResult.count ?? profile.follower_count ?? 0,
+      following_count: followingResult.count ?? profile.following_count ?? 0,
+    } as Profile,
     niches,
     externalLinks: (linkResult.data ?? []) as ExternalLink[],
   };

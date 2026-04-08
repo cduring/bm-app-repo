@@ -5,6 +5,7 @@ import {
   Alert,
   Dimensions,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { Image } from 'expo-image';
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ErrorState } from "../../src/components/ErrorState";
 import { EventCard } from "../../src/components/EventCard";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
@@ -62,8 +63,15 @@ export default function ViewProfileScreen() {
     }
   }
 
-  const { data: portfolioImages } = usePortfolio(id);
-  const { data: hostedEventsRaw = [] } = useHostedEvents(id);
+  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(id);
+  const { data: hostedEventsRaw = [], refetch: refetchHosted } = useHostedEvents(id);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchProfile(), refetchPortfolio(), refetchHosted()]);
+    setRefreshing(false);
+  }, [refetchProfile, refetchPortfolio, refetchHosted]);
   const hostedEvents = hostedEventsRaw.filter((e) => e.status !== "DRAFT");
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
@@ -135,6 +143,13 @@ export default function ViewProfileScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
       >
         {/* Avatar + Name + Badge */}
         <View style={styles.avatarSection}>

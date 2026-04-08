@@ -83,7 +83,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="my-events"
         options={{
-          title: 'My Events',
+          title: 'Events',
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'calendar' : 'calendar-outline'} focused={focused} />
           ),

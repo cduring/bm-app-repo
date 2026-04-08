@@ -957,8 +957,8 @@ function CreatorCard({
   profile: ProfileWithNiches;
   onViewProfile: () => void;
 }) {
-  const isCreator = profile.profile_type === "CREATOR";
-  const visibleNiches = profile.niches.slice(0, 3);
+  const visibleNiches = profile.niches.slice(0, 5);
+  const overflow = profile.niches.length - 5;
 
   return (
     <>
@@ -979,33 +979,20 @@ function CreatorCard({
           <Text style={styles.cardName} numberOfLines={1}>
             {profile.display_name}
           </Text>
-          <View
-            style={[
-              styles.typeBadge,
-              isCreator ? styles.creatorBadge : styles.businessBadge,
-            ]}
-          >
-            <Text
-              style={[
-                styles.typeBadgeText,
-                isCreator ? styles.creatorBadgeText : styles.businessBadgeText,
-              ]}
-            >
-              {isCreator ? "Creator" : "Business"}
-            </Text>
-          </View>
+          <Text style={[styles.cardTypeLabel, profile.profile_type === 'CREATOR' ? styles.cardTypeLabelCreator : styles.cardTypeLabelBusiness]}>
+            {profile.profile_type === 'CREATOR' ? 'Creator' : 'Business'}
+          </Text>
         </View>
       </View>
-
       {visibleNiches.length > 0 && (
         <View style={styles.cardNiches}>
           {visibleNiches.map((n) => (
-            <NicheTag key={n.id} name={n.name} small />
+            <NicheTag key={n.id} name={n.name} />
           ))}
-          {profile.niches.length > 3 && (
-            <Text style={styles.nicheOverflow}>
-              +{profile.niches.length - 3}
-            </Text>
+          {overflow > 0 && (
+            <View style={styles.nicheOverflowCircle}>
+              <Text style={styles.nicheOverflowCircleText}>+{overflow}</Text>
+            </View>
           )}
         </View>
       )}
@@ -1086,36 +1073,27 @@ function EventCard({
         </View>
       </View>
 
-      <View style={styles.eventMeta}>
-        <Ionicons
-          name="calendar-outline"
-          size={13}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.eventMetaText}>
-          {formatEventDate(event.start_time)}
-        </Text>
-      </View>
-      <View style={styles.eventMeta}>
-        <Ionicons
-          name="location-outline"
-          size={13}
-          color={Colors.textTertiary}
-        />
-        <Text style={styles.eventMetaText} numberOfLines={1}>
-          {event.address_name}
-        </Text>
-      </View>
-
-      <View style={styles.eventCounts}>
-        <Text style={styles.eventCountText}>
-          <Text style={styles.eventCountNumber}>{event.interested_count}</Text>{" "}
-          interested
-        </Text>
-        <Text style={styles.eventCountSep}> · </Text>
-        <Text style={styles.eventCountText}>
-          <Text style={styles.eventCountNumber}>{event.going_count}</Text> going
-        </Text>
+      <View style={styles.eventMetaRow}>
+        <View style={styles.eventMeta}>
+          <Ionicons
+            name="calendar-outline"
+            size={13}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.eventMetaText}>
+            {formatEventDate(event.start_time)}
+          </Text>
+        </View>
+        <View style={styles.eventMeta}>
+          <Ionicons
+            name="location-outline"
+            size={13}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.eventMetaText} numberOfLines={1}>
+            {event.address_name}
+          </Text>
+        </View>
       </View>
 
       <TouchableOpacity
@@ -1356,11 +1334,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    paddingRight: Spacing.lg,
   },
   cardAvatar: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
     borderRadius: BorderRadius.avatar,
   },
   cardAvatarPlaceholder: {
@@ -1378,8 +1355,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardName: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
 
@@ -1405,15 +1382,36 @@ const styles = StyleSheet.create({
   },
   creatorBadgeText: { color: Colors.creatorBadge },
   businessBadgeText: { color: Colors.businessBadge },
+  cardTypeLabel: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.semibold,
+  },
+  cardTypeLabelCreator: {
+    color: Colors.creatorBadge,
+  },
+  cardTypeLabelBusiness: {
+    color: Colors.businessBadge,
+  },
   cardNiches: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.xs,
     alignItems: "center",
   },
-  nicheOverflow: {
+  nicheOverflowCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nicheOverflowCircleText: {
     fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textSecondary,
   },
   viewButton: {
     flexDirection: "row",
@@ -1490,30 +1488,20 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     fontWeight: Typography.weight.medium,
   },
+  eventMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+  },
   eventMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flexShrink: 1,
   },
   eventMetaText: {
     fontSize: Typography.size.sm,
     color: Colors.textSecondary,
-    flex: 1,
-  },
-  eventCounts: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: Spacing.xs,
-  },
-  eventCountText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-  },
-  eventCountNumber: {
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textSecondary,
-  },
-  eventCountSep: {
-    color: Colors.textTertiary,
   },
 });

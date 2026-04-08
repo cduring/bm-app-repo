@@ -474,7 +474,7 @@ function HostingView({
           </Text>
           <TouchableOpacity
             style={styles.emptyAction}
-            onPress={() => router.push("/(tabs)/create")}
+            onPress={() => router.push("/host")}
             activeOpacity={0.8}
           >
             <Text style={styles.emptyActionText}>Create an Event →</Text>

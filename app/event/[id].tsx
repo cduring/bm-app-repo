@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,6 +43,13 @@ export default function EventDetailScreen() {
   const { session } = useAuth();
   const { data: event, isLoading, error: eventError, refetch: refetchEvent } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetchEvent();
+    setRefreshing(false);
+  }, [refetchEvent]);
   const {
     getRSVP,
     setRSVP,
@@ -138,6 +147,13 @@ export default function EventDetailScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
       >
         {/* Cancelled Banner */}
         {isCancelled && (

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ErrorState } from "../../src/components/ErrorState";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import {
@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -40,8 +41,15 @@ export default function AccountScreen() {
   const userId = session?.user?.id;
   const { data, isLoading, error, refetch } = useProfile(userId);
   const profileId = data?.profile?.id;
-  const { data: hostedEvents = [] } = useHostedEvents(profileId);
-  const { data: portfolioImages } = usePortfolio(profileId);
+  const { data: hostedEvents = [], refetch: refetchHosted } = useHostedEvents(profileId);
+  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(profileId);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetch(), refetchHosted(), refetchPortfolio()]);
+    setRefreshing(false);
+  }, [refetch, refetchHosted, refetchPortfolio]);
   const addPortfolioImage = useAddPortfolioImage();
   const removePortfolioImage = useRemovePortfolioImage();
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -108,6 +116,13 @@ export default function AccountScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -343,7 +358,7 @@ export default function AccountScreen() {
               />
               <Text style={styles.hostedEmptyText}>No hosted events yet</Text>
               <TouchableOpacity
-                onPress={() => router.push("/(tabs)/create")}
+                onPress={() => router.push("/host")}
                 activeOpacity={0.7}
               >
                 <Text style={styles.hostedEmptyLink}>

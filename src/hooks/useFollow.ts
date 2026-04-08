@@ -83,7 +83,35 @@ export function useFollowMutation() {
         }),
       ]);
     },
-    onSuccess: (_, { followerId, followingId }) => {
+    onMutate: async ({ followerId, followingId }) => {
+      // Cancel outgoing refetches
+      await qc.cancelQueries({ queryKey: ['isFollowing', followerId, followingId] });
+      await qc.cancelQueries({ queryKey: ['profileById', followingId] });
+
+      // Snapshot previous values
+      const prevIsFollowing = qc.getQueryData(['isFollowing', followerId, followingId]);
+      const prevProfile = qc.getQueryData(['profileById', followingId]);
+
+      // Optimistically update
+      qc.setQueryData(['isFollowing', followerId, followingId], true);
+      qc.setQueryData(['profileById', followingId], (old: any) => {
+        if (!old?.profile) return old;
+        return {
+          ...old,
+          profile: { ...old.profile, follower_count: (old.profile.follower_count ?? 0) + 1 },
+        };
+      });
+
+      return { prevIsFollowing, prevProfile };
+    },
+    onError: (_err, { followerId, followingId }, context) => {
+      // Rollback on error
+      if (context) {
+        qc.setQueryData(['isFollowing', followerId, followingId], context.prevIsFollowing);
+        qc.setQueryData(['profileById', followingId], context.prevProfile);
+      }
+    },
+    onSettled: (_, __, { followerId, followingId }) => {
       qc.invalidateQueries({ queryKey: ['isFollowing', followerId, followingId] });
       qc.invalidateQueries({ queryKey: ['followers', followingId] });
       qc.invalidateQueries({ queryKey: ['following', followerId] });
@@ -158,7 +186,31 @@ export function useUnfollowMutation() {
         }),
       ]);
     },
-    onSuccess: (_, { followerId, followingId }) => {
+    onMutate: async ({ followerId, followingId }) => {
+      await qc.cancelQueries({ queryKey: ['isFollowing', followerId, followingId] });
+      await qc.cancelQueries({ queryKey: ['profileById', followingId] });
+
+      const prevIsFollowing = qc.getQueryData(['isFollowing', followerId, followingId]);
+      const prevProfile = qc.getQueryData(['profileById', followingId]);
+
+      qc.setQueryData(['isFollowing', followerId, followingId], false);
+      qc.setQueryData(['profileById', followingId], (old: any) => {
+        if (!old?.profile) return old;
+        return {
+          ...old,
+          profile: { ...old.profile, follower_count: Math.max(0, (old.profile.follower_count ?? 0) - 1) },
+        };
+      });
+
+      return { prevIsFollowing, prevProfile };
+    },
+    onError: (_err, { followerId, followingId }, context) => {
+      if (context) {
+        qc.setQueryData(['isFollowing', followerId, followingId], context.prevIsFollowing);
+        qc.setQueryData(['profileById', followingId], context.prevProfile);
+      }
+    },
+    onSettled: (_, __, { followerId, followingId }) => {
       qc.invalidateQueries({ queryKey: ['isFollowing', followerId, followingId] });
       qc.invalidateQueries({ queryKey: ['followers', followingId] });
       qc.invalidateQueries({ queryKey: ['following', followerId] });
