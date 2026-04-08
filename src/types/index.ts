@@ -160,4 +160,5 @@ export interface EventWithHost extends Event {
   interested_count: number;
   going_count: number;
   niches: Niche[];
+  requested_count: number;
 }

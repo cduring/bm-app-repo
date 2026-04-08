@@ -1,8 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-import { Colors, Typography, BorderRadius, Spacing } from '../constants/theme';
-import { NicheTag } from './NicheTag';
-import type { Profile, Niche } from '../types';
+import { Image } from "expo-image";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { BorderRadius, Colors, Spacing, Typography } from "../constants/theme";
+import type { Niche, Profile } from "../types";
+import { NicheTag } from "./NicheTag";
 
 interface ProfileCardProps {
   profile: Profile;
@@ -11,7 +11,7 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
-  const isCreator = profile.profile_type === 'CREATOR';
+  const isCreator = profile.profile_type === "CREATOR";
   const visibleNiches = niches.slice(0, 3);
   const overflowCount = niches.length - visibleNiches.length;
 
@@ -20,12 +20,15 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
       style={styles.card}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
-      accessibilityLabel={`${profile.display_name}, ${profile.profile_type === 'CREATOR' ? 'Creator' : 'Business'}`}
-      accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityHint={onPress ? 'Double tap to view profile' : undefined}
+      accessibilityLabel={`${profile.display_name}, ${isCreator ? "Creator" : "Business"}`}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityHint={onPress ? "Double tap to view profile" : undefined}
     >
       {profile.profile_picture_url ? (
-        <Image source={{ uri: profile.profile_picture_url }} style={styles.avatar} />
+        <Image
+          source={{ uri: profile.profile_picture_url }}
+          style={styles.avatar}
+        />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Text style={styles.avatarInitial}>
@@ -39,16 +42,11 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
           <Text style={styles.name} numberOfLines={1}>
             {profile.display_name}
           </Text>
-          <View style={[styles.badge, isCreator ? styles.creatorBadge : styles.businessBadge]}>
-            <Text style={[styles.badgeText, isCreator ? styles.creatorBadgeText : styles.businessBadgeText]}>
-              {isCreator ? 'Creator' : 'Business'}
-            </Text>
-          </View>
         </View>
 
         {niches.length > 0 && (
           <View style={styles.niches}>
-            {visibleNiches.map(niche => (
+            {visibleNiches.map((niche) => (
               <NicheTag key={niche.id} name={niche.name} small />
             ))}
             {overflowCount > 0 && (
@@ -57,14 +55,18 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
           </View>
         )}
       </View>
+
+      <View
+        style={[styles.dot, isCreator ? styles.creatorDot : styles.businessDot]}
+      />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.card,
     borderWidth: 1,
@@ -79,8 +81,8 @@ const styles = StyleSheet.create({
   },
   avatarPlaceholder: {
     backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarInitial: {
     fontSize: Typography.size.xl,
@@ -92,8 +94,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   name: {
@@ -102,40 +104,29 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     flex: 1,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  creatorBadge: {
-    backgroundColor: Colors.creatorBadge + '20',
-    borderWidth: 1,
-    borderColor: Colors.creatorBadge + '40',
-  },
-  businessBadge: {
-    backgroundColor: Colors.businessBadge + '20',
-    borderWidth: 1,
-    borderColor: Colors.businessBadge + '40',
-  },
-  badgeText: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.medium,
-  },
-  creatorBadgeText: {
-    color: Colors.creatorBadge,
-  },
-  businessBadgeText: {
-    color: Colors.businessBadge,
-  },
   niches: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.xs,
-    alignItems: 'center',
+    alignItems: "center",
   },
   overflow: {
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
-    alignSelf: 'center',
+    alignSelf: "center",
+  },
+  dot: {
+    position: "absolute",
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  creatorDot: {
+    backgroundColor: Colors.creatorBadge,
+  },
+  businessDot: {
+    backgroundColor: Colors.businessBadge,
   },
 });

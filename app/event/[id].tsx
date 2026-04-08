@@ -58,6 +58,11 @@ export default function EventDetailScreen() {
   } = useRSVP();
 
   const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
+  const displayedInterestedCount = event
+    ? event.privacy === 'EXCLUSIVE'
+      ? event.interested_count + (event.requested_count ?? 0)
+      : event.interested_count
+    : 0;
 
   function handleRSVP(status: RSVPStatus) {
     if (!id) return;
@@ -258,7 +263,7 @@ export default function EventDetailScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: Colors.interested }]}>
-              {event.interested_count}
+              {displayedInterestedCount}
             </Text>
             <Text style={styles.statLabel}>Interested</Text>
           </View>
@@ -396,7 +401,11 @@ export default function EventDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                 ) : rsvp === "REQUESTED" ? (
-                  <View style={[styles.rsvpButton, styles.rsvpButtonDisabled]}>
+                  <TouchableOpacity
+                    style={[styles.rsvpButton, styles.rsvpButtonDisabled]}
+                    onPress={() => handleRSVP("REQUESTED")}
+                    activeOpacity={0.8}
+                  >
                     <Ionicons
                       name="time-outline"
                       size={16}
@@ -410,7 +419,7 @@ export default function EventDetailScreen() {
                     >
                       Pending…
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={[styles.rsvpButton, styles.rsvpButtonGoing]}
