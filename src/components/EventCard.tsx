@@ -81,7 +81,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 <Ionicons
                   name="repeat-outline"
                   size={10}
-                  color={Colors.other}
+                  color='#6B7280'
                 />
                 <Text style={styles.recurringBadgeText}>Recurring</Text>
               </View>
@@ -199,9 +199,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: Colors.other + "20",
+    backgroundColor: '#6B7280' + "20",
     borderWidth: 1,
-    borderColor: Colors.other + "40",
+    borderColor: '#6B7280' + "40",
     borderRadius: BorderRadius.chip,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   recurringBadgeText: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.medium,
-    color: Colors.other,
+    color: '#6B7280',
   },
 
   countsRow: {

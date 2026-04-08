@@ -31,44 +31,12 @@ import { useProfile } from "../src/hooks/useProfile";
 import { supabase } from "../src/lib/supabase";
 import { ALL_NICHES } from "../src/constants/niches";
 import type { EventPrivacy, EventType } from "../src/types";
+import { EVENT_TYPES } from "../src/constants/eventTypes";
 
 const RECURRENCE_OPTIONS: { label: string; rule: string }[] = [
   { label: "Weekly", rule: "WEEKLY" },
   { label: "Biweekly", rule: "BIWEEKLY" },
   { label: "Monthly", rule: "MONTHLY" },
-];
-
-const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: "FASHION_SHOW", label: "Fashion Show" },
-  { value: "PERFORMANCE", label: "Performance" },
-  { value: "OPEN_MIC", label: "Open Mic" },
-  { value: "SCREENING", label: "Screening" },
-  { value: "LISTENING_PARTY", label: "Listening Party" },
-  { value: "STUDIO_SESSION", label: "Studio Session" },
-  { value: "WORKSHOP", label: "Workshop" },
-  { value: "MASTERCLASS", label: "Masterclass" },
-  { value: "PANEL", label: "Panel" },
-  { value: "CRITIQUE_SESSION", label: "Critique" },
-  { value: "HACKATHON", label: "Hackathon" },
-  { value: "NETWORKING", label: "Networking" },
-  { value: "COMMUNITY", label: "Community" },
-  { value: "COLLAB_SESSION", label: "Collab Session" },
-  { value: "OPEN_CALL", label: "Open Call" },
-  { value: "POP_UP", label: "Pop-Up" },
-  { value: "MARKET", label: "Market" },
-  { value: "LAUNCH_PARTY", label: "Launch Party" },
-  { value: "EXHIBITION", label: "Exhibition" },
-  { value: "OPEN_STUDIO", label: "Open Studio" },
-  { value: "PHOTOSHOOT", label: "Photoshoot" },
-  { value: "GROUP_RUN", label: "Group Run" },
-  { value: "FITNESS_CLASS", label: "Fitness Class" },
-  { value: "RETREAT", label: "Retreat" },
-  { value: "GAME_NIGHT", label: "Game Night" },
-  { value: "BLOCK_PARTY", label: "Block Party" },
-  { value: "COMPETITION", label: "Competition" },
-  { value: "CHARITY", label: "Charity" },
-  { value: "VIRTUAL_EVENT", label: "Virtual Event" },
-  { value: "OTHER", label: "Other" },
 ];
 
 type DatePickerTarget = "date" | "start-time" | "end-time";

@@ -32,7 +32,7 @@ import {
 import {
   EVENT_TYPE_COLOR,
   EVENT_TYPE_LABEL,
-} from "../../src/components/EventTypeBadge";
+} from "../../src/constants/eventTypes";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import {

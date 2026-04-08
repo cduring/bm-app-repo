@@ -31,14 +31,6 @@ export const Colors = {
   chipText: '#FF8C55',
   chipBorder: '#4A2A10',
 
-  // Event type badges
-  fashionShow: '#EC4899',
-  networking: '#3B82F6',
-  workshop: '#F59E0B',
-  listeningParty: '#8B5CF6',
-  community: '#22C55E',
-  other: '#6B7280',
-
   // Profile type badges
   creatorBadge: '#FF5E1A',
   businessBadge: '#0EA5E9',

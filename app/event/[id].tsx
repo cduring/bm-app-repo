@@ -13,10 +13,8 @@ import {
 } from "react-native";
 import { Image } from 'expo-image';
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  EVENT_TYPE_COLOR,
-  EventTypeBadge,
-} from "../../src/components/EventTypeBadge";
+import { EventTypeBadge } from "../../src/components/EventTypeBadge";
+import { EVENT_TYPE_COLOR } from "../../src/constants/eventTypes";
 import { ErrorState } from "../../src/components/ErrorState";
 import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import { NicheTag } from "../../src/components/NicheTag";

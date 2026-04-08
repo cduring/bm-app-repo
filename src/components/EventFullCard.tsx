@@ -3,21 +3,9 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
 import { EventTypeBadge } from './EventTypeBadge';
+import { EVENT_TYPE_COLOR } from '../constants/eventTypes';
 import { formatDayDate, formatTimeRange } from '../utils/date';
 import type { EventWithHost, RSVPStatus } from '../types';
-
-const EVENT_BANNER_COLOR: Record<string, string> = {
-  FASHION_SHOW: Colors.fashionShow,
-  LISTENING_PARTY: Colors.listeningParty,
-  NETWORKING: Colors.networking,
-  WORKSHOP: Colors.workshop,
-  MASTERCLASS: Colors.workshop,
-  COMMUNITY: Colors.community,
-};
-
-function getBannerColor(eventType: string): string {
-  return EVENT_BANNER_COLOR[eventType] ?? Colors.other;
-}
 
 interface EventFullCardProps {
   event: EventWithHost;
@@ -30,7 +18,7 @@ interface EventFullCardProps {
 }
 
 export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onToggleInterested, onViewDetails }: EventFullCardProps) {
-  const bannerColor = getBannerColor(event.event_type);
+  const bannerColor = EVENT_TYPE_COLOR[event.event_type];
   const isPublic = event.privacy === 'PUBLIC';
 
   return (
@@ -70,7 +58,7 @@ export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onTog
             )}
             {event.is_recurring && (
               <View style={styles.recurringBadge}>
-                <Ionicons name="repeat-outline" size={10} color={Colors.other} />
+                <Ionicons name="repeat-outline" size={10} color='#6B7280' />
               </View>
             )}
           </View>
@@ -246,9 +234,9 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   recurringBadge: {
-    backgroundColor: Colors.other + '20',
+    backgroundColor: '#6B7280' + '20',
     borderWidth: 1,
-    borderColor: Colors.other + '40',
+    borderColor: '#6B7280' + '40',
     borderRadius: BorderRadius.chip,
     paddingHorizontal: 6,
     paddingVertical: 2,
