@@ -65,7 +65,7 @@ export default function SignInScreen() {
 
           <View style={styles.header}>
             <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to your BrandMe account.</Text>
+            <Text style={styles.subtitle}>Sign in to your Loam account.</Text>
           </View>
 
           {/* Form */}

@@ -48,7 +48,7 @@ export default function NotificationPreferencesScreen() {
           </View>
         </View>
         <Text style={styles.hint}>
-          Control whether BrandMe can send you push notifications about events and activity.
+          Control whether Loam can send you push notifications about events and activity.
         </Text>
       </View>
     </SafeAreaView>

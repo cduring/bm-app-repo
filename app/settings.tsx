@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -17,14 +17,19 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { BorderRadius, Colors, Spacing, Typography } from '../src/constants/theme';
-import { useAuth } from '../src/context/auth';
-import { useProfile } from '../src/hooks/useProfile';
-import { useSearchProfiles } from '../src/hooks/useSearch';
-import { supabase } from '../src/lib/supabase';
-import type { Profile } from '../src/types';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../src/constants/theme";
+import { useAuth } from "../src/context/auth";
+import { useProfile } from "../src/hooks/useProfile";
+import { useSearchProfiles } from "../src/hooks/useSearch";
+import { supabase } from "../src/lib/supabase";
+import type { Profile } from "../src/types";
 
 // ─── Reusable row ────────────────────────────────────────────────────────────
 
@@ -36,18 +41,26 @@ type RowProps = {
   external?: boolean;
 };
 
-function SettingsRow({ icon, label, onPress, destructive, external }: RowProps) {
+function SettingsRow({
+  icon,
+  label,
+  onPress,
+  destructive,
+  external,
+}: RowProps) {
   const color = destructive ? Colors.cancelled : Colors.textPrimary;
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.rowLeft}>
         <Ionicons name={icon} size={20} color={color} />
-        <Text style={[styles.rowLabel, destructive && styles.rowLabelDestructive]}>
+        <Text
+          style={[styles.rowLabel, destructive && styles.rowLabelDestructive]}
+        >
           {label}
         </Text>
       </View>
       <Ionicons
-        name={external ? 'open-outline' : 'chevron-forward'}
+        name={external ? "open-outline" : "chevron-forward"}
         size={16}
         color={Colors.textTertiary}
       />
@@ -61,7 +74,13 @@ function Separator() {
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
@@ -79,12 +98,12 @@ function ContactSupportModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
 
   function handleClose() {
-    setSubject('');
-    setMessage('');
+    setSubject("");
+    setMessage("");
     onClose();
   }
 
@@ -97,7 +116,7 @@ function ContactSupportModal({
     >
       <KeyboardAvoidingView
         style={styles.modalOuter}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <TouchableWithoutFeedback onPress={handleClose}>
           <View style={styles.modalBackdrop} />
@@ -132,7 +151,11 @@ function ContactSupportModal({
           />
 
           <TouchableOpacity
-            style={[styles.submitButton, !(subject.trim() && message.trim()) && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              !(subject.trim() && message.trim()) &&
+                styles.submitButtonDisabled,
+            ]}
             onPress={handleClose}
             activeOpacity={0.8}
             disabled={!subject.trim() || !message.trim()}
@@ -154,13 +177,17 @@ function ReportUserModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState<Pick<Profile, 'id' | 'display_name' | 'profile_picture_url'> | null>(null);
-  const [reason, setReason] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<Pick<
+    Profile,
+    "id" | "display_name" | "profile_picture_url"
+  > | null>(null);
+  const [reason, setReason] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: searchResults = [], isFetching } = useSearchProfiles(debouncedQuery);
+  const { data: searchResults = [], isFetching } =
+    useSearchProfiles(debouncedQuery);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -171,18 +198,20 @@ function ReportUserModal({
   }, [searchQuery]);
 
   function handleClose() {
-    setSearchQuery('');
-    setDebouncedQuery('');
+    setSearchQuery("");
+    setDebouncedQuery("");
     setSelectedUser(null);
-    setReason('');
+    setReason("");
     Keyboard.dismiss();
     onClose();
   }
 
-  function handleSelectUser(user: Pick<Profile, 'id' | 'display_name' | 'profile_picture_url'>) {
+  function handleSelectUser(
+    user: Pick<Profile, "id" | "display_name" | "profile_picture_url">,
+  ) {
     setSelectedUser(user);
-    setSearchQuery('');
-    setDebouncedQuery('');
+    setSearchQuery("");
+    setDebouncedQuery("");
   }
 
   return (
@@ -194,7 +223,7 @@ function ReportUserModal({
     >
       <KeyboardAvoidingView
         style={styles.modalOuter}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <TouchableWithoutFeedback onPress={handleClose}>
           <View style={styles.modalBackdrop} />
@@ -227,8 +256,15 @@ function ReportUserModal({
               <Text style={styles.chipName} numberOfLines={1}>
                 {selectedUser.display_name}
               </Text>
-              <TouchableOpacity onPress={() => setSelectedUser(null)} activeOpacity={0.7}>
-                <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
+              <TouchableOpacity
+                onPress={() => setSelectedUser(null)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color={Colors.textTertiary}
+                />
               </TouchableOpacity>
             </View>
           ) : (
@@ -245,8 +281,18 @@ function ReportUserModal({
                 autoCorrect={false}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => { setSearchQuery(''); setDebouncedQuery(''); }} activeOpacity={0.7}>
-                  <Ionicons name="close-circle" size={16} color={Colors.textTertiary} />
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchQuery("");
+                    setDebouncedQuery("");
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={Colors.textTertiary}
+                  />
                 </TouchableOpacity>
               )}
             </View>
@@ -277,7 +323,12 @@ function ReportUserModal({
                           style={styles.resultAvatar}
                         />
                       ) : (
-                        <View style={[styles.resultAvatar, styles.resultAvatarPlaceholder]}>
+                        <View
+                          style={[
+                            styles.resultAvatar,
+                            styles.resultAvatarPlaceholder,
+                          ]}
+                        >
                           <Text style={styles.resultAvatarInitial}>
                             {item.display_name.charAt(0).toUpperCase()}
                           </Text>
@@ -305,7 +356,10 @@ function ReportUserModal({
           />
 
           <TouchableOpacity
-            style={[styles.submitButton, !(selectedUser && reason.trim()) && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              !(selectedUser && reason.trim()) && styles.submitButtonDisabled,
+            ]}
             onPress={handleClose}
             activeOpacity={0.8}
             disabled={!selectedUser || !reason.trim()}
@@ -331,16 +385,16 @@ export default function SettingsScreen() {
 
   function openExternal(url: string) {
     Linking.openURL(url).catch(() =>
-      Alert.alert('Error', 'Could not open this link.'),
+      Alert.alert("Error", "Could not open this link."),
     );
   }
 
   function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Sign Out',
-        style: 'destructive',
+        text: "Sign Out",
+        style: "destructive",
         onPress: async () => {
           await supabase.auth.signOut();
           // onAuthStateChange in _layout.tsx fires → nav guard redirects to /(auth)
@@ -351,18 +405,21 @@ export default function SettingsScreen() {
 
   function handleDeleteAccount() {
     Alert.alert(
-      'Delete Account',
-      'This permanently deletes your account and all your data. This cannot be undone.',
+      "Delete Account",
+      "This permanently deletes your account and all your data. This cannot be undone.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
-            const { error } = await supabase.rpc('delete_account');
+            const { error } = await supabase.rpc("delete_account");
             if (error) {
-              console.error('[settings] delete_account error:', error);
-              Alert.alert('Error', 'We encountered an error trying to delete your account. Please try again.');
+              console.error("[settings] delete_account error:", error);
+              Alert.alert(
+                "Error",
+                "We encountered an error trying to delete your account. Please try again.",
+              );
               return;
             }
             await supabase.auth.signOut();
@@ -405,7 +462,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="create-outline"
             label="Edit Profile"
-            onPress={() => router.push('/edit-profile' as any)}
+            onPress={() => router.push("/edit-profile" as any)}
           />
         </Section>
 
@@ -414,7 +471,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="notifications-outline"
             label="Notifications"
-            onPress={() => router.push('/notification-preferences' as any)}
+            onPress={() => router.push("/notification-preferences" as any)}
           />
         </Section>
 
@@ -438,21 +495,23 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="star-outline"
             label="Rate on App Store"
-            onPress={() => openExternal('https://apps.apple.com')}
+            onPress={() => openExternal("https://apps.apple.com")}
             external
           />
           <Separator />
           <SettingsRow
             icon="logo-instagram"
             label="Find us on Instagram"
-            onPress={() => openExternal('https://instagram.com')}
+            onPress={() =>
+              openExternal("https://www.instagram.com/loamtoronto")
+            }
             external
           />
           <Separator />
           <SettingsRow
             icon="logo-tiktok"
             label="Find us on TikTok"
-            onPress={() => openExternal('https://tiktok.com')}
+            onPress={() => openExternal("https://www.tiktok.com/@loamtoronto")}
             external
           />
         </Section>
@@ -495,16 +554,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.lg,
   },
   backButton: {
     width: 36,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   headerTitle: {
     fontSize: Typography.size.md,
@@ -529,7 +588,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     fontWeight: Typography.weight.semibold,
     color: Colors.textTertiary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
     paddingHorizontal: Spacing.xs,
     paddingBottom: Spacing.xs,
@@ -539,20 +598,20 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 
   // Row
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.md,
     minHeight: 56,
   },
   rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   rowLabel: {
@@ -572,11 +631,11 @@ const styles = StyleSheet.create({
   // Modal / Sheet
   modalOuter: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   sheet: {
     backgroundColor: Colors.surface,
@@ -584,13 +643,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: Spacing["2xl"],
     gap: Spacing.md,
   },
   sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.xs,
   },
   sheetTitle: {
@@ -616,7 +675,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonDisabled: {
     opacity: 0.4,
@@ -629,8 +688,8 @@ const styles = StyleSheet.create({
 
   // Contact support / report search
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.md,
@@ -649,17 +708,17 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   searchHint: {
     fontSize: Typography.size.sm,
     color: Colors.textTertiary,
     padding: Spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -671,8 +730,8 @@ const styles = StyleSheet.create({
   },
   resultAvatarPlaceholder: {
     backgroundColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   resultAvatarInitial: {
     fontSize: Typography.size.sm,
@@ -687,8 +746,8 @@ const styles = StyleSheet.create({
 
   // Selected user chip
   selectedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.full,
@@ -696,8 +755,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
+    alignSelf: "flex-start",
+    maxWidth: "100%",
   },
   chipAvatar: {
     width: 24,
@@ -706,8 +765,8 @@ const styles = StyleSheet.create({
   },
   chipAvatarPlaceholder: {
     backgroundColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   chipAvatarInitial: {
     fontSize: Typography.size.xs,
