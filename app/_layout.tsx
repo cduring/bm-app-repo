@@ -8,6 +8,7 @@ import { supabase } from '../src/lib/supabase';
 import { AuthContext } from '../src/context/auth';
 import { RSVPProvider } from '../src/context/rsvp';
 import { useNotifications } from '../src/hooks/useNotifications';
+import { LoadingScreen } from '../src/components/LoadingScreen';
 
 function NotificationSetup({ profileId }: { profileId: string | null }) {
   useNotifications(profileId ?? undefined);
@@ -109,6 +110,17 @@ export default function RootLayout() {
   // Called by the onboarding screen after the profile is successfully created
   function onboardingComplete() {
     setProfileExists(true);
+  }
+
+  const isLoading = session === undefined || (session !== null && profileExists === null);
+
+  if (isLoading) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar style="light" />
+        <LoadingScreen />
+      </GestureHandlerRootView>
+    );
   }
 
   return (
