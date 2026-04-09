@@ -39,49 +39,7 @@ export function useFollowMutation() {
         .from('follows')
         .insert({ follower_id: followerId, following_id: followingId });
       if (error) throw error;
-
-      // Update denormalized counts
-      await Promise.all([
-        supabase.rpc('increment_count', {
-          row_id: followerId,
-          column_name: 'following_count',
-          amount: 1,
-        }).then(({ error }) => {
-          // Fallback if RPC doesn't exist: manual update
-          if (error) {
-            return supabase
-              .from('profiles')
-              .select('following_count')
-              .eq('id', followerId)
-              .single()
-              .then(({ data }) =>
-                supabase
-                  .from('profiles')
-                  .update({ following_count: (data?.following_count ?? 0) + 1 })
-                  .eq('id', followerId),
-              );
-          }
-        }),
-        supabase.rpc('increment_count', {
-          row_id: followingId,
-          column_name: 'follower_count',
-          amount: 1,
-        }).then(({ error }) => {
-          if (error) {
-            return supabase
-              .from('profiles')
-              .select('follower_count')
-              .eq('id', followingId)
-              .single()
-              .then(({ data }) =>
-                supabase
-                  .from('profiles')
-                  .update({ follower_count: (data?.follower_count ?? 0) + 1 })
-                  .eq('id', followingId),
-              );
-          }
-        }),
-      ]);
+      // DB trigger (trg_follow_counts) handles follower_count / following_count updates
     },
     onMutate: async ({ followerId, followingId }) => {
       // Cancel outgoing refetches
@@ -139,52 +97,7 @@ export function useUnfollowMutation() {
         .eq('follower_id', followerId)
         .eq('following_id', followingId);
       if (error) throw error;
-
-      // Update denormalized counts
-      await Promise.all([
-        supabase.rpc('increment_count', {
-          row_id: followerId,
-          column_name: 'following_count',
-          amount: -1,
-        }).then(({ error }) => {
-          if (error) {
-            return supabase
-              .from('profiles')
-              .select('following_count')
-              .eq('id', followerId)
-              .single()
-              .then(({ data }) =>
-                supabase
-                  .from('profiles')
-                  .update({
-                    following_count: Math.max(0, (data?.following_count ?? 0) - 1),
-                  })
-                  .eq('id', followerId),
-              );
-          }
-        }),
-        supabase.rpc('increment_count', {
-          row_id: followingId,
-          column_name: 'follower_count',
-          amount: -1,
-        }).then(({ error }) => {
-          if (error) {
-            return supabase
-              .from('profiles')
-              .select('follower_count')
-              .eq('id', followingId)
-              .single()
-              .then(({ data }) =>
-                supabase
-                  .from('profiles')
-                  .update({
-                    follower_count: Math.max(0, (data?.follower_count ?? 0) - 1),
-                  })
-                  .eq('id', followingId),
-              );
-          }
-        }),
-      ]);
+      // DB trigger (trg_follow_counts) handles follower_count / following_count updates
     },
     onMutate: async ({ followerId, followingId }) => {
       await qc.cancelQueries({ queryKey: ['isFollowing', followerId, followingId] });
