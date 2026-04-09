@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { ErrorState } from "../../src/components/ErrorState";
-import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import {
   ActivityIndicator,
   Alert,
@@ -16,9 +15,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Image } from 'expo-image';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
+import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import { PLATFORM_ICONS } from "../../src/constants/platformIcons";
 import {
   BorderRadius,
@@ -41,8 +41,10 @@ export default function AccountScreen() {
   const userId = session?.user?.id;
   const { data, isLoading, error, refetch } = useProfile(userId);
   const profileId = data?.profile?.id;
-  const { data: hostedEvents = [], refetch: refetchHosted } = useHostedEvents(profileId);
-  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(profileId);
+  const { data: hostedEvents = [], refetch: refetchHosted } =
+    useHostedEvents(profileId);
+  const { data: portfolioImages, refetch: refetchPortfolio } =
+    usePortfolio(profileId);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -68,8 +70,11 @@ export default function AccountScreen() {
         { profileId, imageUri: result.assets[0].uri },
         {
           onError: (err) => {
-            console.error('[account] portfolio upload error:', err);
-            Alert.alert('Upload failed', 'We encountered an error trying to upload your image. Please try again.');
+            console.error("[account] portfolio upload error:", err);
+            Alert.alert(
+              "Upload failed",
+              "We encountered an error trying to upload your image. Please try again.",
+            );
           },
         },
       );
@@ -111,7 +116,7 @@ export default function AccountScreen() {
   const isCreator = profile.profile_type === "CREATOR";
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -134,7 +139,11 @@ export default function AccountScreen() {
             accessibilityLabel="Settings"
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={22} color={Colors.textPrimary} />
+            <Ionicons
+              name="settings-outline"
+              size={22}
+              color={Colors.textPrimary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -316,7 +325,10 @@ export default function AccountScreen() {
                   key={img.id}
                   style={styles.portfolioItem}
                   activeOpacity={0.8}
-                  onPress={() => { setLightboxIndex(idx); setLightboxVisible(true); }}
+                  onPress={() => {
+                    setLightboxIndex(idx);
+                    setLightboxVisible(true);
+                  }}
                   onLongPress={() => handleRemovePortfolioImage(img.id)}
                 >
                   <Image
@@ -457,7 +469,6 @@ export default function AccountScreen() {
             </View>
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );

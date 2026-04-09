@@ -71,9 +71,6 @@ export default function TabLayout() {
             <TouchableOpacity
               style={props.style}
               onPress={() => router.push('/host')}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Host an event"
             >
               {props.children}
             </TouchableOpacity>

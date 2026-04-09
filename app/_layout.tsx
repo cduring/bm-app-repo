@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -57,6 +58,9 @@ export default function RootLayout() {
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION is handled by getSession() above with server validation.
+      // Letting it through here causes a race where null fires before storage loads.
+      if (event === 'INITIAL_SESSION') return;
       setSession(session ?? null);
       if (event === 'SIGNED_OUT') {
         setProfileExists(null);
@@ -114,15 +118,6 @@ export default function RootLayout() {
 
   const isLoading = session === undefined || (session !== null && profileExists === null);
 
-  if (isLoading) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="light" />
-        <LoadingScreen />
-      </GestureHandlerRootView>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
@@ -135,6 +130,11 @@ export default function RootLayout() {
               <Stack.Screen name="settings" options={{ headerShown: false }} />
               <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
             </Stack>
+            {isLoading && (
+              <View style={StyleSheet.absoluteFill}>
+                <LoadingScreen />
+              </View>
+            )}
           </RSVPProvider>
         </QueryClientProvider>
       </AuthContext.Provider>
