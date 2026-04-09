@@ -31,6 +31,7 @@ export interface Profile {
 export interface Niche {
   id: string;
   name: string;
+  color?: string;
 }
 
 export interface ProfileNiche {

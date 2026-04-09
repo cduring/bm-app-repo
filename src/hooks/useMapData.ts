@@ -55,6 +55,7 @@ export function useMapEvents() {
         niches: (row.niches ?? []).map((n: any) => ({
           id: String(n.id),
           name: n.name,
+          color: n.color ?? undefined,
         })),
       })) as EventWithHost[];
     },

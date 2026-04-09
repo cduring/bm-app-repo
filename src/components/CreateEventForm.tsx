@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { EVENT_TYPES } from "../constants/eventTypes";
-import { ALL_NICHES } from "../constants/niches";
+import { useNiches } from "../hooks/useNiches";
 import { BorderRadius, Colors, Spacing, Typography } from "../constants/theme";
 import { useAuth } from "../context/auth";
 import { useProfile } from "../hooks/useProfile";
@@ -421,6 +421,7 @@ export default function CreateEventForm() {
   const userId = session?.user?.id;
   const queryClient = useQueryClient();
   const { data: profileData } = useProfile(userId);
+  const { data: niches = [] } = useNiches();
 
   // Event form state
   const [title, setTitle] = useState("");
@@ -873,14 +874,23 @@ export default function CreateEventForm() {
               <Text style={styles.sectionTitle}>Niches</Text>
               <Text style={styles.nicheHint}>Tag what your event is about</Text>
               <View style={styles.nicheGrid}>
-                {ALL_NICHES.map((niche) => {
+                {niches.map((niche) => {
                   const active = selectedNicheIds.has(niche.id);
+                  const color = niche.color ?? Colors.primary;
                   return (
                     <TouchableOpacity
                       key={niche.id}
                       style={[
                         styles.nicheChip,
-                        active && styles.nicheChipActive,
+                        active && {
+                          borderColor: color,
+                          backgroundColor: color + '25',
+                          shadowColor: color,
+                          shadowOpacity: 0.5,
+                          shadowRadius: 10,
+                          shadowOffset: { width: 0, height: 0 },
+                          elevation: 5,
+                        },
                       ]}
                       onPress={() => toggleNiche(niche.id)}
                       activeOpacity={0.7}
@@ -888,7 +898,7 @@ export default function CreateEventForm() {
                       <Text
                         style={[
                           styles.nicheChipText,
-                          active && styles.nicheChipTextActive,
+                          active && { color, fontWeight: Typography.weight.medium },
                         ]}
                       >
                         {niche.name}
@@ -1482,16 +1492,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceElevated,
   },
-  nicheChipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "20",
-  },
   nicheChipText: {
     fontSize: Typography.size.sm,
     color: Colors.textSecondary,
-  },
-  nicheChipTextActive: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
   },
 });

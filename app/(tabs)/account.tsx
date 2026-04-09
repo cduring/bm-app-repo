@@ -253,7 +253,7 @@ export default function AccountScreen() {
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
               {niches.map((niche) => (
-                <NicheTag key={niche.id} name={niche.name} />
+                <NicheTag key={niche.id} name={niche.name} color={niche.color} />
               ))}
             </View>
           </View>

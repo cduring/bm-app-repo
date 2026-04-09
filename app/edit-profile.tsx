@@ -21,7 +21,7 @@ import { DraggablePinMap } from '../src/components/DraggablePinMap';
 import { useAuth } from '../src/context/auth';
 import { supabase } from '../src/lib/supabase';
 import { useProfile } from '../src/hooks/useProfile';
-import { ALL_NICHES } from '../src/constants/niches';
+import { useNiches } from '../src/hooks/useNiches';
 import { Colors, Typography, Spacing, BorderRadius } from '../src/constants/theme';
 import { PLATFORM_ICONS } from '../src/constants/platformIcons';
 import type { PlatformName, ExternalLink } from '../src/types';
@@ -65,6 +65,7 @@ export default function EditProfileScreen() {
   const userId = session?.user?.id;
   const queryClient = useQueryClient();
   const { data, isLoading } = useProfile(userId);
+  const { data: niches = [] } = useNiches();
 
   // Form state
   const [displayName, setDisplayName] = useState('');
@@ -431,16 +432,28 @@ export default function EditProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.nichesGrid}>
-              {ALL_NICHES.map(niche => {
+              {niches.map(niche => {
                 const selected = selectedNicheIds.includes(niche.id);
+                const color = niche.color ?? Colors.primary;
                 return (
                   <TouchableOpacity
                     key={niche.id}
-                    style={[styles.nicheChip, selected && styles.nicheChipSelected]}
+                    style={[
+                      styles.nicheChip,
+                      selected && {
+                        borderColor: color,
+                        backgroundColor: color + '25',
+                        shadowColor: color,
+                        shadowOpacity: 0.5,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 0 },
+                        elevation: 5,
+                      },
+                    ]}
                     onPress={() => toggleNiche(niche.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.nicheChipText, selected && styles.nicheChipTextSelected]}>
+                    <Text style={[styles.nicheChipText, selected && { color, fontWeight: Typography.weight.medium }]}>
                       {niche.name}
                     </Text>
                   </TouchableOpacity>
@@ -747,17 +760,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceElevated,
   },
-  nicheChipSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + '20',
-  },
   nicheChipText: {
     fontSize: Typography.size.sm,
     color: Colors.textSecondary,
-  },
-  nicheChipTextSelected: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
   },
 
   // Links

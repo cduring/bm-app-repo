@@ -123,15 +123,13 @@ export default function SearchScreen() {
     }
     if (item._type === "profile") {
       return (
-        <TouchableOpacity
-          onPress={() => router.push(`/profile/${item.data.id}`)}
-          style={styles.resultItem}
-          activeOpacity={0.8}
-          accessibilityLabel={`View ${item.data.display_name}'s profile`}
-          accessibilityRole="button"
-        >
-          <ProfileCard profile={item.data} niches={item.data.niches} />
-        </TouchableOpacity>
+        <View style={styles.resultItem}>
+          <ProfileCard
+            profile={item.data}
+            niches={item.data.niches}
+            onPress={() => router.push(`/profile/${item.data.id}`)}
+          />
+        </View>
       );
     }
     if (item._type === "event") {

@@ -47,7 +47,7 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
         {niches.length > 0 && (
           <View style={styles.niches}>
             {visibleNiches.map((niche) => (
-              <NicheTag key={niche.id} name={niche.name} small />
+              <NicheTag key={niche.id} name={niche.name} small color={niche.color} />
             ))}
             {overflowCount > 0 && (
               <Text style={styles.overflow}>+{overflowCount}</Text>

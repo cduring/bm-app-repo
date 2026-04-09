@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DraggablePinMap } from "../../src/components/DraggablePinMap";
-import { ALL_NICHES } from "../../src/constants/niches";
+import { useNiches } from "../../src/hooks/useNiches";
 import {
   BorderRadius,
   Colors,
@@ -77,6 +77,7 @@ async function resolvePostalCode(fsa: string): Promise<{
 
 export default function OnboardingScreen() {
   const { session, onboardingComplete } = useAuth();
+  const { data: niches = [] } = useNiches();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -486,19 +487,31 @@ export default function OnboardingScreen() {
                 Select all that apply. This helps others find you.
               </Text>
               <View style={styles.chipGrid}>
-                {ALL_NICHES.map((niche) => {
+                {niches.map((niche) => {
                   const selected = data.selectedNicheIds.includes(niche.id);
+                  const color = niche.color ?? Colors.primary;
                   return (
                     <TouchableOpacity
                       key={niche.id}
-                      style={[styles.chip, selected && styles.chipSelected]}
+                      style={[
+                        styles.chip,
+                        selected && {
+                          borderColor: color,
+                          backgroundColor: color + '25',
+                          shadowColor: color,
+                          shadowOpacity: 0.5,
+                          shadowRadius: 10,
+                          shadowOffset: { width: 0, height: 0 },
+                          elevation: 5,
+                        },
+                      ]}
                       activeOpacity={0.7}
                       onPress={() => toggleNiche(niche.id)}
                     >
                       <Text
                         style={[
                           styles.chipText,
-                          selected && styles.chipTextSelected,
+                          selected && { color, fontWeight: Typography.weight.medium },
                         ]}
                       >
                         {niche.name}
@@ -822,17 +835,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  chipSelected: {
-    backgroundColor: Colors.chipBackground,
-    borderColor: Colors.chipBorder,
-  },
   chipText: {
     fontSize: Typography.size.sm,
     color: Colors.textSecondary,
     fontWeight: Typography.weight.medium,
-  },
-  chipTextSelected: {
-    color: Colors.chipText,
   },
 
   // Photo

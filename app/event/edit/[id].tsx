@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEventById } from '../../../src/hooks/useEvents';
 import { supabase } from '../../../src/lib/supabase';
-import { ALL_NICHES } from '../../../src/constants/niches';
+import { useNiches } from '../../../src/hooks/useNiches';
 import { EventTypeBadge } from '../../../src/components/EventTypeBadge';
 import { Colors, Typography, Spacing, BorderRadius } from '../../../src/constants/theme';
 import { formatDayDate, formatTimeRange } from '../../../src/utils/date';
@@ -29,6 +29,7 @@ export default function EventEditScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading } = useEventById(id);
   const qc = useQueryClient();
+  const { data: niches = [] } = useNiches();
 
   const [title, setTitle] = useState(event?.title ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
@@ -289,12 +290,24 @@ export default function EventEditScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Niches</Text>
           <View style={styles.nicheGrid}>
-            {ALL_NICHES.map(niche => {
+            {niches.map(niche => {
               const active = selectedNicheIds.has(niche.id);
+              const color = niche.color ?? Colors.primary;
               return (
                 <TouchableOpacity
                   key={niche.id}
-                  style={[styles.nicheChip, active && styles.nicheChipActive]}
+                  style={[
+                    styles.nicheChip,
+                    active && {
+                      borderColor: color,
+                      backgroundColor: color + '25',
+                      shadowColor: color,
+                      shadowOpacity: 0.5,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 0 },
+                      elevation: 5,
+                    },
+                  ]}
                   onPress={() => {
                     setSelectedNicheIds(prev => {
                       const next = new Set(prev);
@@ -305,7 +318,7 @@ export default function EventEditScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.nicheChipText, active && styles.nicheChipTextActive]}>
+                  <Text style={[styles.nicheChipText, active && { color, fontWeight: Typography.weight.medium }]}>
                     {niche.name}
                   </Text>
                 </TouchableOpacity>
@@ -682,16 +695,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceElevated,
   },
-  nicheChipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + '20',
-  },
   nicheChipText: {
     fontSize: Typography.size.sm,
     color: Colors.textSecondary,
-  },
-  nicheChipTextActive: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
   },
 });

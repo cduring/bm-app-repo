@@ -23,7 +23,7 @@ async function fetchProfileData(
   const [nicheResult, linkResult, followerResult, followingResult] = await Promise.all([
     supabase
       .from('profile_niches')
-      .select('niche_id, niches(id, name)')
+      .select('niche_id, niches(id, name, color)')
       .eq('profile_id', profile.id),
     supabase
       .from('external_links')

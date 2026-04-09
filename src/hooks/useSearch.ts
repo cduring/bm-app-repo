@@ -16,7 +16,7 @@ async function searchProfiles(query: string): Promise<ProfileWithNiches[]> {
     .select(`
       *,
       profile_niches (
-        niches (id, name)
+        niches (id, name, color)
       ),
       external_links (*)
     `)
@@ -73,7 +73,7 @@ async function fetchDiscoveryProfiles(): Promise<ProfileWithNiches[]> {
     .select(`
       *,
       profile_niches (
-        niches (id, name)
+        niches (id, name, color)
       ),
       external_links (*)
     `)

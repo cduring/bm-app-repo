@@ -4,12 +4,18 @@ import { Colors, Typography, BorderRadius, Spacing } from '../constants/theme';
 interface NicheTagProps {
   name: string;
   small?: boolean;
+  color?: string;
 }
 
-export function NicheTag({ name, small = false }: NicheTagProps) {
+export function NicheTag({ name, small = false, color }: NicheTagProps) {
+  const chipStyle = color
+    ? { backgroundColor: color + '20', borderColor: color + '70' }
+    : undefined;
+  const textStyle = color ? { color } : undefined;
+
   return (
-    <View style={[styles.chip, small && styles.chipSmall]}>
-      <Text style={[styles.text, small && styles.textSmall]}>{name}</Text>
+    <View style={[styles.chip, small && styles.chipSmall, chipStyle]}>
+      <Text style={[styles.text, small && styles.textSmall, textStyle]}>{name}</Text>
     </View>
   );
 }

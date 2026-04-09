@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
-import { ALL_NICHES } from "../../src/constants/niches";
 import {
   BorderRadius,
   Colors,
@@ -23,6 +22,7 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useEvents } from "../../src/hooks/useEvents";
+import { useNiches } from "../../src/hooks/useNiches";
 import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
 import type { EventWithHost, ProfileWithNiches } from "../../src/types";
 
@@ -62,8 +62,10 @@ function formatEventTime(start_time: string): string {
 
 export default function DiscoverScreen() {
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
-  const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+
+  const { data: niches = [] } = useNiches();
 
   const {
     data: eventsData = [],
@@ -89,23 +91,23 @@ export default function DiscoverScreen() {
         (a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
       );
-    if (selectedNicheId) {
+    if (selectedNicheIds.size > 0) {
       result = result.filter((e) =>
-        e.niches.some((n) => n.id === selectedNicheId),
+        e.niches.some((n) => selectedNicheIds.has(n.id)),
       );
     }
     return result;
-  }, [eventsData, selectedNicheId]);
+  }, [eventsData, selectedNicheIds]);
 
   const filteredCreators = useMemo(() => {
     let result = creatorsData as ProfileWithNiches[];
-    if (selectedNicheId) {
+    if (selectedNicheIds.size > 0) {
       result = result.filter((p) =>
-        p.niches.some((n) => n.id === selectedNicheId),
+        p.niches.some((n) => selectedNicheIds.has(n.id)),
       );
     }
     return result;
-  }, [creatorsData, selectedNicheId]);
+  }, [creatorsData, selectedNicheIds]);
 
   const groupedEvents = useMemo(
     () => groupEventsByDate(filteredEvents),
@@ -140,7 +142,12 @@ export default function DiscoverScreen() {
   }
 
   function toggleNiche(id: string) {
-    setSelectedNicheId((prev) => (prev === id ? null : id));
+    setSelectedNicheIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function renderItem({ item }: { item: ListItem }) {
@@ -238,7 +245,7 @@ export default function DiscoverScreen() {
             {visibleNiches.length > 0 && (
               <View style={styles.creatorNiches}>
                 {visibleNiches.map((n) => (
-                  <NicheTag key={n.id} name={n.name} small />
+                  <NicheTag key={n.id} name={n.name} small color={n.color} />
                 ))}
               </View>
             )}
@@ -271,7 +278,7 @@ export default function DiscoverScreen() {
           />
           <Text style={styles.emptyTitle}>Nothing here yet</Text>
           <Text style={styles.emptySubtitle}>
-            {selectedNicheId
+            {selectedNicheIds.size > 0
               ? "Try a different niche filter"
               : activeView === "EVENTS"
                 ? "No upcoming events right now"
@@ -349,26 +356,30 @@ export default function DiscoverScreen() {
         <TouchableOpacity
           style={[
             filterStyles.nicheChip,
-            selectedNicheId === null && filterStyles.nicheChipActive,
+            selectedNicheIds.size === 0 && filterStyles.nicheChipActive,
           ]}
-          onPress={() => setSelectedNicheId(null)}
+          onPress={() => setSelectedNicheIds(new Set())}
           activeOpacity={0.7}
         >
           <Text
             style={[
               filterStyles.nicheChipText,
-              selectedNicheId === null && filterStyles.nicheChipTextActive,
+              selectedNicheIds.size === 0 && filterStyles.nicheChipTextActive,
             ]}
           >
             All
           </Text>
         </TouchableOpacity>
-        {ALL_NICHES.map((niche) => {
-          const active = selectedNicheId === niche.id;
+        {niches.map((niche) => {
+          const active = selectedNicheIds.has(niche.id);
+          const color = niche.color ?? Colors.primary;
           return (
             <TouchableOpacity
               key={niche.id}
-              style={[filterStyles.nicheChip, active && filterStyles.nicheChipActive]}
+              style={[
+                filterStyles.nicheChip,
+                active && { backgroundColor: color, borderColor: color },
+              ]}
               onPress={() => toggleNiche(niche.id)}
               activeOpacity={0.7}
               accessibilityLabel={`Filter by ${niche.name}`}
@@ -376,7 +387,7 @@ export default function DiscoverScreen() {
               <Text
                 style={[
                   filterStyles.nicheChipText,
-                  active && filterStyles.nicheChipTextActive,
+                  active && { color: Colors.textPrimary },
                 ]}
               >
                 {niche.name}

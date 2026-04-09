@@ -883,27 +883,30 @@ export default function MapScreen() {
                 All
               </Text>
             </TouchableOpacity>
-            {allNiches.map((niche) => (
-              <TouchableOpacity
-                key={niche.id}
-                style={[
-                  styles.nicheChip,
-                  selectedNicheIds.has(niche.id) && styles.nicheChipActive,
-                ]}
-                onPress={() => handleToggleNiche(niche.id)}
-                activeOpacity={0.7}
-              >
-                <Text
+            {allNiches.map((niche) => {
+              const active = selectedNicheIds.has(niche.id);
+              const color = niche.color ?? Colors.primary;
+              return (
+                <TouchableOpacity
+                  key={niche.id}
                   style={[
-                    styles.nicheChipText,
-                    selectedNicheIds.has(niche.id) &&
-                      styles.nicheChipTextActive,
+                    styles.nicheChip,
+                    active && { backgroundColor: color, borderColor: color },
                   ]}
+                  onPress={() => handleToggleNiche(niche.id)}
+                  activeOpacity={0.7}
                 >
-                  {niche.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.nicheChipText,
+                      active && { color: Colors.textPrimary },
+                    ]}
+                  >
+                    {niche.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         }
       </SafeAreaView>
@@ -987,7 +990,7 @@ function CreatorCard({
       {visibleNiches.length > 0 && (
         <View style={styles.cardNiches}>
           {visibleNiches.map((n) => (
-            <NicheTag key={n.id} name={n.name} />
+            <NicheTag key={n.id} name={n.name} color={n.color} />
           ))}
           {overflow > 0 && (
             <View style={styles.nicheOverflowCircle}>
