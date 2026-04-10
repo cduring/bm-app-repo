@@ -62,7 +62,9 @@ function formatEventTime(start_time: string): string {
 
 export default function DiscoverScreen() {
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
-  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: niches = [] } = useNiches();
@@ -82,11 +84,14 @@ export default function DiscoverScreen() {
 
   const isLoading = activeView === "EVENTS" ? loadingEvents : loadingCreators;
   const activeError = activeView === "EVENTS" ? eventsError : creatorsError;
-  const activeRefetch = activeView === "EVENTS" ? refetchEvents : refetchCreators;
+  const activeRefetch =
+    activeView === "EVENTS" ? refetchEvents : refetchCreators;
 
   const filteredEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     let result = (eventsData as EventWithHost[])
-      .slice()
+      .filter((e) => new Date(e.start_time).getTime() >= today.getTime())
       .sort(
         (a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
@@ -186,9 +191,13 @@ export default function DiscoverScreen() {
             <Text style={styles.eventTitle} numberOfLines={2}>
               {event.title}
             </Text>
-            <Text style={styles.eventHost} numberOfLines={1}>
-              {event.host.display_name}
-            </Text>
+            {event.niches.length > 0 && (
+              <View style={styles.eventNiches}>
+                {event.niches.slice(0, 2).map((n) => (
+                  <NicheTag key={n.id} name={n.name} small color={n.color} />
+                ))}
+              </View>
+            )}
             <View style={styles.eventMeta}>
               <Ionicons
                 name="time-outline"
@@ -404,7 +413,11 @@ export default function DiscoverScreen() {
         </View>
       ) : activeError ? (
         <ErrorState
-          message={activeView === "EVENTS" ? "Couldn't load events" : "Couldn't load creators"}
+          message={
+            activeView === "EVENTS"
+              ? "Couldn't load events"
+              : "Couldn't load creators"
+          }
           onRetry={activeRefetch}
         />
       ) : (
@@ -435,6 +448,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'flex-start',
     backgroundColor: Colors.background,
   },
   topRow: {
@@ -537,9 +551,10 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     lineHeight: 20,
   },
-  eventHost: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
+  eventNiches: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
   },
   eventMeta: {
     flexDirection: "row",
@@ -630,8 +645,10 @@ const styles = StyleSheet.create({
 const filterStyles = StyleSheet.create({
   nichesScroll: {
     height: 36,
+    maxHeight: 36,
     marginBottom: Spacing.sm,
     flexShrink: 0,
+    flexGrow: 0,
   },
   nichesRow: {
     paddingHorizontal: Spacing.md,

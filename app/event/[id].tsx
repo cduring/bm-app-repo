@@ -530,7 +530,7 @@ export default function EventDetailScreen() {
           <Text style={styles.sectionTitle}>Hosted By</Text>
           <ProfileCard
             profile={event.host}
-            niches={event.niches}
+            niches={[]}
             onPress={() => router.push(`/profile/${event.host.id}`)}
           />
         </View>
