@@ -24,6 +24,16 @@ export function ProfileCard({ profile, niches, onPress }: ProfileCardProps) {
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityHint={onPress ? "Double tap to view profile" : undefined}
     >
+      {profile.banner_image_url ? (
+        <>
+          <Image
+            source={{ uri: profile.banner_image_url }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          <View style={styles.bannerOverlay} />
+        </>
+      ) : null}
       {profile.profile_picture_url ? (
         <Image
           source={{ uri: profile.profile_picture_url }}
@@ -73,6 +83,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: Spacing.md,
     gap: Spacing.md,
+    overflow: "hidden",
   },
   avatar: {
     width: 56,
@@ -114,6 +125,11 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     alignSelf: "center",
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: BorderRadius.card,
   },
   dot: {
     position: "absolute",

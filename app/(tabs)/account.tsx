@@ -4,10 +4,12 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Dimensions,
   Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -27,6 +29,7 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
+import { supabase } from "../../src/lib/supabase";
 import { useHostedEvents } from "../../src/hooks/useEvents";
 import {
   useAddPortfolioImage,
@@ -46,6 +49,7 @@ export default function AccountScreen() {
   const { data: portfolioImages, refetch: refetchPortfolio } =
     usePortfolio(profileId);
   const [refreshing, setRefreshing] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -91,6 +95,87 @@ export default function AccountScreen() {
         onPress: () => removePortfolioImage.mutate({ imageId, profileId }),
       },
     ]);
+  }
+
+  async function pickAndUploadBanner() {
+    if (!userId) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission denied", "Photo library access is needed to set a cover photo.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingBanner(true);
+    try {
+      const uri = result.assets[0].uri;
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+      const path = `${userId}/banner.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("banners")
+        .upload(path, arrayBuffer, { contentType: "image/jpeg", upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("banners").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ banner_image_url: publicUrl })
+        .eq("user_id", userId);
+      if (updateError) throw updateError;
+      await refetch();
+    } catch {
+      Alert.alert("Upload failed", "Please try again.");
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
+
+  async function removeBanner() {
+    if (!userId) return;
+    setUploadingBanner(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ banner_image_url: null })
+        .eq("user_id", userId);
+      if (updateError) throw updateError;
+      // Also remove the file from storage (best-effort)
+      await supabase.storage.from("banners").remove([`${userId}/banner.jpg`]);
+      await refetch();
+    } catch {
+      Alert.alert("Error", "Could not remove cover photo. Please try again.");
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
+
+  function handleBannerPress() {
+    if (uploadingBanner) return;
+    const options = ["Change Cover Photo", "Remove Cover Photo", "Cancel"];
+    const destructiveButtonIndex = 1;
+    const cancelButtonIndex = 2;
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, destructiveButtonIndex, cancelButtonIndex },
+        (index) => {
+          if (index === 0) pickAndUploadBanner();
+          else if (index === 1) removeBanner();
+        },
+      );
+    } else {
+      Alert.alert("Cover Photo", undefined, [
+        { text: "Change Cover Photo", onPress: pickAndUploadBanner },
+        { text: "Remove Cover Photo", style: "destructive", onPress: removeBanner },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
   }
 
   function openLink(url: string) {
@@ -147,51 +232,98 @@ export default function AccountScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Avatar + Name + Badge */}
-        <View style={styles.avatarSection}>
-          {profile.profile_picture_url ? (
-            <Image
-              source={{ uri: profile.profile_picture_url }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>
-                {profile.display_name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+        {/* Profile header: banner behind avatar + name */}
+        <View style={styles.profileHeader}>
+          {profile.banner_image_url ? (
+            <>
+              <View style={StyleSheet.absoluteFill}>
+                <Image
+                  source={{ uri: profile.banner_image_url }}
+                  style={{ flex: 1 }}
+                  contentFit="cover"
+                />
+              </View>
+              <View style={styles.bannerOverlay} />
+              <TouchableOpacity
+                style={styles.bannerEditBtn}
+                onPress={handleBannerPress}
+                disabled={uploadingBanner}
+                accessibilityLabel="Change cover photo"
+                accessibilityRole="button"
+              >
+                {uploadingBanner ? (
+                  <ActivityIndicator size="small" color={Colors.textPrimary} />
+                ) : (
+                  <Ionicons name="camera-outline" size={18} color={Colors.textPrimary} />
+                )}
+              </TouchableOpacity>
+            </>
+          ) : null}
 
-          <Text style={styles.displayName}>{profile.display_name}</Text>
+          <View style={styles.avatarSection}>
+            {!profile.banner_image_url && (
+              <TouchableOpacity
+                style={styles.addBannerBtn}
+                onPress={pickAndUploadBanner}
+                disabled={uploadingBanner}
+                activeOpacity={0.7}
+                accessibilityLabel="Add cover photo"
+                accessibilityRole="button"
+              >
+                {uploadingBanner ? (
+                  <ActivityIndicator size="small" color={Colors.textTertiary} />
+                ) : (
+                  <>
+                    <Ionicons name="image-outline" size={13} color={Colors.textTertiary} />
+                    <Text style={styles.addBannerText}>Add cover photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+            {profile.profile_picture_url ? (
+              <Image
+                source={{ uri: profile.profile_picture_url }}
+                style={[styles.avatar, profile.banner_image_url ? styles.avatarWithBorder : null]}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder, profile.banner_image_url ? styles.avatarWithBorder : null]}>
+                <Text style={styles.avatarInitial}>
+                  {profile.display_name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
 
-          <View style={styles.metaRow}>
-            <View
-              style={[
-                styles.typeBadge,
-                isCreator ? styles.creatorBadge : styles.businessBadge,
-              ]}
-            >
-              <Text
+            <Text style={styles.displayName}>{profile.display_name}</Text>
+
+            <View style={styles.metaRow}>
+              <View
                 style={[
-                  styles.typeBadgeText,
-                  isCreator
-                    ? styles.creatorBadgeText
-                    : styles.businessBadgeText,
+                  styles.typeBadge,
+                  isCreator ? styles.creatorBadge : styles.businessBadge,
                 ]}
               >
-                {isCreator ? "Creator" : "Business"}
-              </Text>
-            </View>
-            {profile.location_name ? (
-              <View style={styles.locationRow}>
-                <Ionicons
-                  name="location-outline"
-                  size={13}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.locationText}>{profile.location_name}</Text>
+                <Text
+                  style={[
+                    styles.typeBadgeText,
+                    isCreator
+                      ? styles.creatorBadgeText
+                      : styles.businessBadgeText,
+                  ]}
+                >
+                  {isCreator ? "Creator" : "Business"}
+                </Text>
               </View>
-            ) : null}
+              {profile.location_name ? (
+                <View style={styles.locationRow}>
+                  <Ionicons
+                    name="location-outline"
+                    size={13}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.locationText}>{profile.location_name}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -510,17 +642,57 @@ const styles = StyleSheet.create({
     padding: 6,
   },
 
+  // Profile header
+  profileHeader: {
+    overflow: "hidden",
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  bannerEditBtn: {
+    position: "absolute",
+    bottom: Spacing.sm,
+    right: Spacing.sm,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   // Avatar section
   avatarSection: {
     alignItems: "center",
     paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
+  },
+  addBannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+  },
+  addBannerText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: BorderRadius.avatar,
     marginBottom: Spacing.md,
+  },
+  avatarWithBorder: {
+    borderWidth: 3,
+    borderColor: Colors.background,
   },
   avatarPlaceholder: {
     backgroundColor: Colors.surfaceElevated,
@@ -579,7 +751,8 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textSecondary,
   },
 
   // Stats

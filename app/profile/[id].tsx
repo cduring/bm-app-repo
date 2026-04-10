@@ -151,51 +151,66 @@ export default function ViewProfileScreen() {
           />
         }
       >
-        {/* Avatar + Name + Badge */}
-        <View style={styles.avatarSection}>
-          {profile.profile_picture_url ? (
-            <Image
-              source={{ uri: profile.profile_picture_url }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>
-                {profile.display_name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+        {/* Profile header: banner behind avatar + name */}
+        <View style={styles.profileHeader}>
+          {profile.banner_image_url ? (
+            <>
+              <View style={StyleSheet.absoluteFill}>
+                <Image
+                  source={{ uri: profile.banner_image_url }}
+                  style={{ flex: 1 }}
+                  contentFit="cover"
+                />
+              </View>
+              <View style={styles.bannerOverlay} />
+            </>
+          ) : null}
 
-          <Text style={styles.displayName}>{profile.display_name}</Text>
+          <View style={styles.avatarSection}>
+            {profile.profile_picture_url ? (
+              <Image
+                source={{ uri: profile.profile_picture_url }}
+                style={[styles.avatar, profile.banner_image_url ? styles.avatarWithBorder : null]}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder, profile.banner_image_url ? styles.avatarWithBorder : null]}>
+                <Text style={styles.avatarInitial}>
+                  {profile.display_name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
 
-          <View style={styles.metaRow}>
-            <View
-              style={[
-                styles.typeBadge,
-                isCreator ? styles.creatorBadge : styles.businessBadge,
-              ]}
-            >
-              <Text
+            <Text style={styles.displayName}>{profile.display_name}</Text>
+
+            <View style={styles.metaRow}>
+              <View
                 style={[
-                  styles.typeBadgeText,
-                  isCreator
-                    ? styles.creatorBadgeText
-                    : styles.businessBadgeText,
+                  styles.typeBadge,
+                  isCreator ? styles.creatorBadge : styles.businessBadge,
                 ]}
               >
-                {isCreator ? "Creator" : "Business"}
-              </Text>
-            </View>
-            {profile.location_name ? (
-              <View style={styles.locationRow}>
-                <Ionicons
-                  name="location-outline"
-                  size={13}
-                  color={Colors.textTertiary}
-                />
-                <Text style={styles.locationText}>{profile.location_name}</Text>
+                <Text
+                  style={[
+                    styles.typeBadgeText,
+                    isCreator
+                      ? styles.creatorBadgeText
+                      : styles.businessBadgeText,
+                  ]}
+                >
+                  {isCreator ? "Creator" : "Business"}
+                </Text>
               </View>
-            ) : null}
+              {profile.location_name ? (
+                <View style={styles.locationRow}>
+                  <Ionicons
+                    name="location-outline"
+                    size={13}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.locationText}>{profile.location_name}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -402,6 +417,15 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
+  // Profile header
+  profileHeader: {
+    overflow: "hidden",
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+
   // Avatar section
   avatarSection: {
     alignItems: "center",
@@ -414,6 +438,10 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: BorderRadius.avatar,
     marginBottom: Spacing.md,
+  },
+  avatarWithBorder: {
+    borderWidth: 3,
+    borderColor: Colors.background,
   },
   avatarPlaceholder: {
     backgroundColor: Colors.surfaceElevated,
@@ -472,7 +500,8 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textSecondary,
   },
 
   // Stats

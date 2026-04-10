@@ -917,8 +917,19 @@ export default function MapScreen() {
           key={topPinData.data.id}
           visible={selectedPin !== null}
           onDismiss={deselectPin}
-          style={[styles.card, { marginBottom: insets.bottom + Spacing.sm }]}
+          style={[styles.card, { marginBottom: insets.bottom + Spacing.sm, overflow: "hidden" }]}
         >
+          {/* Banner background for creator cards */}
+          {topPinData.type === "CREATOR" && topPinData.data.banner_image_url && (
+            <>
+              <Image
+                source={{ uri: topPinData.data.banner_image_url }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+              <View style={styles.mapBannerOverlay} />
+            </>
+          )}
           {/* Drag handle */}
           <View style={styles.dragHandle} />
           {/* Dismiss button */}
@@ -1298,6 +1309,12 @@ const styles = StyleSheet.create({
   },
   nicheChipTextActive: {
     color: Colors.textPrimary,
+  },
+
+  // Bottom card banner overlay
+  mapBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.60)",
   },
 
   // Bottom card

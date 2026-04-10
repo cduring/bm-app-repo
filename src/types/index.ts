@@ -17,6 +17,7 @@ export interface Profile {
   profile_type: ProfileType;
   years_in_business?: number;
   profile_picture_url?: string;
+  banner_image_url?: string;
   location_name?: string;
   location_fsa?: string;
   latitude?: number;
