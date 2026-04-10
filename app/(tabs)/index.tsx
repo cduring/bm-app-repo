@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DiscoverCreatorRow } from "../../src/components/DiscoverCreatorRow";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import {
@@ -222,59 +223,7 @@ export default function DiscoverScreen() {
     }
 
     if (item._type === "creator") {
-      const profile = item.data;
-      const visibleNiches = profile.niches.slice(0, 2);
-      return (
-        <TouchableOpacity
-          style={styles.creatorRow}
-          onPress={() => router.push(`/profile/${profile.id}`)}
-          activeOpacity={0.75}
-          accessibilityLabel={`${profile.display_name}, ${profile.profile_type === "CREATOR" ? "Creator" : "Business"}`}
-          accessibilityRole="button"
-        >
-          {profile.profile_picture_url ? (
-            <Image
-              source={{ uri: profile.profile_picture_url }}
-              style={styles.creatorAvatar}
-              contentFit="cover"
-            />
-          ) : (
-            <View
-              style={[styles.creatorAvatar, styles.creatorAvatarPlaceholder]}
-            >
-              <Text style={styles.creatorAvatarInitial}>
-                {profile.display_name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <View style={styles.creatorInfo}>
-            <Text style={styles.creatorName} numberOfLines={1}>
-              {profile.display_name}
-            </Text>
-            {visibleNiches.length > 0 && (
-              <View style={styles.creatorNiches}>
-                {visibleNiches.map((n) => (
-                  <NicheTag key={n.id} name={n.name} small color={n.color} />
-                ))}
-              </View>
-            )}
-            <View style={styles.creatorMeta}>
-              <Ionicons
-                name="location-outline"
-                size={12}
-                color={Colors.textTertiary}
-              />
-              <Text style={styles.creatorMetaText}>
-                {profile.location_name ?? "Toronto"}
-              </Text>
-              <Text style={styles.creatorMetaDot}>·</Text>
-              <Text style={styles.creatorMetaText}>
-                {profile.follower_count} followers
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      );
+      return <DiscoverCreatorRow profile={item.data} />;
     }
 
     if (item._type === "empty") {
@@ -567,60 +516,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     flexShrink: 1,
-  },
-  // Creator row
-  creatorRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  creatorAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.avatar,
-    flexShrink: 0,
-  },
-  creatorAvatarPlaceholder: {
-    backgroundColor: Colors.surfaceElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  creatorAvatarInitial: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
-    color: Colors.primary,
-  },
-  creatorInfo: {
-    flex: 1,
-    gap: 4,
-    paddingTop: 2,
-  },
-  creatorName: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-  },
-  creatorNiches: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.xs,
-  },
-  creatorMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2,
-  },
-  creatorMetaText: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-  },
-  creatorMetaDot: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
   },
   // Empty state
   emptyState: {
