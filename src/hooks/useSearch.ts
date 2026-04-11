@@ -41,6 +41,7 @@ async function searchEvents(query: string): Promise<EventWithHost[]> {
     .from('events_with_host')
     .select('*')
     .eq('status', 'PUBLISHED')
+    .gt('end_time', new Date().toISOString())
     .or(`title.ilike.%${trimmed}%,description.ilike.%${trimmed}%,address_name.ilike.%${trimmed}%`)
     .order('start_time', { ascending: true })
     .limit(20);

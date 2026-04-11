@@ -9,6 +9,7 @@ async function fetchEvents(): Promise<EventWithHost[]> {
     .from('events_with_host')
     .select('*')
     .eq('status', 'PUBLISHED')
+    .gt('end_time', new Date().toISOString())
     .order('start_time', { ascending: true });
 
   if (error) throw error;

@@ -45,6 +45,7 @@ export function useMapEvents() {
         .from('events_with_host')
         .select('*')
         .eq('status', 'PUBLISHED')
+        .gt('end_time', new Date().toISOString())
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
         .order('start_time', { ascending: true });

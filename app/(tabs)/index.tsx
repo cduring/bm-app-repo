@@ -89,14 +89,7 @@ export default function DiscoverScreen() {
     activeView === "EVENTS" ? refetchEvents : refetchCreators;
 
   const filteredEvents = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let result = (eventsData as EventWithHost[])
-      .filter((e) => new Date(e.start_time).getTime() >= today.getTime())
-      .sort(
-        (a, b) =>
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
-      );
+    let result = eventsData as EventWithHost[];
     if (selectedNicheIds.size > 0) {
       result = result.filter((e) =>
         e.niches.some((n) => selectedNicheIds.has(n.id)),
