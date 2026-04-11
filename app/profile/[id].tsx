@@ -19,7 +19,7 @@ import { EventCard } from "../../src/components/EventCard";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NicheTag } from "../../src/components/NicheTag";
-import { PLATFORM_ICONS } from "../../src/constants/platformIcons";
+import { PlatformIcon } from "../../src/components/PlatformIcon";
 import {
   BorderRadius,
   Colors,
@@ -286,8 +286,8 @@ export default function ViewProfileScreen() {
                   onPress={() => openLink(link.url)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={PLATFORM_ICONS[link.platform_name] as any}
+                  <PlatformIcon
+                    platform={link.platform_name}
                     size={18}
                     color={Colors.primary}
                   />

@@ -21,7 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
-import { PLATFORM_ICONS } from "../../src/constants/platformIcons";
+import { PlatformIcon } from "../../src/components/PlatformIcon";
 import {
   BorderRadius,
   Colors,
@@ -403,8 +403,8 @@ export default function AccountScreen() {
                   onPress={() => openLink(link.url)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={PLATFORM_ICONS[link.platform_name] as any}
+                  <PlatformIcon
+                    platform={link.platform_name}
                     size={18}
                     color={Colors.primary}
                   />

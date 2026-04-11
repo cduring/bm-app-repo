@@ -29,7 +29,7 @@ import {
   Spacing,
   BorderRadius,
 } from "../src/constants/theme";
-import { PLATFORM_ICONS } from "../src/constants/platformIcons";
+import { PlatformIcon } from "../src/components/PlatformIcon";
 import type { PlatformName } from "../src/types";
 
 /** Geocodes a Canadian FSA via Mapbox Places and returns a privacy-jittered pin. */
@@ -64,10 +64,12 @@ const PLATFORMS: PlatformName[] = [
   "Instagram",
   "TikTok",
   "YouTube",
-  "Twitter",
+  "X",
+  "Twitch",
   "Spotify",
   "SoundCloud",
   "LinkedIn",
+  "Pinterest",
   "Eventbrite",
   "Website",
   "Other",
@@ -627,8 +629,8 @@ export default function EditProfileScreen() {
 
             {links.map((link, index) => (
               <View key={index} style={styles.linkRow}>
-                <Ionicons
-                  name={PLATFORM_ICONS[link.platform_name] as any}
+                <PlatformIcon
+                  platform={link.platform_name}
                   size={18}
                   color={Colors.primary}
                 />
@@ -667,8 +669,8 @@ export default function EditProfileScreen() {
                       onPress={() => setNewPlatform(platform)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons
-                        name={PLATFORM_ICONS[platform] as any}
+                      <PlatformIcon
+                        platform={platform}
                         size={14}
                         color={
                           newPlatform === platform

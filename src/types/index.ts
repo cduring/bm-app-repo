@@ -46,10 +46,12 @@ export type PlatformName =
   | 'Instagram'
   | 'TikTok'
   | 'YouTube'
-  | 'Twitter'
+  | 'X'
+  | 'Twitch'
   | 'Spotify'
   | 'SoundCloud'
   | 'LinkedIn'
+  | 'Pinterest'
   | 'Eventbrite'
   | 'Website'
   | 'Other';
