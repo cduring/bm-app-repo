@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   Switch,
   Text,
@@ -10,9 +12,67 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BorderRadius, Colors, Spacing, Typography } from '../src/constants/theme';
+import { useAuth } from '../src/context/auth';
+import { useProfile } from '../src/hooks/useProfile';
+import { supabase } from '../src/lib/supabase';
+import {
+  registerForPushNotifications,
+  cancelAllLocalNotifications,
+} from '../src/hooks/useNotifications';
 
 export default function NotificationPreferencesScreen() {
+  const { session } = useAuth();
+  const userId = session?.user?.id;
+  const { data, isLoading } = useProfile(userId);
+  const profile = data?.profile;
+  const queryClient = useQueryClient();
+
   const [allowNotifications, setAllowNotifications] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Sync toggle with DB value once profile loads
+  useEffect(() => {
+    if (profile) {
+      setAllowNotifications(profile.notifications_enabled ?? true);
+    }
+  }, [profile?.notifications_enabled]);
+
+  async function handleToggle(value: boolean) {
+    if (!profile) return;
+    setAllowNotifications(value);
+    setSaving(true);
+    try {
+      await supabase
+        .from('profiles')
+        .update({ notifications_enabled: value })
+        .eq('id', profile.id);
+
+      if (value) {
+        // Re-register for push and save new token
+        const token = await registerForPushNotifications();
+        if (token) {
+          await supabase
+            .from('profiles')
+            .update({ push_token: token })
+            .eq('id', profile.id);
+        }
+      } else {
+        // Clear push token and cancel all local reminders
+        await supabase
+          .from('profiles')
+          .update({ push_token: null })
+          .eq('id', profile.id);
+        await cancelAllLocalNotifications();
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+    } catch (_) {
+      // Revert on error
+      setAllowNotifications(!value);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -33,23 +93,30 @@ export default function NotificationPreferencesScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
-              <Text style={styles.rowLabel}>Allow Notifications</Text>
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} />
+        ) : (
+          <>
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <View style={styles.rowLeft}>
+                  <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
+                  <Text style={styles.rowLabel}>Allow Notifications</Text>
+                </View>
+                <Switch
+                  value={allowNotifications}
+                  onValueChange={handleToggle}
+                  disabled={saving}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.textPrimary}
+                />
+              </View>
             </View>
-            <Switch
-              value={allowNotifications}
-              onValueChange={setAllowNotifications}
-              trackColor={{ false: Colors.border, true: Colors.primary }}
-              thumbColor={Colors.textPrimary}
-            />
-          </View>
-        </View>
-        <Text style={styles.hint}>
-          Control whether Loam can send you push notifications about events and activity.
-        </Text>
+            <Text style={styles.hint}>
+              Control whether BrandMe can send you push notifications about events and activity.
+            </Text>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );

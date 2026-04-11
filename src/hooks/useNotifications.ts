@@ -23,7 +23,7 @@ try {
   // Native module not found (Expo Go) — notifications disabled
 }
 
-async function registerForPushNotifications(): Promise<string | null> {
+export async function registerForPushNotifications(): Promise<string | null> {
   if (!Notifications) return null;
   try {
     if (Platform.OS === 'android') {
@@ -59,7 +59,7 @@ async function registerForPushNotifications(): Promise<string | null> {
 }
 
 /** Store the Expo push token on the user's profile row in Supabase */
-async function savePushToken(profileId: string, token: string) {
+async function savePushToken(profileId: string, token: string | null) {
   await supabase
     .from('profiles')
     .update({ push_token: token })
@@ -108,11 +108,22 @@ export async function cancelEventReminder(eventId: string) {
   } catch (_) {}
 }
 
+/** Cancel all scheduled local notifications (used when user disables notifications) */
+export async function cancelAllLocalNotifications() {
+  if (!Notifications) return;
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (_) {}
+}
+
 /**
- * Hook: registers for push notifications on mount, saves token to Supabase,
+ * Hook: registers for push notifications on mount (if enabled), saves token to Supabase,
  * and wires up a tap listener that navigates to the relevant screen.
  */
-export function useNotifications(profileId: string | undefined) {
+export function useNotifications(
+  profileId: string | undefined,
+  notificationsEnabled: boolean,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const responseListener = useRef<any>(null);
 
@@ -120,9 +131,15 @@ export function useNotifications(profileId: string | undefined) {
     if (!Notifications) return;
 
     if (profileId) {
-      registerForPushNotifications().then(token => {
-        if (token) savePushToken(profileId, token);
-      });
+      if (notificationsEnabled) {
+        registerForPushNotifications().then(token => {
+          if (token) savePushToken(profileId, token);
+        });
+      } else {
+        // User disabled notifications — clear push token and cancel local reminders
+        savePushToken(profileId, null);
+        cancelAllLocalNotifications();
+      }
     }
 
     try {
@@ -144,5 +161,5 @@ export function useNotifications(profileId: string | undefined) {
     return () => {
       responseListener.current?.remove();
     };
-  }, [profileId]);
+  }, [profileId, notificationsEnabled]);
 }

@@ -11,8 +11,8 @@ import { RSVPProvider } from '../src/context/rsvp';
 import { useNotifications } from '../src/hooks/useNotifications';
 import { LoadingScreen } from '../src/components/LoadingScreen';
 
-function NotificationSetup({ profileId }: { profileId: string | null }) {
-  useNotifications(profileId ?? undefined);
+function NotificationSetup({ profileId, notificationsEnabled }: { profileId: string | null; notificationsEnabled: boolean }) {
+  useNotifications(profileId ?? undefined, notificationsEnabled);
   return null;
 }
 
@@ -30,6 +30,7 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const router = useRouter();
   const segments = useSegments();
 
@@ -80,12 +81,13 @@ export default function RootLayout() {
 
     supabase
       .from('profiles')
-      .select('id')
+      .select('id, notifications_enabled')
       .eq('user_id', userId)
       .maybeSingle()
       .then(({ data }) => {
         setProfileExists(!!data);
         setProfileId(data?.id ?? null);
+        setNotificationsEnabled(data?.notifications_enabled ?? true);
       });
   }, [userId]);
 
@@ -123,12 +125,13 @@ export default function RootLayout() {
       <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
         <QueryClientProvider client={queryClient}>
           <RSVPProvider>
-            <NotificationSetup profileId={profileId} />
+            <NotificationSetup profileId={profileId} notificationsEnabled={notificationsEnabled} />
             <StatusBar style="light" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="host" options={{ presentation: 'fullScreenModal', headerShown: false }} />
               <Stack.Screen name="settings" options={{ headerShown: false }} />
               <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
+              <Stack.Screen name="notifications" options={{ headerShown: false, animation: 'slide_from_left' }} />
             </Stack>
             {isLoading && (
               <View style={StyleSheet.absoluteFill}>

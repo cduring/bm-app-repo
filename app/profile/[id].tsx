@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,14 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Image } from 'expo-image';
-import { useCallback, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
 import { EventCard } from "../../src/components/EventCard";
-import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { NicheTag } from "../../src/components/NicheTag";
 import { PlatformIcon } from "../../src/components/PlatformIcon";
+import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import {
   BorderRadius,
   Colors,
@@ -27,12 +27,12 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
+import { useHostedEvents } from "../../src/hooks/useEvents";
 import {
   useFollowMutation,
   useIsFollowing,
   useUnfollowMutation,
 } from "../../src/hooks/useFollow";
-import { useHostedEvents } from "../../src/hooks/useEvents";
 import { usePortfolio } from "../../src/hooks/usePortfolio";
 import { useProfile, useProfileById } from "../../src/hooks/useProfile";
 
@@ -42,7 +42,12 @@ export default function ViewProfileScreen() {
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
 
-  const { data: supabaseData, isLoading, error: profileError, refetch: refetchProfile } = useProfileById(id);
+  const {
+    data: supabaseData,
+    isLoading,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useProfileById(id);
   const { data: isFollowing, isLoading: followLoading } = useIsFollowing(
     myProfileId,
     id,
@@ -50,8 +55,7 @@ export default function ViewProfileScreen() {
   const followMutation = useFollowMutation();
   const unfollowMutation = useUnfollowMutation();
 
-  const isOwnProfile =
-    supabaseData?.profile?.user_id === session?.user?.id;
+  const isOwnProfile = supabaseData?.profile?.user_id === session?.user?.id;
   const isMutating = followMutation.isPending || unfollowMutation.isPending;
 
   function handleFollowToggle() {
@@ -64,7 +68,8 @@ export default function ViewProfileScreen() {
   }
 
   const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(id);
-  const { data: hostedEventsRaw = [], refetch: refetchHosted } = useHostedEvents(id);
+  const { data: hostedEventsRaw = [], refetch: refetchHosted } =
+    useHostedEvents(id);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -116,9 +121,7 @@ export default function ViewProfileScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>
-          {profile.display_name}
-        </Text>
+        <View style={{ flex: 1 }} />
         {/* Follow button — hidden on own profile */}
         {!isOwnProfile && (
           <TouchableOpacity
@@ -170,10 +173,19 @@ export default function ViewProfileScreen() {
             {profile.profile_picture_url ? (
               <Image
                 source={{ uri: profile.profile_picture_url }}
-                style={[styles.avatar, profile.banner_image_url ? styles.avatarWithBorder : null]}
+                style={[
+                  styles.avatar,
+                  profile.banner_image_url ? styles.avatarWithBorder : null,
+                ]}
               />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder, profile.banner_image_url ? styles.avatarWithBorder : null]}>
+              <View
+                style={[
+                  styles.avatar,
+                  styles.avatarPlaceholder,
+                  profile.banner_image_url ? styles.avatarWithBorder : null,
+                ]}
+              >
                 <Text style={styles.avatarInitial}>
                   {profile.display_name.charAt(0).toUpperCase()}
                 </Text>
@@ -207,7 +219,9 @@ export default function ViewProfileScreen() {
                     size={13}
                     color={Colors.textTertiary}
                   />
-                  <Text style={styles.locationText}>{profile.location_name}</Text>
+                  <Text style={styles.locationText}>
+                    {profile.location_name}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -268,7 +282,11 @@ export default function ViewProfileScreen() {
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
               {niches.map((niche) => (
-                <NicheTag key={niche.id} name={niche.name} color={niche.color} />
+                <NicheTag
+                  key={niche.id}
+                  name={niche.name}
+                  color={niche.color}
+                />
               ))}
             </View>
           </View>
@@ -313,7 +331,10 @@ export default function ViewProfileScreen() {
                   key={img.id}
                   style={styles.portfolioItem}
                   activeOpacity={0.85}
-                  onPress={() => { setLightboxIndex(idx); setLightboxVisible(true); }}
+                  onPress={() => {
+                    setLightboxIndex(idx);
+                    setLightboxVisible(true);
+                  }}
                 >
                   <Image
                     source={{ uri: img.image_url }}
@@ -337,7 +358,10 @@ export default function ViewProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Events</Text>
             {hostedEvents.map((event) => (
-              <View key={event.id} style={event.status === "CANCELLED" && styles.cancelledCard}>
+              <View
+                key={event.id}
+                style={event.status === "CANCELLED" && styles.cancelledCard}
+              >
                 <EventCard
                   event={event}
                   onPress={() => router.push(`/event/${event.id}` as any)}

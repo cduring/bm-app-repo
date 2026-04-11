@@ -90,6 +90,16 @@ export function formatRecurrenceLabel(rule: string | null): string | null {
   return null;
 }
 
+/** "2h ago" | "just now" | "3d ago" etc. */
+export function timeAgo(iso: string, now: Date = new Date()): string {
+  const diff = Math.floor((now.getTime() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return formatShortDate(iso);
+}
+
 /** "Happening now" | "Today" | "Tomorrow" | "In 3 days" | "Mar 15" */
 export function formatRelativeDate(startIso: string, endIso?: string, now: Date = new Date()): string {
   const start = new Date(startIso);

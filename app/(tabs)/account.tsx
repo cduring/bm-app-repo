@@ -20,8 +20,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
-import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import { PlatformIcon } from "../../src/components/PlatformIcon";
+import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
 import {
   BorderRadius,
   Colors,
@@ -29,14 +29,15 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
-import { supabase } from "../../src/lib/supabase";
 import { useHostedEvents } from "../../src/hooks/useEvents";
+import { useUnreadCount } from "../../src/hooks/useNotificationsData";
 import {
   useAddPortfolioImage,
   usePortfolio,
   useRemovePortfolioImage,
 } from "../../src/hooks/usePortfolio";
 import { useProfile } from "../../src/hooks/useProfile";
+import { supabase } from "../../src/lib/supabase";
 import { formatDayDate } from "../../src/utils/date";
 
 export default function AccountScreen() {
@@ -44,6 +45,7 @@ export default function AccountScreen() {
   const userId = session?.user?.id;
   const { data, isLoading, error, refetch } = useProfile(userId);
   const profileId = data?.profile?.id;
+  const { data: unreadCount = 0 } = useUnreadCount(profileId);
   const { data: hostedEvents = [], refetch: refetchHosted } =
     useHostedEvents(profileId);
   const { data: portfolioImages, refetch: refetchPortfolio } =
@@ -101,7 +103,10 @@ export default function AccountScreen() {
     if (!userId) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission denied", "Photo library access is needed to set a cover photo.");
+      Alert.alert(
+        "Permission denied",
+        "Photo library access is needed to set a cover photo.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -121,7 +126,9 @@ export default function AccountScreen() {
         .from("banners")
         .upload(path, arrayBuffer, { contentType: "image/jpeg", upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("banners").getPublicUrl(path);
+      const { data: urlData } = supabase.storage
+        .from("banners")
+        .getPublicUrl(path);
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const { error: updateError } = await supabase
         .from("profiles")
@@ -172,7 +179,11 @@ export default function AccountScreen() {
     } else {
       Alert.alert("Cover Photo", undefined, [
         { text: "Change Cover Photo", onPress: pickAndUploadBanner },
-        { text: "Remove Cover Photo", style: "destructive", onPress: removeBanner },
+        {
+          text: "Remove Cover Photo",
+          style: "destructive",
+          onPress: removeBanner,
+        },
         { text: "Cancel", style: "cancel" },
       ]);
     }
@@ -216,9 +227,37 @@ export default function AccountScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Account</Text>
           <TouchableOpacity
-            style={styles.gearButton}
+            style={styles.headerIconButton}
+            onPress={() => router.push("/notifications" as any)}
+            activeOpacity={0.7}
+            accessibilityLabel={
+              unreadCount > 0
+                ? `Notifications, ${unreadCount} unread`
+                : "Notifications"
+            }
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={26}
+              color={Colors.textPrimary}
+            />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <Image
+            source={require("../../assets/images/loam-wordmark.png")}
+            style={styles.wordmark}
+            contentFit="contain"
+          />
+          <TouchableOpacity
+            style={styles.headerIconButton}
             onPress={() => router.push("/settings" as any)}
             activeOpacity={0.7}
             accessibilityLabel="Settings"
@@ -226,7 +265,7 @@ export default function AccountScreen() {
           >
             <Ionicons
               name="settings-outline"
-              size={22}
+              size={26}
               color={Colors.textPrimary}
             />
           </TouchableOpacity>
@@ -254,7 +293,11 @@ export default function AccountScreen() {
                 {uploadingBanner ? (
                   <ActivityIndicator size="small" color={Colors.textPrimary} />
                 ) : (
-                  <Ionicons name="camera-outline" size={18} color={Colors.textPrimary} />
+                  <Ionicons
+                    name="camera-outline"
+                    size={18}
+                    color={Colors.textPrimary}
+                  />
                 )}
               </TouchableOpacity>
             </>
@@ -274,7 +317,11 @@ export default function AccountScreen() {
                   <ActivityIndicator size="small" color={Colors.textTertiary} />
                 ) : (
                   <>
-                    <Ionicons name="image-outline" size={13} color={Colors.textTertiary} />
+                    <Ionicons
+                      name="image-outline"
+                      size={13}
+                      color={Colors.textTertiary}
+                    />
                     <Text style={styles.addBannerText}>Add cover photo</Text>
                   </>
                 )}
@@ -283,10 +330,19 @@ export default function AccountScreen() {
             {profile.profile_picture_url ? (
               <Image
                 source={{ uri: profile.profile_picture_url }}
-                style={[styles.avatar, profile.banner_image_url ? styles.avatarWithBorder : null]}
+                style={[
+                  styles.avatar,
+                  profile.banner_image_url ? styles.avatarWithBorder : null,
+                ]}
               />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder, profile.banner_image_url ? styles.avatarWithBorder : null]}>
+              <View
+                style={[
+                  styles.avatar,
+                  styles.avatarPlaceholder,
+                  profile.banner_image_url ? styles.avatarWithBorder : null,
+                ]}
+              >
                 <Text style={styles.avatarInitial}>
                   {profile.display_name.charAt(0).toUpperCase()}
                 </Text>
@@ -320,7 +376,9 @@ export default function AccountScreen() {
                     size={13}
                     color={Colors.textTertiary}
                   />
-                  <Text style={styles.locationText}>{profile.location_name}</Text>
+                  <Text style={styles.locationText}>
+                    {profile.location_name}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -385,7 +443,11 @@ export default function AccountScreen() {
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
               {niches.map((niche) => (
-                <NicheTag key={niche.id} name={niche.name} color={niche.color} />
+                <NicheTag
+                  key={niche.id}
+                  name={niche.name}
+                  color={niche.color}
+                />
               ))}
             </View>
           </View>
@@ -631,15 +693,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
-  headerTitle: {
-    fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.bold,
-    color: Colors.textPrimary,
+  wordmark: {
+    flex: 1,
+    height: 50,
   },
-  gearButton: {
+  headerIconButton: {
     padding: 6,
+  },
+  badge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: Typography.weight.bold,
+    lineHeight: 12,
   },
 
   // Profile header

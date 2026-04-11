@@ -24,6 +24,7 @@ export interface Profile {
   longitude?: number;
   follower_count: number;
   following_count: number;
+  notifications_enabled: boolean;
   created_at: string;
 }
 
@@ -148,6 +149,27 @@ export interface PortfolioImage {
   image_url: string;
   display_order: number;
   created_at: string;
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'new_follower'
+  | 'new_rsvp_going'
+  | 'new_rsvp_requested'
+  | 'rsvp_approved'
+  | 'rsvp_declined';
+
+export interface AppNotification {
+  id: string;
+  recipient_id: string;
+  type: NotificationType;
+  actor_id: string | null;
+  event_id: string | null;
+  read_at: string | null;
+  created_at: string;
+  actor?: Profile;
+  event?: Pick<Event, 'id' | 'title' | 'cover_image_url'>;
 }
 
 // ─── Enriched types (joined queries) ─────────────────────────────────────────
