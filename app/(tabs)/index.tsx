@@ -202,12 +202,12 @@ export default function DiscoverScreen() {
                 {formatEventTime(event.start_time)}
               </Text>
               <Ionicons
-                name="location-outline"
+                name={event.privacy === "EXCLUSIVE" ? "lock-closed-outline" : "location-outline"}
                 size={12}
                 color={Colors.textTertiary}
               />
               <Text style={styles.eventMetaText} numberOfLines={1}>
-                {event.address_name}
+                {event.privacy === "EXCLUSIVE" ? "Location hidden" : event.address_name}
               </Text>
             </View>
           </View>

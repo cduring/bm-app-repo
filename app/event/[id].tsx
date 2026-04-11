@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -11,14 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Image } from 'expo-image';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EventTypeBadge } from "../../src/components/EventTypeBadge";
-import { EVENT_TYPE_COLOR } from "../../src/constants/eventTypes";
 import { ErrorState } from "../../src/components/ErrorState";
+import { EventTypeBadge } from "../../src/components/EventTypeBadge";
 import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import { NicheTag } from "../../src/components/NicheTag";
 import { ProfileCard } from "../../src/components/ProfileCard";
+import { EVENT_TYPE_COLOR } from "../../src/constants/eventTypes";
 import {
   BorderRadius,
   Colors,
@@ -39,7 +39,12 @@ import {
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
-  const { data: event, isLoading, error: eventError, refetch: refetchEvent } = useEventById(id);
+  const {
+    data: event,
+    isLoading,
+    error: eventError,
+    refetch: refetchEvent,
+  } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -59,7 +64,7 @@ export default function EventDetailScreen() {
 
   const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
   const displayedInterestedCount = event
-    ? event.privacy === 'EXCLUSIVE'
+    ? event.privacy === "EXCLUSIVE"
       ? event.interested_count + (event.requested_count ?? 0)
       : event.interested_count
     : 0;
@@ -114,6 +119,8 @@ export default function EventDetailScreen() {
   const isCancelled = event.status === "CANCELLED";
   const pendingCount = id ? getPendingCount(id) : 0;
   const requestors = id ? (eventRequestors[id] ?? []) : [];
+  const isAddressVisible =
+    event.privacy === "PUBLIC" || isHost || rsvp === "GOING";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -230,11 +237,22 @@ export default function EventDetailScreen() {
           <EventTypeBadge eventType={event.event_type} />
           <View style={styles.metaRow}>
             <Ionicons
-              name="location-outline"
+              name={
+                isAddressVisible ? "location-outline" : "lock-closed-outline"
+              }
               size={15}
               color={Colors.textTertiary}
             />
-            <Text style={styles.metaText}>{event.address_name}</Text>
+            <Text
+              style={[
+                styles.metaText,
+                !isAddressVisible && styles.metaTextDimmed,
+              ]}
+            >
+              {isAddressVisible
+                ? event.address_name
+                : "Location revealed once approved"}
+            </Text>
           </View>
           <View style={styles.metaRow}>
             <Ionicons
@@ -547,7 +565,11 @@ export default function EventDetailScreen() {
             <Text style={styles.sectionTitle}>Niches</Text>
             <View style={styles.niches}>
               {event.niches.map((niche) => (
-                <NicheTag key={niche.id} name={niche.name} color={niche.color} />
+                <NicheTag
+                  key={niche.id}
+                  name={niche.name}
+                  color={niche.color}
+                />
               ))}
             </View>
           </View>
@@ -556,11 +578,41 @@ export default function EventDetailScreen() {
         {/* Map Preview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
-          <LocationMapPreview
-            latitude={event.latitude}
-            longitude={event.longitude}
-            height={180}
-          />
+          {isAddressVisible ? (
+            <LocationMapPreview
+              latitude={event.latitude}
+              longitude={event.longitude}
+              height={180}
+            />
+          ) : (
+            <View style={styles.locationPlaceholder}>
+              <View style={styles.locationMapDimmed} pointerEvents="none">
+                <LocationMapPreview
+                  latitude={event.latitude}
+                  longitude={event.longitude}
+                  height={180}
+                />
+              </View>
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: "rgba(255,255,255,0.08)" },
+                ]}
+              />
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: "rgba(10,10,10,0.72)" },
+                ]}
+              />
+              <View style={styles.locationOverlay}>
+                <Ionicons name="lock-closed" size={28} color="#fff" />
+                <Text style={styles.locationPlaceholderText}>
+                  Location is revealed once your invite is accepted
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -686,6 +738,10 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     color: Colors.textSecondary,
     flex: 1,
+  },
+  metaTextDimmed: {
+    color: Colors.textTertiary,
+    fontStyle: "italic",
   },
   recurrenceText: {
     fontSize: Typography.size.sm,
@@ -876,5 +932,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
+  },
+  locationPlaceholder: {
+    height: 180,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+  },
+  locationMapDimmed: {
+    opacity: 0.15,
+  },
+  locationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  locationPlaceholderText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+    textAlign: "center",
+    paddingHorizontal: Spacing.lg,
   },
 });

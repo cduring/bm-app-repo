@@ -105,6 +105,16 @@ function clusterPoints<T>(
   return groups;
 }
 
+// Returns a consistent ~300m coordinate offset seeded from the event ID.
+// Used to displace exclusive event pins so the exact venue isn't pinpointable.
+function getExclusiveOffset(id: string): [number, number] {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  const dlat = ((h & 0xff) - 128) / 42000;
+  const dlng = (((h >> 8) & 0xff) - 128) / 42000;
+  return [dlat, dlng];
+}
+
 function CreatorPinComponent({
   initial,
   imageUrl,
@@ -727,10 +737,12 @@ export default function MapScreen() {
               selectedPin?.type === "EVENT" &&
               selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
+            const isExclusive = event.privacy === "EXCLUSIVE";
+            const [dlat, dlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
             return (
               <MarkerView
                 key={event.id}
-                coordinate={[event.longitude, event.latitude]}
+                coordinate={[event.longitude + dlng, event.latitude + dlat]}
                 anchor={{ x: 0.5, y: 0.5 }}
                 allowOverlap
               >
@@ -744,12 +756,19 @@ export default function MapScreen() {
                     }
                     activeOpacity={0.8}
                   >
-                    <EventPin
-                      initial={event.event_type.charAt(0)}
-                      imageUrl={event.cover_image_url ?? undefined}
-                      color={color}
-                      isSelected={false}
-                    />
+                    <View>
+                      <EventPin
+                        initial={event.event_type.charAt(0)}
+                        imageUrl={event.cover_image_url ?? undefined}
+                        color={color}
+                        isSelected={false}
+                      />
+                      {isExclusive && (
+                        <View style={styles.exclusivePinBadge}>
+                          <Ionicons name="lock-closed" size={8} color="#fff" />
+                        </View>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 </View>
               </MarkerView>
@@ -765,10 +784,12 @@ export default function MapScreen() {
               selectedPin?.type === "EVENT" &&
               selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
+            const isExclusive = event.privacy === "EXCLUSIVE";
+            const [dlat, dlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
             return (
               <MarkerView
                 key={`top-${event.id}`}
-                coordinate={[event.longitude, event.latitude]}
+                coordinate={[event.longitude + dlng, event.latitude + dlat]}
                 anchor={{ x: 0.5, y: 0.5 }}
                 allowOverlap
               >
@@ -776,12 +797,19 @@ export default function MapScreen() {
                   onPress={() => selectPin({ type: "EVENT", data: event })}
                   activeOpacity={0.8}
                 >
-                  <EventPin
-                    initial={event.event_type.charAt(0)}
-                    imageUrl={event.cover_image_url ?? undefined}
-                    color={color}
-                    isSelected={isSelected}
-                  />
+                  <View>
+                    <EventPin
+                      initial={event.event_type.charAt(0)}
+                      imageUrl={event.cover_image_url ?? undefined}
+                      color={color}
+                      isSelected={isSelected}
+                    />
+                    {isExclusive && (
+                      <View style={styles.exclusivePinBadge}>
+                        <Ionicons name="lock-closed" size={8} color="#fff" />
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               </MarkerView>
             );
@@ -1100,12 +1128,12 @@ function EventCard({
         </View>
         <View style={styles.eventMeta}>
           <Ionicons
-            name="location-outline"
+            name={event.privacy === "EXCLUSIVE" ? "lock-closed-outline" : "location-outline"}
             size={13}
             color={Colors.textTertiary}
           />
           <Text style={styles.eventMetaText} numberOfLines={1}>
-            {event.address_name}
+            {event.privacy === "EXCLUSIVE" ? "Location hidden" : event.address_name}
           </Text>
         </View>
       </View>
@@ -1480,6 +1508,17 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 4,
     marginTop: 2,
+  },
+  exclusivePinBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   exclusiveBadge: {
     flexDirection: "row",
