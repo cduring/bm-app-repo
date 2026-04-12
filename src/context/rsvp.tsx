@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import { useProfile } from '../hooks/useProfile';
@@ -68,6 +69,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     if (requestorData) setLocalRequestors(requestorData);
   }, [requestorData]);
 
+  // ── Analytics ──
+  const posthog = usePostHog();
+
   // ── Mutations ──
   const setRSVPMutation = useSetRSVP();
   const approveMutation = useApproveRequest();
@@ -88,6 +92,9 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+
+    // Track RSVP
+    posthog?.capture('event_rsvp', { event_id: eventId, status: status ?? 'removed' });
 
     // Schedule / cancel event reminder notification
     if (status === 'GOING' && eventMeta) {

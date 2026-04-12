@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 
@@ -26,6 +27,7 @@ export function useIsFollowing(
 /** Follow a user */
 export function useFollowMutation() {
   const qc = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: async ({
@@ -39,7 +41,7 @@ export function useFollowMutation() {
         .from('follows')
         .insert({ follower_id: followerId, following_id: followingId });
       if (error) throw error;
-      // DB trigger (trg_follow_counts) handles follower_count / following_count updates
+      posthog?.capture('follow', { follower_id: followerId, following_id: followingId });
     },
     onMutate: async ({ followerId, followingId }) => {
       // Cancel outgoing refetches
@@ -82,6 +84,7 @@ export function useFollowMutation() {
 /** Unfollow a user */
 export function useUnfollowMutation() {
   const qc = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: async ({
@@ -97,7 +100,7 @@ export function useUnfollowMutation() {
         .eq('follower_id', followerId)
         .eq('following_id', followingId);
       if (error) throw error;
-      // DB trigger (trg_follow_counts) handles follower_count / following_count updates
+      posthog?.capture('unfollow', { follower_id: followerId, following_id: followingId });
     },
     onMutate: async ({ followerId, followingId }) => {
       await qc.cancelQueries({ queryKey: ['isFollowing', followerId, followingId] });

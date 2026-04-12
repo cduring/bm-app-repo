@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePostHog } from "posthog-react-native";
 import {
   ActivityIndicator,
   Alert,
@@ -55,8 +56,16 @@ export default function ViewProfileScreen() {
   const followMutation = useFollowMutation();
   const unfollowMutation = useUnfollowMutation();
 
+  const posthog = usePostHog();
   const isOwnProfile = supabaseData?.profile?.user_id === session?.user?.id;
   const isMutating = followMutation.isPending || unfollowMutation.isPending;
+
+  // Track profile view
+  useEffect(() => {
+    if (id && supabaseData?.profile) {
+      posthog?.capture('profile_viewed', { profile_id: id, profile_type: supabaseData.profile.profile_type });
+    }
+  }, [id, supabaseData?.profile]);
 
   function handleFollowToggle() {
     if (!myProfileId || !id || isMutating || isOwnProfile) return;
@@ -344,6 +353,7 @@ export default function ViewProfileScreen() {
                   onPress={() => {
                     setLightboxIndex(idx);
                     setLightboxVisible(true);
+                    posthog?.capture('portfolio_image_viewed', { profile_id: id, image_index: idx });
                   }}
                   accessibilityLabel={`Portfolio image ${idx + 1}`}
                   accessibilityRole="image"

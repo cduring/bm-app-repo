@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { usePostHog } from 'posthog-react-native';
+import { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ProfileWithNiches, EventWithHost } from '../types';
 
@@ -51,6 +53,17 @@ async function searchEvents(query: string): Promise<EventWithHost[]> {
 }
 
 export function useSearchProfiles(query: string) {
+  const posthog = usePostHog();
+  const lastTracked = useRef('');
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length > 0 && trimmed !== lastTracked.current) {
+      lastTracked.current = trimmed;
+      posthog?.capture('search_query', { query: trimmed, type: 'profiles' });
+    }
+  }, [query, posthog]);
+
   return useQuery<ProfileWithNiches[]>({
     queryKey: ['searchProfiles', query],
     queryFn: () => searchProfiles(query),

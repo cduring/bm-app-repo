@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PostHogProvider } from 'posthog-react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../src/lib/supabase';
 import { AuthContext } from '../src/context/auth';
@@ -121,6 +122,13 @@ export default function RootLayout() {
   const isLoading = session === undefined || (session !== null && profileExists === null);
 
   return (
+    <PostHogProvider
+      apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY!}
+      options={{
+        host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+        disabled: __DEV__,
+      }}
+    >
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthContext.Provider value={{ session, profileExists, onboardingComplete }}>
         <QueryClientProvider client={queryClient}>
@@ -142,5 +150,6 @@ export default function RootLayout() {
         </QueryClientProvider>
       </AuthContext.Provider>
     </GestureHandlerRootView>
+    </PostHogProvider>
   );
 }

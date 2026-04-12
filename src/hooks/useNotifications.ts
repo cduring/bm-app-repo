@@ -171,6 +171,14 @@ export function useNotifications(
           router.push(`/event/${data.eventId}`);
         } else if (data?.type === 'new_follower' && data.profileId) {
           router.push(`/profile/${data.profileId}`);
+        } else if (
+          (data?.type === 'new_rsvp_going' ||
+           data?.type === 'new_rsvp_requested' ||
+           data?.type === 'rsvp_approved' ||
+           data?.type === 'rsvp_declined') &&
+          data.eventId
+        ) {
+          router.push(`/event/${data.eventId}`);
         }
       });
     } catch (_) {}

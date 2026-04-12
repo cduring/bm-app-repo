@@ -9,6 +9,7 @@ import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePostHog } from "posthog-react-native";
 import {
   ScrollView,
   StyleSheet,
@@ -378,6 +379,7 @@ function formatEventDate(isoString: string): string {
 }
 
 export default function MapScreen() {
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const [mode, setMode] = useState<Mode>("CREATORS");
@@ -496,7 +498,13 @@ export default function MapScreen() {
     if (topPinTimerRef.current) clearTimeout(topPinTimerRef.current);
     setSelectedPin(pin);
     setTopPinData(pin);
-  }, []);
+    if (pin) {
+      posthog?.capture('map_pin_tapped', {
+        pin_type: pin.type,
+        pin_id: pin.type === 'CREATOR' ? pin.data.id : pin.data.id,
+      });
+    }
+  }, [posthog]);
 
   // Deselect with a short delay so the shrink + card-exit animations play out
   const deselectPin = useCallback(() => {
@@ -522,6 +530,8 @@ export default function MapScreen() {
   }
 
   function handleToggleNiche(nicheId: string) {
+    const wasActive = selectedNicheIds.has(nicheId);
+    posthog?.capture('niche_filter_toggled', { niche_id: nicheId, mode, action: wasActive ? 'removed' : 'added' });
     setSelectedNicheIds((prev) => {
       const next = new Set(prev);
       next.has(nicheId) ? next.delete(nicheId) : next.add(nicheId);

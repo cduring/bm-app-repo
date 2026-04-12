@@ -25,6 +25,7 @@ export interface Profile {
   follower_count: number;
   following_count: number;
   notifications_enabled: boolean;
+  push_token?: string | null;
   created_at: string;
 }
 

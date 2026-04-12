@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
+import { usePostHog } from "posthog-react-native";
 import {
   ActivityIndicator,
   Image,
@@ -43,6 +44,7 @@ interface OnboardingData {
 
 
 export default function OnboardingScreen() {
+  const posthog = usePostHog();
   const { session, onboardingComplete } = useAuth();
   const { data: niches = [] } = useNiches();
   const [step, setStep] = useState(1);
@@ -251,6 +253,12 @@ export default function OnboardingScreen() {
     }
 
     setLoading(false);
+    posthog?.capture('onboarding_completed', {
+      profile_type: data.profileType,
+      niches_count: data.selectedNicheIds.length,
+      has_photo: !!data.photoUri,
+      has_location: data.latitude !== null,
+    });
     onboardingComplete();
   }
 
