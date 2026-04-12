@@ -108,6 +108,23 @@ export async function cancelEventReminder(eventId: string) {
   } catch (_) {}
 }
 
+/** Check the current iOS/Android notification permission status */
+export async function getNotificationPermissionStatus(): Promise<
+  'granted' | 'denied' | 'undetermined'
+> {
+  if (!Notifications) return 'undetermined';
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted'
+      ? 'granted'
+      : status === 'denied'
+        ? 'denied'
+        : 'undetermined';
+  } catch (_) {
+    return 'undetermined';
+  }
+}
+
 /** Cancel all scheduled local notifications (used when user disables notifications) */
 export async function cancelAllLocalNotifications() {
   if (!Notifications) return;

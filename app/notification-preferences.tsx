@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  AppState,
+  Linking,
   StyleSheet,
   Switch,
   Text,
@@ -18,6 +21,7 @@ import { supabase } from '../src/lib/supabase';
 import {
   registerForPushNotifications,
   cancelAllLocalNotifications,
+  getNotificationPermissionStatus,
 } from '../src/hooks/useNotifications';
 
 export default function NotificationPreferencesScreen() {
@@ -29,48 +33,121 @@ export default function NotificationPreferencesScreen() {
 
   const [allowNotifications, setAllowNotifications] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [iosPermissionDenied, setIosPermissionDenied] = useState(false);
+  const appState = useRef(AppState.currentState);
+  // Track whether the last disable was due to iOS denial (vs user choice)
+  const wasDeviceDenied = useRef(false);
 
-  // Sync toggle with DB value once profile loads
+  // Check iOS permission status and sync with DB
+  const checkAndSyncPermission = useCallback(async () => {
+    if (!profile) return;
+    const status = await getNotificationPermissionStatus();
+    const denied = status === 'denied';
+    setIosPermissionDenied(denied);
+
+    if (denied && profile.notifications_enabled) {
+      // iOS permission was revoked — sync DB to match
+      wasDeviceDenied.current = true;
+      setAllowNotifications(false);
+      await supabase
+        .from('profiles')
+        .update({ notifications_enabled: false, push_token: null })
+        .eq('id', profile.id);
+      await cancelAllLocalNotifications();
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+    } else if (status === 'granted' && !profile.notifications_enabled && wasDeviceDenied.current) {
+      // iOS permission was re-granted after a device-level denial — re-enable
+      wasDeviceDenied.current = false;
+      setAllowNotifications(true);
+      const token = await registerForPushNotifications();
+      await supabase
+        .from('profiles')
+        .update({
+          notifications_enabled: true,
+          push_token: token ?? null,
+        })
+        .eq('id', profile.id);
+      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+    }
+  }, [profile, userId, queryClient]);
+
+  // Sync toggle with DB value once profile loads, then check iOS permission
   useEffect(() => {
     if (profile) {
       setAllowNotifications(profile.notifications_enabled ?? true);
+      checkAndSyncPermission();
     }
-  }, [profile?.notifications_enabled]);
+  }, [profile?.notifications_enabled, checkAndSyncPermission]);
+
+  // Re-check when app returns to foreground (user may have changed in iOS Settings)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        checkAndSyncPermission();
+      }
+      appState.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, [checkAndSyncPermission]);
 
   async function handleToggle(value: boolean) {
     if (!profile) return;
-    setAllowNotifications(value);
-    setSaving(true);
-    try {
-      await supabase
-        .from('profiles')
-        .update({ notifications_enabled: value })
-        .eq('id', profile.id);
 
-      if (value) {
-        // Re-register for push and save new token
+    if (value) {
+      // Enabling — attempt to register for push
+      setSaving(true);
+      try {
         const token = await registerForPushNotifications();
-        if (token) {
-          await supabase
-            .from('profiles')
-            .update({ push_token: token })
-            .eq('id', profile.id);
+        if (!token) {
+          // Permission denied by iOS — check if it's a hard denial
+          const status = await getNotificationPermissionStatus();
+          if (status === 'denied') {
+            setIosPermissionDenied(true);
+            Alert.alert(
+              'Notifications Blocked',
+              'Push notifications are blocked by your device settings. Open Settings to allow them.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              ],
+            );
+            return; // Keep toggle OFF
+          }
+          // undetermined or other — just couldn't get token, but don't block
         }
-      } else {
-        // Clear push token and cancel all local reminders
+
+        setAllowNotifications(true);
         await supabase
           .from('profiles')
-          .update({ push_token: null })
+          .update({ notifications_enabled: true, push_token: token ?? null })
+          .eq('id', profile.id);
+        setIosPermissionDenied(false);
+        queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      } catch (_) {
+        // Revert on error
+        setAllowNotifications(false);
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // Disabling
+      setAllowNotifications(false);
+      setSaving(true);
+      try {
+        await supabase
+          .from('profiles')
+          .update({ notifications_enabled: false, push_token: null })
           .eq('id', profile.id);
         await cancelAllLocalNotifications();
+        queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      } catch (_) {
+        setAllowNotifications(true);
+      } finally {
+        setSaving(false);
       }
-
-      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
-    } catch (_) {
-      // Revert on error
-      setAllowNotifications(!value);
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -113,8 +190,24 @@ export default function NotificationPreferencesScreen() {
               </View>
             </View>
             <Text style={styles.hint}>
-              Control whether BrandMe can send you push notifications about events and activity.
+              Control whether Loam can send you push notifications about events and activity.
             </Text>
+
+            {iosPermissionDenied && (
+              <TouchableOpacity
+                style={styles.warningBanner}
+                onPress={() => Linking.openSettings()}
+                activeOpacity={0.7}
+                accessibilityLabel="Open device settings to allow notifications"
+                accessibilityRole="button"
+              >
+                <Ionicons name="warning-outline" size={16} color={Colors.primary} />
+                <Text style={styles.warningText}>
+                  Push notifications are blocked by your device settings.{' '}
+                  <Text style={styles.warningLink}>Open Settings</Text>
+                </Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
       </View>
@@ -178,5 +271,24 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     lineHeight: 18,
     paddingHorizontal: Spacing.xs,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(255, 94, 26, 0.1)',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  warningLink: {
+    color: Colors.primary,
+    fontWeight: Typography.weight.semibold,
   },
 });
