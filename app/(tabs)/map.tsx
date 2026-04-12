@@ -1081,14 +1081,6 @@ function EventCard({
             <Text style={[styles.cardName, { flex: 1 }]} numberOfLines={2}>
               {event.title}
             </Text>
-            {event.is_recurring && (
-              <Ionicons
-                name="repeat"
-                size={14}
-                color={Colors.textTertiary}
-                style={styles.recurringIcon}
-              />
-            )}
           </View>
           <View style={styles.eventBadges}>
             <View
@@ -1499,9 +1491,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 4,
-  },
-  recurringIcon: {
-    marginTop: 2,
   },
   eventBadges: {
     flexDirection: "row",

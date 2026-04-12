@@ -56,11 +56,6 @@ export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onTog
                 <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
               </View>
             )}
-            {event.is_recurring && (
-              <View style={styles.recurringBadge}>
-                <Ionicons name="repeat-outline" size={10} color='#6B7280' />
-              </View>
-            )}
           </View>
           <TouchableOpacity style={styles.detailsBtn} onPress={onViewDetails} activeOpacity={0.8}>
             <Text style={styles.detailsBtnText}>Details</Text>
@@ -232,14 +227,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     fontWeight: Typography.weight.medium,
     color: Colors.primary,
-  },
-  recurringBadge: {
-    backgroundColor: '#6B7280' + '20',
-    borderWidth: 1,
-    borderColor: '#6B7280' + '40',
-    borderRadius: BorderRadius.chip,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
   detailsBtn: {
     flexDirection: 'row',

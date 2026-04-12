@@ -132,6 +132,46 @@ export function useApproveRequest() {
   });
 }
 
+// ─── Read: attendees for a specific event by status ──────────────────────────
+
+export function useEventAttendees(eventId: string | undefined, status: RSVPStatus) {
+  return useQuery<Profile[]>({
+    queryKey: ['eventAttendees', eventId, status],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('event_rsvps')
+        .select('profile:profiles!profile_id(*)')
+        .eq('event_id', eventId!)
+        .eq('status', status);
+      if (error) throw error;
+      return (data ?? []).map((row: any) => row.profile as Profile);
+    },
+    enabled: !!eventId,
+    staleTime: 30 * 1000,
+  });
+}
+
+// ─── Write: revoke an approved attendee (delete their GOING RSVP) ─────────────
+
+export function useRevokeAttendee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, profileId }: { eventId: string; profileId: string }) => {
+      const { error } = await supabase
+        .from('event_rsvps')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('profile_id', profileId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, { eventId }) => {
+      qc.invalidateQueries({ queryKey: ['eventAttendees', eventId] });
+      qc.invalidateQueries({ queryKey: ['event', eventId] });
+      qc.invalidateQueries({ queryKey: ['events'] });
+    },
+  });
+}
+
 // ─── Write: decline a request (delete the row) ───────────────────────────────
 
 export function useDeclineRequest() {

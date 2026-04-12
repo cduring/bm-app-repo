@@ -590,13 +590,6 @@ export default function AccountScreen() {
                         <Text style={styles.hostedCardTitle} numberOfLines={1}>
                           {event.title}
                         </Text>
-                        {event.is_recurring && (
-                          <Ionicons
-                            name="repeat-outline"
-                            size={13}
-                            color={Colors.textTertiary}
-                          />
-                        )}
                       </View>
                       <Text style={styles.hostedCardDate}>
                         {formatDayDate(event.start_time)}

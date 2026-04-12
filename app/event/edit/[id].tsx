@@ -139,6 +139,15 @@ export default function EventEditScreen() {
 
       if (error) throw error;
 
+      // Convert REQUESTED → GOING when switching EXCLUSIVE → PUBLIC
+      if (event?.privacy === 'EXCLUSIVE' && privacy === 'PUBLIC') {
+        await supabase
+          .from('event_rsvps')
+          .update({ status: 'GOING' })
+          .eq('event_id', id)
+          .eq('status', 'REQUESTED');
+      }
+
       // Sync event niches: delete all then re-insert
       await supabase.from('event_niches').delete().eq('event_id', id);
       if (selectedNicheIds.size > 0) {
@@ -151,6 +160,7 @@ export default function EventEditScreen() {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['event', id] });
       qc.invalidateQueries({ queryKey: ['hostedEvents'] });
+      qc.invalidateQueries({ queryKey: ['eventRequestors'] });
       router.back();
     } catch (err) {
       console.error('[event-edit] save error:', err);
@@ -162,35 +172,14 @@ export default function EventEditScreen() {
 
   function handleCancelEvent() {
     if (!id || !event) return;
-
-    const message = event.is_recurring
-      ? 'Do you want to cancel just this event, or all future occurrences in the series?'
-      : 'Are you sure you want to cancel this event? This cannot be undone.';
-
-    const buttons = event.is_recurring
-      ? [
-          { text: 'No', style: 'cancel' as const },
-          {
-            text: 'This Event Only',
-            style: 'destructive' as const,
-            onPress: () => confirmCancel(),
-          },
-          {
-            text: 'All Future Events',
-            style: 'destructive' as const,
-            onPress: () => confirmCancel(),
-          },
-        ]
-      : [
-          { text: 'No', style: 'cancel' as const },
-          {
-            text: 'Yes, Cancel Event',
-            style: 'destructive' as const,
-            onPress: () => confirmCancel(),
-          },
-        ];
-
-    Alert.alert('Cancel Event', message, buttons);
+    Alert.alert(
+      'Cancel Event',
+      'Are you sure you want to cancel this event? This cannot be undone.',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Cancel Event', style: 'destructive', onPress: () => confirmCancel() },
+      ],
+    );
   }
 
   async function confirmCancel() {
@@ -445,7 +434,6 @@ export default function EventEditScreen() {
           </TouchableOpacity>
           <Text style={styles.cancelEventNote}>
             Cancelling will mark the event as cancelled for all attendees.
-            {event.is_recurring ? ' You can choose to cancel just this occurrence or all future dates.' : ''}
           </Text>
         </View>
       </ScrollView>

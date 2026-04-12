@@ -512,14 +512,7 @@ function HostingView({
               <Text style={styles.hostedCardTitle} numberOfLines={1}>
                 {event.title}
               </Text>
-              {event.is_recurring && (
-                <Ionicons
-                  name="repeat-outline"
-                  size={13}
-                  color={Colors.textTertiary}
-                />
-              )}
-            </View>
+              </View>
             <Text style={styles.hostedCardDate}>
               {formatDayDate(event.start_time)}
             </Text>

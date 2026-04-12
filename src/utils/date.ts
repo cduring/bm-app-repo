@@ -51,45 +51,6 @@ export function formatEventDateTime(iso: string): string {
   return `${formatDayDate(iso)} · ${formatTime(iso)}`;
 }
 
-/** "Every Thursday" | "Monthly · 2nd Sat" | null */
-export function formatRecurrenceLabel(rule: string | null): string | null {
-  if (!rule) return null;
-
-  const parts: Record<string, string> = {};
-  rule.split(';').forEach(part => {
-    const [key, val] = part.split('=');
-    if (key && val) parts[key] = val;
-  });
-
-  const freq = parts['FREQ'];
-  const byday = parts['BYDAY'];
-
-  if (freq === 'WEEKLY' && byday) {
-    const dayMap: Record<string, string> = {
-      MO: 'Monday', TU: 'Tuesday', WE: 'Wednesday', TH: 'Thursday',
-      FR: 'Friday', SA: 'Saturday', SU: 'Sunday',
-    };
-    return `Every ${dayMap[byday] ?? byday}`;
-  }
-
-  if (freq === 'MONTHLY' && byday) {
-    const match = byday.match(/^(\d)([A-Z]{2})$/);
-    if (match) {
-      const [, num, day] = match;
-      const ordinals: Record<string, string> = { '1': '1st', '2': '2nd', '3': '3rd', '4': '4th' };
-      const dayShort: Record<string, string> = {
-        MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu',
-        FR: 'Fri', SA: 'Sat', SU: 'Sun',
-      };
-      return `Monthly · ${ordinals[num] ?? num} ${dayShort[day] ?? day}`;
-    }
-    return 'Monthly';
-  }
-
-  if (freq === 'DAILY') return 'Daily';
-  return null;
-}
-
 /** "2h ago" | "just now" | "3d ago" etc. */
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const diff = Math.floor((now.getTime() - new Date(iso).getTime()) / 1000);

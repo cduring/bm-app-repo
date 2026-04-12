@@ -30,11 +30,7 @@ import { useRSVP } from "../../src/context/rsvp";
 import { useEventById } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
 import type { RSVPStatus } from "../../src/types";
-import {
-  formatDayDate,
-  formatRecurrenceLabel,
-  formatTimeRange,
-} from "../../src/utils/date";
+import { formatDayDate, formatTimeRange } from "../../src/utils/date";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -76,7 +72,10 @@ export default function EventDetailScreen() {
 
   function handleApprove(profileId: string) {
     if (!id) return;
-    approveRequest(id, profileId);
+    Alert.alert("Approve Request", "Let this person into the event?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Approve", onPress: () => approveRequest(id, profileId) },
+    ]);
   }
 
   function handleDecline(profileId: string) {
@@ -113,7 +112,6 @@ export default function EventDetailScreen() {
   }
 
   const bannerColor = EVENT_TYPE_COLOR[event.event_type];
-  const recurrenceLabel = formatRecurrenceLabel(event.recurrence_rule);
   const isPublic = event.privacy === "PUBLIC";
   const isHost = !!profileData && profileData.profile.id === event.host_id;
   const isCancelled = event.status === "CANCELLED";
@@ -183,16 +181,6 @@ export default function EventDetailScreen() {
               style={styles.bannerImage}
               contentFit="cover"
             />
-            {event.is_recurring && (
-              <View style={styles.bannerBottomLeft}>
-                <Ionicons
-                  name="repeat-outline"
-                  size={12}
-                  color={Colors.textPrimary}
-                />
-                <Text style={styles.bannerLabelOnImage}>Recurring Event</Text>
-              </View>
-            )}
             {event.privacy === "EXCLUSIVE" && (
               <View style={styles.bannerBottomRight}>
                 <Ionicons
@@ -208,16 +196,6 @@ export default function EventDetailScreen() {
           <View
             style={[styles.banner, { backgroundColor: bannerColor + "30" }]}
           >
-            {event.is_recurring && (
-              <View style={styles.bannerBottomLeft}>
-                <Ionicons
-                  name="repeat-outline"
-                  size={12}
-                  color={Colors.textSecondary}
-                />
-                <Text style={styles.bannerLabel}>Recurring Event</Text>
-              </View>
-            )}
             {event.privacy === "EXCLUSIVE" && (
               <View style={styles.bannerBottomRight}>
                 <Ionicons
@@ -265,16 +243,6 @@ export default function EventDetailScreen() {
               {formatTimeRange(event.start_time, event.end_time)}
             </Text>
           </View>
-          {recurrenceLabel && (
-            <View style={styles.metaRow}>
-              <Ionicons
-                name="repeat-outline"
-                size={15}
-                color={Colors.textTertiary}
-              />
-              <Text style={styles.recurrenceText}>{recurrenceLabel}</Text>
-            </View>
-          )}
         </View>
 
         {/* Attendee Stats */}
@@ -286,12 +254,25 @@ export default function EventDetailScreen() {
             <Text style={styles.statLabel}>Interested</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: Colors.going }]}>
-              {event.going_count}
-            </Text>
-            <Text style={styles.statLabel}>Going</Text>
-          </View>
+          {isHost ? (
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/event/attendees/${event.id}`)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.statNumber, { color: Colors.going }]}>
+                {event.going_count}
+              </Text>
+              <Text style={styles.statLabel}>Going ›</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: Colors.going }]}>
+                {event.going_count}
+              </Text>
+              <Text style={styles.statLabel}>Going</Text>
+            </View>
+          )}
           {isHost && pendingCount > 0 && (
             <>
               <View style={styles.statDivider} />
@@ -743,13 +724,6 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontStyle: "italic",
   },
-  recurrenceText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    fontStyle: "italic",
-    flex: 1,
-  },
-
   // Stats
   statsRow: {
     flexDirection: "row",

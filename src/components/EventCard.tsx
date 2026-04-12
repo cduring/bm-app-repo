@@ -76,16 +76,6 @@ export function EventCard({ event, onPress }: EventCardProps) {
                 <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
               </View>
             )}
-            {event.is_recurring && (
-              <View style={styles.recurringBadge}>
-                <Ionicons
-                  name="repeat-outline"
-                  size={10}
-                  color='#6B7280'
-                />
-                <Text style={styles.recurringBadgeText}>Recurring</Text>
-              </View>
-            )}
           </View>
 
           {/* Attendee counts */}
@@ -195,23 +185,6 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
     color: Colors.primary,
   },
-  recurringBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: '#6B7280' + "20",
-    borderWidth: 1,
-    borderColor: '#6B7280' + "40",
-    borderRadius: BorderRadius.chip,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  recurringBadgeText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: '#6B7280',
-  },
-
   countsRow: {
     flexDirection: "row",
     gap: Spacing.lg,
