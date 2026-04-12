@@ -360,6 +360,8 @@ export default function EditProfileScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -369,6 +371,8 @@ export default function EditProfileScreen() {
             onPress={handleSave}
             disabled={saving}
             activeOpacity={0.8}
+            accessibilityLabel="Save profile"
+            accessibilityRole="button"
           >
             {saving ? (
               <ActivityIndicator color={Colors.textPrimary} size="small" />
@@ -390,6 +394,8 @@ export default function EditProfileScreen() {
             <TouchableOpacity
               onPress={() => setError(null)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Dismiss error"
+              accessibilityRole="button"
             >
               <Ionicons name="close" size={16} color={Colors.cancelled} />
             </TouchableOpacity>
@@ -415,6 +421,8 @@ export default function EditProfileScreen() {
               style={styles.changePhotoButton}
               onPress={handlePhotoPress}
               activeOpacity={0.7}
+              accessibilityLabel={currentAvatarUri ? "Change profile photo" : "Add profile photo"}
+              accessibilityRole="button"
             >
               <Ionicons
                 name="camera-outline"
@@ -442,6 +450,7 @@ export default function EditProfileScreen() {
                 autoCorrect={false}
                 autoComplete="name"
                 textContentType="name"
+                accessibilityLabel="Display name"
               />
             </View>
 
@@ -456,6 +465,7 @@ export default function EditProfileScreen() {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                accessibilityLabel="Bio"
               />
             </View>
 
@@ -470,6 +480,7 @@ export default function EditProfileScreen() {
                 placeholder="e.g. 3"
                 placeholderTextColor={Colors.textTertiary}
                 keyboardType="number-pad"
+                accessibilityLabel="Years active"
               />
             </View>
           </View>
@@ -489,6 +500,7 @@ export default function EditProfileScreen() {
                 textContentType="addressCity"
                 autoCorrect={false}
                 returnKeyType="done"
+                accessibilityLabel="Neighbourhood or area"
               />
               <Text style={styles.locationHint}>
                 You can change this to something more reflective of where
@@ -510,6 +522,7 @@ export default function EditProfileScreen() {
                 textContentType="postalCode"
                 maxLength={3}
                 returnKeyType="done"
+                accessibilityLabel="Postal code area"
               />
               {geocoding && (
                 <View style={styles.geocodingRow}>
@@ -579,6 +592,9 @@ export default function EditProfileScreen() {
                     ]}
                     onPress={() => toggleNiche(niche.id)}
                     activeOpacity={0.7}
+                    accessibilityLabel={`${niche.name}, ${selected ? "selected" : "not selected"}`}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
                   >
                     <Text
                       style={[
@@ -615,6 +631,8 @@ export default function EditProfileScreen() {
                 <TouchableOpacity
                   onPress={() => removeLink(index)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={`Remove ${link.platform_name} link`}
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name="close-circle"
@@ -642,6 +660,9 @@ export default function EditProfileScreen() {
                       ]}
                       onPress={() => setNewPlatform(platform)}
                       activeOpacity={0.7}
+                      accessibilityLabel={platform}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: newPlatform === platform }}
                     >
                       <PlatformIcon
                         platform={platform}
@@ -703,6 +724,8 @@ export default function EditProfileScreen() {
                 style={styles.addLinkButton}
                 onPress={() => setAddingLink(true)}
                 activeOpacity={0.7}
+                accessibilityLabel="Add link"
+                accessibilityRole="button"
               >
                 <Ionicons
                   name="add-circle-outline"

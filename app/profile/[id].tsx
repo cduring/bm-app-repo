@@ -118,6 +118,8 @@ export default function ViewProfileScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -129,6 +131,8 @@ export default function ViewProfileScreen() {
             onPress={handleFollowToggle}
             activeOpacity={0.8}
             disabled={isMutating || followLoading}
+            accessibilityLabel={isFollowing ? "Unfollow" : "Follow"}
+            accessibilityRole="button"
           >
             <Text
               style={[
@@ -238,6 +242,8 @@ export default function ViewProfileScreen() {
               )
             }
             activeOpacity={0.7}
+            accessibilityLabel={`${profile.follower_count} followers`}
+            accessibilityRole="button"
           >
             <Text style={styles.statNumber}>{profile.follower_count}</Text>
             <Text style={styles.statLabel}>Followers</Text>
@@ -251,6 +257,8 @@ export default function ViewProfileScreen() {
               )
             }
             activeOpacity={0.7}
+            accessibilityLabel={`${profile.following_count} following`}
+            accessibilityRole="button"
           >
             <Text style={styles.statNumber}>{profile.following_count}</Text>
             <Text style={styles.statLabel}>Following</Text>
@@ -303,6 +311,8 @@ export default function ViewProfileScreen() {
                   style={styles.linkButton}
                   onPress={() => openLink(link.url)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Open ${link.platform_name}`}
+                  accessibilityRole="link"
                 >
                   <PlatformIcon
                     platform={link.platform_name}
@@ -335,6 +345,8 @@ export default function ViewProfileScreen() {
                     setLightboxIndex(idx);
                     setLightboxVisible(true);
                   }}
+                  accessibilityLabel={`Portfolio image ${idx + 1}`}
+                  accessibilityRole="image"
                 >
                   <Image
                     source={{ uri: img.image_url }}

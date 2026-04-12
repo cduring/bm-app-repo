@@ -113,6 +113,9 @@ export default function MyEventsScreen() {
             style={styles.modeTab}
             onPress={() => handleModeChange("attending")}
             activeOpacity={0.7}
+            accessibilityLabel="Attending"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === "attending" }}
           >
             <Ionicons
               name="calendar-outline"
@@ -135,6 +138,9 @@ export default function MyEventsScreen() {
             style={styles.modeTab}
             onPress={() => handleModeChange("hosting")}
             activeOpacity={0.7}
+            accessibilityLabel="Hosting"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === "hosting" }}
           >
             <Ionicons
               name="megaphone-outline"
@@ -291,6 +297,8 @@ function AttendingTabHeader({
           onPress={() => cycleTab(-1)}
           style={styles.tabArrow}
           activeOpacity={0.6}
+          accessibilityLabel="Previous tab"
+          accessibilityRole="button"
         >
           <Ionicons name="chevron-back" size={20} color={Colors.textTertiary} />
         </TouchableOpacity>
@@ -340,6 +348,8 @@ function AttendingTabHeader({
           onPress={() => cycleTab(1)}
           style={styles.tabArrow}
           activeOpacity={0.6}
+          accessibilityLabel="Next tab"
+          accessibilityRole="button"
         >
           <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
         </TouchableOpacity>
@@ -430,6 +440,8 @@ function AttendingView({
             style={styles.emptyAction}
             onPress={() => router.push("/(tabs)/map")}
             activeOpacity={0.8}
+            accessibilityLabel="Explore the map"
+            accessibilityRole="link"
           >
             <Text style={styles.emptyActionText}>Explore the Map →</Text>
           </TouchableOpacity>
@@ -476,6 +488,8 @@ function HostingView({
             style={styles.emptyAction}
             onPress={() => router.push("/host")}
             activeOpacity={0.8}
+            accessibilityLabel="Create an event"
+            accessibilityRole="link"
           >
             <Text style={styles.emptyActionText}>Create an Event →</Text>
           </TouchableOpacity>
@@ -505,6 +519,8 @@ function HostingView({
           ]}
           onPress={() => router.push(`/event/${event.id}`)}
           activeOpacity={0.8}
+          accessibilityLabel={`${event.title}, ${formatDayDate(event.start_time)}`}
+          accessibilityRole="button"
         >
           {/* Left: info */}
           <View style={styles.hostedCardInfo}>
@@ -564,6 +580,8 @@ function HostingView({
                 style={styles.editButton}
                 onPress={() => router.push(`/event/edit/${event.id}`)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={`Edit ${event.title}`}
+                accessibilityRole="button"
               >
                 <Ionicons
                   name="create-outline"

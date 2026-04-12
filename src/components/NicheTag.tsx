@@ -14,7 +14,11 @@ export function NicheTag({ name, small = false, color }: NicheTagProps) {
   const textStyle = color ? { color } : undefined;
 
   return (
-    <View style={[styles.chip, small && styles.chipSmall, chipStyle]}>
+    <View
+      style={[styles.chip, small && styles.chipSmall, chipStyle]}
+      accessibilityRole="text"
+      accessibilityLabel={name}
+    >
       <Text style={[styles.text, small && styles.textSmall, textStyle]}>{name}</Text>
     </View>
   );

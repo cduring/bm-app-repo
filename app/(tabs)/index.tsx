@@ -311,6 +311,9 @@ export default function DiscoverScreen() {
           ]}
           onPress={() => setSelectedNicheIds(new Set())}
           activeOpacity={0.7}
+          accessibilityLabel="Show all niches"
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedNicheIds.size === 0 }}
         >
           <Text
             style={[

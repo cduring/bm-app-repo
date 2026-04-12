@@ -19,6 +19,8 @@ export function EventTypeBadge({ eventType, small = false }: EventTypeBadgeProps
         small && styles.badgeSmall,
         { backgroundColor: color + '20', borderColor: color + '60' },
       ]}
+      accessibilityRole="text"
+      accessibilityLabel={label}
     >
       <Text style={[styles.text, small && styles.textSmall, { color }]}>{label}</Text>
     </View>

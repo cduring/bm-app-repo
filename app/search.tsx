@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,7 +22,13 @@ import {
   Spacing,
   Typography,
 } from "../src/constants/theme";
-import { useSearchEvents, useSearchProfiles } from "../src/hooks/useSearch";
+import { useEvents } from "../src/hooks/useEvents";
+import { useNiches } from "../src/hooks/useNiches";
+import {
+  useDiscoveryProfiles,
+  useSearchEvents,
+  useSearchProfiles,
+} from "../src/hooks/useSearch";
 import type { EventWithHost, ProfileWithNiches } from "../src/types";
 
 type ResultTab = "ALL" | "CREATORS" | "EVENTS";
@@ -30,7 +37,12 @@ export default function SearchScreen() {
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ResultTab>("ALL");
+  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
+    new Set(),
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: niches = [] } = useNiches();
 
   const {
     data: profileResults = [],
@@ -44,9 +56,47 @@ export default function SearchScreen() {
     error: eventSearchError,
     refetch: refetchEvents,
   } = useSearchEvents(query);
+  const {
+    data: discoveryProfiles = [],
+    isFetching: fetchingDiscovery,
+  } = useDiscoveryProfiles();
+  const {
+    data: allEvents = [],
+    isFetching: fetchingAllEvents,
+  } = useEvents();
 
-  const isLoading = query.length > 0 && (fetchingProfiles || fetchingEvents);
+  const hasNicheFilter = selectedNicheIds.size > 0;
+
+  const isLoading =
+    (query.length > 0 && (fetchingProfiles || fetchingEvents)) ||
+    (!query && hasNicheFilter && (fetchingDiscovery || fetchingAllEvents));
   const searchError = profileSearchError || eventSearchError;
+
+  // Client-side niche filtering for search results
+  const filteredProfiles = useMemo(() => {
+    const source = query ? profileResults : discoveryProfiles;
+    if (!hasNicheFilter) return source;
+    return source.filter((p) =>
+      p.niches.some((n) => selectedNicheIds.has(n.id)),
+    );
+  }, [query, profileResults, discoveryProfiles, selectedNicheIds, hasNicheFilter]);
+
+  const filteredEvents = useMemo(() => {
+    const source = (query ? eventResults : allEvents) as EventWithHost[];
+    if (!hasNicheFilter) return source;
+    return source.filter((e) =>
+      e.niches.some((n) => selectedNicheIds.has(n.id)),
+    );
+  }, [query, eventResults, allEvents, selectedNicheIds, hasNicheFilter]);
+
+  function toggleNiche(id: string) {
+    setSelectedNicheIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -71,37 +121,39 @@ export default function SearchScreen() {
     | { _type: "noResults" };
 
   const listData: ListItem[] = (() => {
-    if (!query) return [];
+    if (!query && !hasNicheFilter) return [];
 
     const showProfiles = activeTab === "ALL" || activeTab === "CREATORS";
     const showEvents = activeTab === "ALL" || activeTab === "EVENTS";
     const items: ListItem[] = [];
 
     if (showProfiles) {
-      if (profileResults.length > 0) {
+      if (filteredProfiles.length > 0) {
         if (activeTab === "ALL") {
           items.push({
             _type: "sectionHeader",
             label: "People",
-            count: profileResults.length,
+            count: filteredProfiles.length,
           });
         }
-        profileResults.forEach((p) =>
+        filteredProfiles.forEach((p) =>
           items.push({ _type: "profile", data: p }),
         );
       }
     }
 
     if (showEvents) {
-      if (eventResults.length > 0) {
+      if (filteredEvents.length > 0) {
         if (activeTab === "ALL") {
           items.push({
             _type: "sectionHeader",
             label: "Events",
-            count: eventResults.length,
+            count: filteredEvents.length,
           });
         }
-        eventResults.forEach((e) => items.push({ _type: "event", data: e }));
+        filteredEvents.forEach((e) =>
+          items.push({ _type: "event", data: e }),
+        );
       }
     }
 
@@ -154,7 +206,9 @@ export default function SearchScreen() {
             No results for &quot;{query}&quot;
           </Text>
           <Text style={styles.noResultsSubtitle}>
-            Try a different name, niche, or event title
+            {hasNicheFilter
+              ? "Try a different niche filter or search term"
+              : "Try a different name, niche, or event title"}
           </Text>
         </View>
       );
@@ -221,8 +275,64 @@ export default function SearchScreen() {
           </View>
         </View>
 
-        {/* Result tabs — only shown when there's a query */}
-        {query.length > 0 && (
+        {/* Niche filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={filterStyles.nichesRow}
+          style={filterStyles.nichesScroll}
+        >
+          <TouchableOpacity
+            style={[
+              filterStyles.nicheChip,
+              !hasNicheFilter && filterStyles.nicheChipActive,
+            ]}
+            onPress={() => setSelectedNicheIds(new Set())}
+            activeOpacity={0.7}
+            accessibilityLabel="Show all niches"
+            accessibilityRole="button"
+            accessibilityState={{ selected: !hasNicheFilter }}
+          >
+            <Text
+              style={[
+                filterStyles.nicheChipText,
+                !hasNicheFilter && filterStyles.nicheChipTextActive,
+              ]}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+          {niches.map((niche) => {
+            const active = selectedNicheIds.has(niche.id);
+            const color = niche.color ?? Colors.primary;
+            return (
+              <TouchableOpacity
+                key={niche.id}
+                style={[
+                  filterStyles.nicheChip,
+                  active && { backgroundColor: color, borderColor: color },
+                ]}
+                onPress={() => toggleNiche(niche.id)}
+                activeOpacity={0.7}
+                accessibilityLabel={`Filter by ${niche.name}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text
+                  style={[
+                    filterStyles.nicheChipText,
+                    active && { color: Colors.textPrimary },
+                  ]}
+                >
+                  {niche.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Result tabs — shown when there's a query or niche filter */}
+        {(query.length > 0 || hasNicheFilter) && (
           <View style={styles.tabs}>
             {(["ALL", "CREATORS", "EVENTS"] as ResultTab[]).map((tab) => (
               <TouchableOpacity
@@ -246,17 +356,17 @@ export default function SearchScreen() {
                       ? "People"
                       : "Events"}
                 </Text>
-                {tab === "CREATORS" && profileResults.length > 0 && (
+                {tab === "CREATORS" && filteredProfiles.length > 0 && (
                   <View style={styles.tabBadge}>
                     <Text style={styles.tabBadgeText}>
-                      {profileResults.length}
+                      {filteredProfiles.length}
                     </Text>
                   </View>
                 )}
-                {tab === "EVENTS" && eventResults.length > 0 && (
+                {tab === "EVENTS" && filteredEvents.length > 0 && (
                   <View style={styles.tabBadge}>
                     <Text style={styles.tabBadgeText}>
-                      {eventResults.length}
+                      {filteredEvents.length}
                     </Text>
                   </View>
                 )}
@@ -266,7 +376,7 @@ export default function SearchScreen() {
         )}
 
         {/* Content */}
-        {!query ? (
+        {!query && !hasNicheFilter ? (
           <View style={styles.emptyState}>
             <Ionicons
               name="compass-outline"
@@ -493,5 +603,41 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     color: Colors.primary,
     fontWeight: Typography.weight.semibold as any,
+  },
+});
+
+const filterStyles = StyleSheet.create({
+  nichesScroll: {
+    height: 36,
+    maxHeight: 36,
+    marginBottom: Spacing.sm,
+    flexShrink: 0,
+    flexGrow: 0,
+  },
+  nichesRow: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+    alignItems: "center",
+  },
+  nicheChip: {
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
+    alignSelf: "flex-start",
+  },
+  nicheChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  nicheChipText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textSecondary,
+  },
+  nicheChipTextActive: {
+    color: Colors.textPrimary,
   },
 });

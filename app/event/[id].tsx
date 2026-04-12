@@ -127,6 +127,8 @@ export default function EventDetailScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -137,11 +139,17 @@ export default function EventDetailScreen() {
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => router.push(`/event/edit/${event.id}`)}
+            accessibilityLabel="Edit event"
+            accessibilityRole="button"
           >
             <Ionicons name="create-outline" size={20} color={Colors.primary} />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.shareButton}>
+          <TouchableOpacity
+            style={styles.shareButton}
+            accessibilityLabel="Share event"
+            accessibilityRole="button"
+          >
             <Ionicons
               name="share-outline"
               size={22}
@@ -180,6 +188,7 @@ export default function EventDetailScreen() {
               source={{ uri: event.cover_image_url }}
               style={styles.bannerImage}
               contentFit="cover"
+              accessibilityLabel={`Cover image for ${event.title}`}
             />
             {event.privacy === "EXCLUSIVE" && (
               <View style={styles.bannerBottomRight}>
@@ -259,6 +268,8 @@ export default function EventDetailScreen() {
               style={styles.statItem}
               onPress={() => router.push(`/event/attendees/${event.id}`)}
               activeOpacity={0.7}
+              accessibilityLabel={`${event.going_count} going, tap to view attendees`}
+              accessibilityRole="button"
             >
               <Text style={[styles.statNumber, { color: Colors.going }]}>
                 {event.going_count}
@@ -298,6 +309,8 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
+                  accessibilityLabel={rsvp === "INTERESTED" ? "Remove interested" : "Mark as interested"}
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name={rsvp === "INTERESTED" ? "star" : "star-outline"}
@@ -324,6 +337,8 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("GOING")}
                   activeOpacity={0.8}
+                  accessibilityLabel={rsvp === "GOING" ? "Remove going" : "Mark as going"}
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name={
@@ -357,6 +372,8 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
+                  accessibilityLabel={rsvp === "INTERESTED" ? "Remove interested" : "Mark as interested"}
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name={rsvp === "INTERESTED" ? "star" : "star-outline"}
@@ -384,6 +401,8 @@ export default function EventDetailScreen() {
                     ]}
                     onPress={() => handleRSVP("REQUESTED")}
                     activeOpacity={0.8}
+                    accessibilityLabel="Request access"
+                    accessibilityRole="button"
                   >
                     <Ionicons
                       name="lock-open-outline"
@@ -497,6 +516,8 @@ export default function EventDetailScreen() {
                         style={styles.approveButton}
                         onPress={() => handleApprove(requestor.id)}
                         activeOpacity={0.8}
+                        accessibilityLabel={`Approve ${requestor.display_name}`}
+                        accessibilityRole="button"
                       >
                         <Ionicons
                           name="checkmark"
@@ -509,6 +530,8 @@ export default function EventDetailScreen() {
                         style={styles.declineButton}
                         onPress={() => handleDecline(requestor.id)}
                         activeOpacity={0.8}
+                        accessibilityLabel={`Decline ${requestor.display_name}`}
+                        accessibilityRole="button"
                       >
                         <Ionicons
                           name="close"

@@ -671,6 +671,8 @@ export default function MapScreen() {
                       selectPin({ type: "CREATOR", data: profile })
                     }
                     activeOpacity={0.8}
+                    accessibilityLabel={`${profile.display_name} on map`}
+                    accessibilityRole="button"
                   >
                     <CreatorPin
                       initial={profile.display_name.charAt(0).toUpperCase()}
@@ -755,6 +757,8 @@ export default function MapScreen() {
                       selectPin({ type: "EVENT", data: event })
                     }
                     activeOpacity={0.8}
+                    accessibilityLabel={`${event.title} on map`}
+                    accessibilityRole="button"
                   >
                     <View>
                       <EventPin
@@ -825,6 +829,8 @@ export default function MapScreen() {
           ]}
           onPress={handleRecenter}
           activeOpacity={0.8}
+          accessibilityLabel="Recenter map on my location"
+          accessibilityRole="button"
         >
           <Ionicons name="locate" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -843,6 +849,9 @@ export default function MapScreen() {
               ]}
               onPress={() => handleSwitchMode("CREATORS")}
               activeOpacity={0.8}
+              accessibilityLabel="Show creators on map"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === "CREATORS" }}
             >
               <Text
                 style={[
@@ -860,6 +869,9 @@ export default function MapScreen() {
               ]}
               onPress={() => handleSwitchMode("EVENTS")}
               activeOpacity={0.8}
+              accessibilityLabel="Show events on map"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === "EVENTS" }}
             >
               <Text
                 style={[
@@ -901,6 +913,9 @@ export default function MapScreen() {
                 deselectPin();
               }}
               activeOpacity={0.7}
+              accessibilityLabel="Show all niches"
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedNicheIds.size === 0 }}
             >
               <Text
                 style={[
@@ -923,6 +938,9 @@ export default function MapScreen() {
                   ]}
                   onPress={() => handleToggleNiche(niche.id)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Filter by ${niche.name}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
                 >
                   <Text
                     style={[

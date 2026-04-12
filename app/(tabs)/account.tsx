@@ -464,6 +464,8 @@ export default function AccountScreen() {
                   style={styles.linkButton}
                   onPress={() => openLink(link.url)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Open ${link.platform_name}`}
+                  accessibilityRole="link"
                 >
                   <PlatformIcon
                     platform={link.platform_name}
@@ -489,6 +491,8 @@ export default function AccountScreen() {
             <TouchableOpacity
               onPress={handleAddPortfolioImage}
               activeOpacity={0.7}
+              accessibilityLabel="Add portfolio image"
+              accessibilityRole="button"
             >
               <Ionicons
                 name="add-circle-outline"
@@ -502,6 +506,8 @@ export default function AccountScreen() {
               style={styles.portfolioEmpty}
               onPress={handleAddPortfolioImage}
               activeOpacity={0.7}
+              accessibilityLabel="Add portfolio images"
+              accessibilityRole="button"
             >
               <Ionicons
                 name="images-outline"
@@ -524,6 +530,8 @@ export default function AccountScreen() {
                     setLightboxVisible(true);
                   }}
                   onLongPress={() => handleRemovePortfolioImage(img.id)}
+                  accessibilityLabel={`Portfolio image ${idx + 1}, long press to remove`}
+                  accessibilityRole="image"
                 >
                   <Image
                     source={{ uri: img.image_url }}
@@ -549,6 +557,8 @@ export default function AccountScreen() {
               <TouchableOpacity
                 onPress={() => router.push("/(tabs)/my-events")}
                 activeOpacity={0.7}
+                accessibilityLabel="See RSVPs"
+                accessibilityRole="link"
               >
                 <Text style={styles.sectionLink}>See RSVPs →</Text>
               </TouchableOpacity>
@@ -566,6 +576,8 @@ export default function AccountScreen() {
               <TouchableOpacity
                 onPress={() => router.push("/host")}
                 activeOpacity={0.7}
+                accessibilityLabel="Create your first event"
+                accessibilityRole="link"
               >
                 <Text style={styles.hostedEmptyLink}>
                   Create your first event →
@@ -583,6 +595,8 @@ export default function AccountScreen() {
                   ]}
                   onPress={() => router.push(`/event/${event.id}`)}
                   activeOpacity={0.8}
+                  accessibilityLabel={`${event.title}, ${formatDayDate(event.start_time)}`}
+                  accessibilityRole="button"
                 >
                   <View style={styles.hostedCardMain}>
                     <View style={styles.hostedCardInfo}>
