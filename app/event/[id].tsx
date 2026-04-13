@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -29,6 +29,7 @@ import { useAuth } from "../../src/context/auth";
 import { useRSVP } from "../../src/context/rsvp";
 import { useEventById } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import type { RSVPStatus } from "../../src/types";
 import { formatDayDate, formatTimeRange } from "../../src/utils/date";
 
@@ -42,7 +43,8 @@ export default function EventDetailScreen() {
     refetch: refetchEvent,
   } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
-  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetchEvent);
+  const { refreshing, handleRefresh: onRefresh } =
+    useRefreshHandler(refetchEvent);
   const {
     getRSVP,
     setRSVP,
@@ -88,6 +90,20 @@ export default function EventDetailScreen() {
     );
   }
 
+  async function handleShare() {
+    if (!event) return;
+    try {
+      const url = `https://loam.app/event/${event.id}`;
+      await Share.share({
+        title: event.title,
+        message: `Check out ${event.title} on Loam!\n\n${url}`,
+        url,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   if (isLoading && !event) {
     return (
       <View style={styles.centered}>
@@ -126,29 +142,23 @@ export default function EventDetailScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>
-          {event.title}
-        </Text>
-        {isHost && !isCancelled ? (
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.shareButton}
+          accessibilityLabel="Share event"
+          accessibilityRole="button"
+          onPress={handleShare}
+        >
+          <Ionicons name="share" size={25} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        {isHost && !isCancelled && (
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => router.push(`/event/edit/${event.id}`)}
             accessibilityLabel="Edit event"
             accessibilityRole="button"
           >
-            <Ionicons name="create-outline" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.shareButton}
-            accessibilityLabel="Share event"
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name="share-outline"
-              size={22}
-              color={Colors.textPrimary}
-            />
+            <Ionicons name="create" size={25} color={Colors.primary} />
           </TouchableOpacity>
         )}
       </View>
@@ -303,7 +313,11 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
-                  accessibilityLabel={rsvp === "INTERESTED" ? "Remove interested" : "Mark as interested"}
+                  accessibilityLabel={
+                    rsvp === "INTERESTED"
+                      ? "Remove interested"
+                      : "Mark as interested"
+                  }
                   accessibilityRole="button"
                 >
                   <Ionicons
@@ -331,7 +345,9 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("GOING")}
                   activeOpacity={0.8}
-                  accessibilityLabel={rsvp === "GOING" ? "Remove going" : "Mark as going"}
+                  accessibilityLabel={
+                    rsvp === "GOING" ? "Remove going" : "Mark as going"
+                  }
                   accessibilityRole="button"
                 >
                   <Ionicons
@@ -366,7 +382,11 @@ export default function EventDetailScreen() {
                   ]}
                   onPress={() => handleRSVP("INTERESTED")}
                   activeOpacity={0.8}
-                  accessibilityLabel={rsvp === "INTERESTED" ? "Remove interested" : "Mark as interested"}
+                  accessibilityLabel={
+                    rsvp === "INTERESTED"
+                      ? "Remove interested"
+                      : "Mark as interested"
+                  }
                   accessibilityRole="button"
                 >
                   <Ionicons
