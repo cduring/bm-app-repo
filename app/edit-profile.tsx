@@ -49,6 +49,45 @@ const PLATFORMS: PlatformName[] = [
   "Other",
 ];
 
+// Platforms that take a username/handle — we construct the URL ourselves.
+// Platforms NOT listed here (Spotify, Eventbrite, Website, Other) take a full URL.
+const PLATFORM_HANDLE_CONFIG: Partial<
+  Record<PlatformName, { prefix: string; buildUrl: (handle: string) => string }>
+> = {
+  Instagram: {
+    prefix: "instagram.com/",
+    buildUrl: (h) => `https://instagram.com/${h}`,
+  },
+  TikTok: {
+    prefix: "tiktok.com/@",
+    buildUrl: (h) => `https://tiktok.com/@${h.replace(/^@/, "")}`,
+  },
+  YouTube: {
+    prefix: "youtube.com/@",
+    buildUrl: (h) => `https://youtube.com/@${h.replace(/^@/, "")}`,
+  },
+  X: {
+    prefix: "x.com/",
+    buildUrl: (h) => `https://x.com/${h.replace(/^@/, "")}`,
+  },
+  Twitch: {
+    prefix: "twitch.tv/",
+    buildUrl: (h) => `https://twitch.tv/${h}`,
+  },
+  SoundCloud: {
+    prefix: "soundcloud.com/",
+    buildUrl: (h) => `https://soundcloud.com/${h}`,
+  },
+  LinkedIn: {
+    prefix: "linkedin.com/in/",
+    buildUrl: (h) => `https://linkedin.com/in/${h}`,
+  },
+  Pinterest: {
+    prefix: "pinterest.com/",
+    buildUrl: (h) => `https://pinterest.com/${h}`,
+  },
+};
+
 interface LinkDraft {
   id?: string; // undefined = new, string = existing
   platform_name: PlatformName;
@@ -83,7 +122,7 @@ export default function EditProfileScreen() {
   // Add link form
   const [addingLink, setAddingLink] = useState(false);
   const [newPlatform, setNewPlatform] = useState<PlatformName>("Instagram");
-  const [newUrl, setNewUrl] = useState("");
+  const [newHandle, setNewHandle] = useState("");
 
   // Pre-fill form once data loads
   useEffect(() => {
@@ -220,10 +259,12 @@ export default function EditProfileScreen() {
   }
 
   function addLink() {
-    if (!newUrl.trim()) return;
-    const url = newUrl.trim();
+    const raw = newHandle.trim();
+    if (!raw) return;
+    const config = PLATFORM_HANDLE_CONFIG[newPlatform];
+    const url = config ? config.buildUrl(raw) : raw;
     setLinks((prev) => [...prev, { platform_name: newPlatform, url }]);
-    setNewUrl("");
+    setNewHandle("");
     setAddingLink(false);
   }
 
@@ -658,7 +699,7 @@ export default function EditProfileScreen() {
                         styles.platformChip,
                         newPlatform === platform && styles.platformChipSelected,
                       ]}
-                      onPress={() => setNewPlatform(platform)}
+                      onPress={() => { setNewPlatform(platform); setNewHandle(""); }}
                       activeOpacity={0.7}
                       accessibilityLabel={platform}
                       accessibilityRole="radio"
@@ -686,25 +727,45 @@ export default function EditProfileScreen() {
                   ))}
                 </ScrollView>
 
-                <TextInput
-                  style={styles.input}
-                  value={newUrl}
-                  onChangeText={setNewUrl}
-                  placeholder="https://..."
-                  placeholderTextColor={Colors.textTertiary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  textContentType="URL"
-                  returnKeyType="done"
-                  onSubmitEditing={addLink}
-                />
+                {PLATFORM_HANDLE_CONFIG[newPlatform] ? (
+                  <View style={styles.handleInputRow}>
+                    <Text style={styles.handlePrefix}>
+                      {PLATFORM_HANDLE_CONFIG[newPlatform]!.prefix}
+                    </Text>
+                    <TextInput
+                      style={styles.handleInput}
+                      value={newHandle}
+                      onChangeText={setNewHandle}
+                      placeholder="yourhandle"
+                      placeholderTextColor={Colors.textTertiary}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="default"
+                      returnKeyType="done"
+                      onSubmitEditing={addLink}
+                    />
+                  </View>
+                ) : (
+                  <TextInput
+                    style={styles.input}
+                    value={newHandle}
+                    onChangeText={setNewHandle}
+                    placeholder="https://..."
+                    placeholderTextColor={Colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    textContentType="URL"
+                    returnKeyType="done"
+                    onSubmitEditing={addLink}
+                  />
+                )}
                 <View style={styles.addLinkActions}>
                   <TouchableOpacity
                     style={styles.cancelLinkButton}
                     onPress={() => {
                       setAddingLink(false);
-                      setNewUrl("");
+                      setNewHandle("");
                     }}
                     activeOpacity={0.7}
                   >
@@ -1007,6 +1068,27 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  handleInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    minHeight: 44,
+  },
+  handlePrefix: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+    marginRight: 2,
+  },
+  handleInput: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: Colors.textPrimary,
+    paddingVertical: Spacing.sm,
   },
   platformScroll: {
     marginBottom: Spacing.xs,
