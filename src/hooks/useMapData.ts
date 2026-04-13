@@ -22,7 +22,8 @@ export function useMapProfiles() {
       return (data ?? []).map((row: any) => {
         const niches: Niche[] = (row.profile_niches ?? [])
           .map((pn: any) => pn.niches)
-          .filter(Boolean);
+          .filter(Boolean)
+          .map((n: any) => ({ ...n, id: String(n.id) }));
         return {
           ...row,
           niches,

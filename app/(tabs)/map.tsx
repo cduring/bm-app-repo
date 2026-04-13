@@ -8,8 +8,15 @@ import Mapbox, {
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePostHog } from "posthog-react-native";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -30,12 +37,12 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { ErrorState } from "../../src/components/ErrorState";
+import { NicheTag } from "../../src/components/NicheTag";
 import {
   EVENT_TYPE_COLOR,
   EVENT_TYPE_LABEL,
 } from "../../src/constants/eventTypes";
-import { ErrorState } from "../../src/components/ErrorState";
-import { NicheTag } from "../../src/components/NicheTag";
 import {
   BorderRadius,
   Colors,
@@ -100,7 +107,13 @@ function clusterPoints<T>(
     } else {
       const lng = members.reduce((s, p) => s + p.lng, 0) / members.length;
       const lat = members.reduce((s, p) => s + p.lat, 0) / members.length;
-      groups.push({ kind: "cluster", count: members.length, lng, lat, items: members.map((m) => m.item) });
+      groups.push({
+        kind: "cluster",
+        count: members.length,
+        lng,
+        lat,
+        items: members.map((m) => m.item),
+      });
     }
   }
   return groups;
@@ -110,7 +123,8 @@ function clusterPoints<T>(
 // Used to displace exclusive event pins so the exact venue isn't pinpointable.
 function getExclusiveOffset(id: string): [number, number] {
   let h = 0;
-  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  for (let i = 0; i < id.length; i++)
+    h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
   const dlat = ((h & 0xff) - 128) / 42000;
   const dlng = (((h >> 8) & 0xff) - 128) / 42000;
   return [dlat, dlng];
@@ -227,14 +241,24 @@ function SwipeDismissCard({
   // Entry animation on mount
   useEffect(() => {
     entryY.value = withSpring(0, { damping: 16, stiffness: 240, mass: 0.9 });
-    entryScale.value = withSpring(1, { damping: 16, stiffness: 240, mass: 0.9 });
+    entryScale.value = withSpring(1, {
+      damping: 16,
+      stiffness: 240,
+      mass: 0.9,
+    });
   }, []);
 
   // Exit animation when visible becomes false
   useEffect(() => {
     if (!visible) {
-      entryY.value = withTiming(160, { duration: 220, easing: Easing.in(Easing.quad) });
-      entryScale.value = withTiming(0.85, { duration: 220, easing: Easing.in(Easing.quad) });
+      entryY.value = withTiming(160, {
+        duration: 220,
+        easing: Easing.in(Easing.quad),
+      });
+      entryScale.value = withTiming(0.85, {
+        duration: 220,
+        easing: Easing.in(Easing.quad),
+      });
     }
   }, [visible]);
 
@@ -397,8 +421,16 @@ export default function MapScreen() {
   const lastZoomRef = useRef(12);
   const topPinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: mapProfiles = [], error: profilesError, refetch: refetchProfiles } = useMapProfiles();
-  const { data: mapEvents = [], error: eventsError, refetch: refetchMapEvents } = useMapEvents();
+  const {
+    data: mapProfiles = [],
+    error: profilesError,
+    refetch: refetchProfiles,
+  } = useMapProfiles();
+  const {
+    data: mapEvents = [],
+    error: eventsError,
+    refetch: refetchMapEvents,
+  } = useMapEvents();
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status }) => {
@@ -494,17 +526,20 @@ export default function MapScreen() {
     };
   }, []);
 
-  const selectPin = useCallback((pin: SelectedPin) => {
-    if (topPinTimerRef.current) clearTimeout(topPinTimerRef.current);
-    setSelectedPin(pin);
-    setTopPinData(pin);
-    if (pin) {
-      posthog?.capture('map_pin_tapped', {
-        pin_type: pin.type,
-        pin_id: pin.type === 'CREATOR' ? pin.data.id : pin.data.id,
-      });
-    }
-  }, [posthog]);
+  const selectPin = useCallback(
+    (pin: SelectedPin) => {
+      if (topPinTimerRef.current) clearTimeout(topPinTimerRef.current);
+      setSelectedPin(pin);
+      setTopPinData(pin);
+      if (pin) {
+        posthog?.capture("map_pin_tapped", {
+          pin_type: pin.type,
+          pin_id: pin.type === "CREATOR" ? pin.data.id : pin.data.id,
+        });
+      }
+    },
+    [posthog],
+  );
 
   // Deselect with a short delay so the shrink + card-exit animations play out
   const deselectPin = useCallback(() => {
@@ -531,7 +566,11 @@ export default function MapScreen() {
 
   function handleToggleNiche(nicheId: string) {
     const wasActive = selectedNicheIds.has(nicheId);
-    posthog?.capture('niche_filter_toggled', { niche_id: nicheId, mode, action: wasActive ? 'removed' : 'added' });
+    posthog?.capture("niche_filter_toggled", {
+      niche_id: nicheId,
+      mode,
+      action: wasActive ? "removed" : "added",
+    });
     setSelectedNicheIds((prev) => {
       const next = new Set(prev);
       next.has(nicheId) ? next.delete(nicheId) : next.add(nicheId);
@@ -576,7 +615,14 @@ export default function MapScreen() {
           Math.max(lat, GTA_CENTER[1]) + 0.05,
         ];
         cameraRef.current?.setCamera({
-          bounds: { ne, sw, paddingTop: 80, paddingBottom: 80, paddingLeft: 40, paddingRight: 40 },
+          bounds: {
+            ne,
+            sw,
+            paddingTop: 80,
+            paddingBottom: 80,
+            paddingLeft: 40,
+            paddingRight: 40,
+          },
           animationDuration: 800,
         });
       }
@@ -602,7 +648,10 @@ export default function MapScreen() {
     return (
       <ErrorState
         message="Couldn't load map data"
-        onRetry={() => { refetchProfiles(); refetchMapEvents(); }}
+        onRetry={() => {
+          refetchProfiles();
+          refetchMapEvents();
+        }}
       />
     );
   }
@@ -647,7 +696,10 @@ export default function MapScreen() {
             if (group.kind === "cluster") {
               return (
                 <MarkerView
-                  key={group.items.map((p) => p.id).sort().join("+")}
+                  key={group.items
+                    .map((p) => p.id)
+                    .sort()
+                    .join("+")}
                   coordinate={[group.lng, group.lat]}
                   anchor={{ x: 0.5, y: 0.5 }}
                   allowOverlap
@@ -730,7 +782,10 @@ export default function MapScreen() {
             if (group.kind === "cluster") {
               return (
                 <MarkerView
-                  key={group.items.map((e) => e.id).sort().join("+")}
+                  key={group.items
+                    .map((e) => e.id)
+                    .sort()
+                    .join("+")}
                   coordinate={[group.lng, group.lat]}
                   anchor={{ x: 0.5, y: 0.5 }}
                   allowOverlap
@@ -746,11 +801,12 @@ export default function MapScreen() {
             }
             const event = group.item;
             const isSelected =
-              selectedPin?.type === "EVENT" &&
-              selectedPin.data.id === event.id;
+              selectedPin?.type === "EVENT" && selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
             const isExclusive = event.privacy === "EXCLUSIVE";
-            const [dlat, dlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
+            const [dlat, dlng] = isExclusive
+              ? getExclusiveOffset(event.id)
+              : [0, 0];
             return (
               <MarkerView
                 key={event.id}
@@ -763,9 +819,7 @@ export default function MapScreen() {
                   pointerEvents={isSelected ? "none" : "auto"}
                 >
                   <TouchableOpacity
-                    onPress={() =>
-                      selectPin({ type: "EVENT", data: event })
-                    }
+                    onPress={() => selectPin({ type: "EVENT", data: event })}
                     activeOpacity={0.8}
                     accessibilityLabel={`${event.title} on map`}
                     accessibilityRole="button"
@@ -795,11 +849,12 @@ export default function MapScreen() {
           (() => {
             const event = topPinData.data;
             const isSelected =
-              selectedPin?.type === "EVENT" &&
-              selectedPin.data.id === event.id;
+              selectedPin?.type === "EVENT" && selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
             const isExclusive = event.privacy === "EXCLUSIVE";
-            const [dlat, dlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
+            const [dlat, dlng] = isExclusive
+              ? getExclusiveOffset(event.id)
+              : [0, 0];
             return (
               <MarkerView
                 key={`top-${event.id}`}
@@ -973,19 +1028,23 @@ export default function MapScreen() {
           key={topPinData.data.id}
           visible={selectedPin !== null}
           onDismiss={deselectPin}
-          style={[styles.card, { marginBottom: insets.bottom + Spacing.sm, overflow: "hidden" }]}
+          style={[
+            styles.card,
+            { marginBottom: insets.bottom + Spacing.sm, overflow: "hidden" },
+          ]}
         >
           {/* Banner background for creator cards */}
-          {topPinData.type === "CREATOR" && topPinData.data.banner_image_url && (
-            <>
-              <Image
-                source={{ uri: topPinData.data.banner_image_url }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-              />
-              <View style={styles.mapBannerOverlay} />
-            </>
-          )}
+          {topPinData.type === "CREATOR" &&
+            topPinData.data.banner_image_url && (
+              <>
+                <Image
+                  source={{ uri: topPinData.data.banner_image_url }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
+                <View style={styles.mapBannerOverlay} />
+              </>
+            )}
           {/* Drag handle */}
           <View style={styles.dragHandle} />
           {/* Dismiss button */}
@@ -1049,8 +1108,15 @@ function CreatorCard({
           <Text style={styles.cardName} numberOfLines={1}>
             {profile.display_name}
           </Text>
-          <Text style={[styles.cardTypeLabel, profile.profile_type === 'CREATOR' ? styles.cardTypeLabelCreator : styles.cardTypeLabelBusiness]}>
-            {profile.profile_type === 'CREATOR' ? 'Creator' : 'Business'}
+          <Text
+            style={[
+              styles.cardTypeLabel,
+              profile.profile_type === "CREATOR"
+                ? styles.cardTypeLabelCreator
+                : styles.cardTypeLabelBusiness,
+            ]}
+          >
+            {profile.profile_type === "CREATOR" ? "Creator" : "Business"}
           </Text>
         </View>
       </View>
@@ -1148,12 +1214,18 @@ function EventCard({
         </View>
         <View style={styles.eventMeta}>
           <Ionicons
-            name={event.privacy === "EXCLUSIVE" ? "lock-closed-outline" : "location-outline"}
+            name={
+              event.privacy === "EXCLUSIVE"
+                ? "lock-closed-outline"
+                : "location-outline"
+            }
             size={13}
             color={Colors.textTertiary}
           />
           <Text style={styles.eventMetaText} numberOfLines={1}>
-            {event.privacy === "EXCLUSIVE" ? "Location hidden" : event.address_name}
+            {event.privacy === "EXCLUSIVE"
+              ? "Location hidden"
+              : event.address_name}
           </Text>
         </View>
       </View>

@@ -9,6 +9,17 @@ export interface SearchResults {
   events: EventWithHost[];
 }
 
+function normalizeProfileRow(row: any): ProfileWithNiches {
+  return {
+    ...row,
+    niches: (row.profile_niches ?? [])
+      .map((pn: any) => pn.niches)
+      .filter(Boolean)
+      .map((n: any) => ({ ...n, id: String(n.id) })),
+    external_links: row.external_links ?? [],
+  };
+}
+
 async function searchProfiles(query: string): Promise<ProfileWithNiches[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
@@ -28,11 +39,7 @@ async function searchProfiles(query: string): Promise<ProfileWithNiches[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
-    ...row,
-    niches: (row.profile_niches ?? []).map((pn: any) => pn.niches).filter(Boolean),
-    external_links: row.external_links ?? [],
-  })) as ProfileWithNiches[];
+  return (data ?? []).map(normalizeProfileRow) as ProfileWithNiches[];
 }
 
 async function searchEvents(query: string): Promise<EventWithHost[]> {
@@ -96,11 +103,7 @@ async function fetchDiscoveryProfiles(): Promise<ProfileWithNiches[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
-    ...row,
-    niches: (row.profile_niches ?? []).map((pn: any) => pn.niches).filter(Boolean),
-    external_links: row.external_links ?? [],
-  })) as ProfileWithNiches[];
+  return (data ?? []).map(normalizeProfileRow) as ProfileWithNiches[];
 }
 
 export function useDiscoveryProfiles() {

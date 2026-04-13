@@ -33,7 +33,8 @@ async function fetchProfileData(
 
   const niches: Niche[] = (nicheResult.data ?? [])
     .map((row: any) => row.niches)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((n: any) => ({ ...n, id: String(n.id) }));
 
   return {
     profile: profile as Profile,

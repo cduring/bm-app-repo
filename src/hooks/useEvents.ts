@@ -4,6 +4,13 @@ import type { EventWithHost } from '../types';
 
 const STALE_2MIN = 2 * 60 * 1000;
 
+function normalizeEventRow(row: any): EventWithHost {
+  return {
+    ...row,
+    niches: (row.niches ?? []).map((n: any) => ({ ...n, id: String(n.id) })),
+  };
+}
+
 async function fetchEvents(): Promise<EventWithHost[]> {
   const { data, error } = await supabase
     .from('events_with_host')
@@ -13,7 +20,7 @@ async function fetchEvents(): Promise<EventWithHost[]> {
     .order('start_time', { ascending: true });
 
   if (error) throw error;
-  return data as EventWithHost[];
+  return (data ?? []).map(normalizeEventRow) as EventWithHost[];
 }
 
 async function fetchEventById(id: string): Promise<EventWithHost> {
@@ -24,7 +31,7 @@ async function fetchEventById(id: string): Promise<EventWithHost> {
     .single();
 
   if (error) throw error;
-  return data as EventWithHost;
+  return normalizeEventRow(data);
 }
 
 async function fetchHostedEvents(profileId: string): Promise<EventWithHost[]> {
@@ -35,7 +42,7 @@ async function fetchHostedEvents(profileId: string): Promise<EventWithHost[]> {
     .order('start_time', { ascending: true });
 
   if (error) throw error;
-  return data as EventWithHost[];
+  return (data ?? []).map(normalizeEventRow) as EventWithHost[];
 }
 
 export function useEvents() {
