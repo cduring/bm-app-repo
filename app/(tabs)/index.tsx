@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DiscoverCreatorRow } from "../../src/components/DiscoverCreatorRow";
+import { EmptyState } from "../../src/components/EmptyState";
 import { ErrorState } from "../../src/components/ErrorState";
 import { NicheTag } from "../../src/components/NicheTag";
 import {
@@ -66,8 +68,6 @@ export default function DiscoverScreen() {
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
     new Set(),
   );
-  const [refreshing, setRefreshing] = useState(false);
-
   const { data: niches = [] } = useNiches();
 
   const {
@@ -82,6 +82,8 @@ export default function DiscoverScreen() {
     error: creatorsError,
     refetch: refetchCreators,
   } = useDiscoveryProfiles();
+
+  const { refreshing, handleRefresh } = useRefreshHandler(refetchEvents, refetchCreators);
 
   const isLoading = activeView === "EVENTS" ? loadingEvents : loadingCreators;
   const activeError = activeView === "EVENTS" ? eventsError : creatorsError;
@@ -133,12 +135,6 @@ export default function DiscoverScreen() {
       }));
     }
   }, [activeView, groupedEvents, filteredCreators, isLoading]);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    await Promise.all([refetchEvents(), refetchCreators()]);
-    setRefreshing(false);
-  }
 
   function toggleNiche(id: string) {
     setSelectedNicheIds((prev) => {
@@ -221,21 +217,17 @@ export default function DiscoverScreen() {
 
     if (item._type === "empty") {
       return (
-        <View style={styles.emptyState}>
-          <Ionicons
-            name="compass-outline"
-            size={48}
-            color={Colors.textTertiary}
-          />
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
-          <Text style={styles.emptySubtitle}>
-            {selectedNicheIds.size > 0
+        <EmptyState
+          icon="compass-outline"
+          title="Nothing here yet"
+          subtitle={
+            selectedNicheIds.size > 0
               ? "Try a different niche filter"
               : activeView === "EVENTS"
                 ? "No upcoming events right now"
-                : "No creators found"}
-          </Text>
-        </View>
+                : "No creators found"
+          }
+        />
       );
     }
 
@@ -512,24 +504,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     flexShrink: 1,
-  },
-  // Empty state
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-    gap: Spacing.md,
-  },
-  emptyTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
-    textAlign: "center",
   },
 });
 

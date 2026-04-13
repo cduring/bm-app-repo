@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -50,14 +51,9 @@ export default function AccountScreen() {
     useHostedEvents(profileId);
   const { data: portfolioImages, refetch: refetchPortfolio } =
     usePortfolio(profileId);
-  const [refreshing, setRefreshing] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([refetch(), refetchHosted(), refetchPortfolio()]);
-    setRefreshing(false);
-  }, [refetch, refetchHosted, refetchPortfolio]);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetch, refetchHosted, refetchPortfolio);
   const addPortfolioImage = useAddPortfolioImage();
   const removePortfolioImage = useRemovePortfolioImage();
   const [lightboxIndex, setLightboxIndex] = useState(0);

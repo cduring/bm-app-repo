@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useFollowers, useFollowing } from '../src/hooks/useFollow';
+import { EmptyState } from '../src/components/EmptyState';
 import { ProfileCard } from '../src/components/ProfileCard';
 import { Colors, Typography, Spacing } from '../src/constants/theme';
 import type { Profile } from '../src/types';
@@ -56,21 +57,13 @@ export default function FollowListScreen() {
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
       ) : !profiles || profiles.length === 0 ? (
-        <View style={styles.centered}>
-          <Ionicons
-            name={isFollowers ? 'people-outline' : 'person-add-outline'}
-            size={48}
-            color={Colors.textTertiary}
-          />
-          <Text style={styles.emptyTitle}>
-            {isFollowers ? 'No followers yet' : 'Not following anyone yet'}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {isFollowers
-              ? 'When people follow this profile, they\u2019ll appear here.'
-              : 'Profiles that are followed will appear here.'}
-          </Text>
-        </View>
+        <EmptyState
+          icon={isFollowers ? 'people-outline' : 'person-add-outline'}
+          title={isFollowers ? 'No followers yet' : 'Not following anyone yet'}
+          subtitle={isFollowers
+            ? 'When people follow this profile, they\u2019ll appear here.'
+            : 'Profiles that are followed will appear here.'}
+        />
       ) : (
         <FlatList
           data={profiles}
@@ -116,16 +109,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    textAlign: 'center',
   },
   list: {
     padding: Spacing.md,

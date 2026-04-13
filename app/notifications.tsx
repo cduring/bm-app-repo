@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
+import { useRefreshHandler } from '../src/hooks/useRefreshHandler';
 import {
   FlatList,
   RefreshControl,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { EmptyState } from '../src/components/EmptyState';
 import { BorderRadius, Colors, Spacing, Typography } from '../src/constants/theme';
 import { useAuth } from '../src/context/auth';
 import { useProfile } from '../src/hooks/useProfile';
@@ -109,13 +111,7 @@ export default function NotificationsScreen() {
   const { data: unreadCount = 0 } = useUnreadCount(profileId);
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetch);
 
   function handlePress(item: AppNotification) {
     if (!profileId) return;
@@ -179,10 +175,11 @@ export default function NotificationsScreen() {
         }
         ListEmptyComponent={
           !isLoading ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={48} color={Colors.textTertiary} />
-              <Text style={styles.emptyText}>No notifications yet</Text>
-            </View>
+            <EmptyState
+              icon="notifications-off-outline"
+              title="No notifications yet"
+              subtitle="You'll see new followers, RSVPs and more here"
+            />
           ) : null
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -289,16 +286,5 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingTop: 80,
-  },
-  emptyText: {
-    fontSize: Typography.size.base,
-    color: Colors.textTertiary,
   },
 });

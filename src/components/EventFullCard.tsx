@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
+import { Badge } from './Badge';
 import { EventTypeBadge } from './EventTypeBadge';
 import { EVENT_TYPE_COLOR } from '../constants/eventTypes';
 import { formatDayDate, formatTimeRange } from '../utils/date';
@@ -51,10 +52,7 @@ export function EventFullCard({ event, height, rsvp, isInterested, onRSVP, onTog
           <View style={styles.badges}>
             <EventTypeBadge eventType={event.event_type} small />
             {event.privacy === 'EXCLUSIVE' && (
-              <View style={styles.exclusiveBadge}>
-                <Ionicons name="lock-closed" size={9} color={Colors.primary} />
-                <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
-              </View>
+              <Badge icon="lock-closed" text="Exclusive" />
             )}
           </View>
           <TouchableOpacity style={styles.detailsBtn} onPress={onViewDetails} activeOpacity={0.8}>
@@ -211,22 +209,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     flexWrap: 'wrap',
-  },
-  exclusiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: Colors.primary + '20',
-    borderWidth: 1,
-    borderColor: Colors.primary + '60',
-    borderRadius: BorderRadius.chip,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  exclusiveBadgeText: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
   },
   detailsBtn: {
     flexDirection: 'row',

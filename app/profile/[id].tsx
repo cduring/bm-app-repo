@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { usePostHog } from "posthog-react-native";
 import {
   ActivityIndicator,
@@ -79,13 +80,7 @@ export default function ViewProfileScreen() {
   const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(id);
   const { data: hostedEventsRaw = [], refetch: refetchHosted } =
     useHostedEvents(id);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([refetchProfile(), refetchPortfolio(), refetchHosted()]);
-    setRefreshing(false);
-  }, [refetchProfile, refetchPortfolio, refetchHosted]);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetchProfile, refetchPortfolio, refetchHosted);
   const hostedEvents = hostedEventsRaw.filter((e) => e.status !== "DRAFT");
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);

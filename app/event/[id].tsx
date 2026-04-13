@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActivityIndicator,
   Alert,
@@ -42,13 +42,7 @@ export default function EventDetailScreen() {
     refetch: refetchEvent,
   } = useEventById(id);
   const { data: profileData } = useProfile(session?.user?.id);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refetchEvent();
-    setRefreshing(false);
-  }, [refetchEvent]);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetchEvent);
   const {
     getRSVP,
     setRSVP,

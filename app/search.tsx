@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { EmptyState } from "../src/components/EmptyState";
 import { EventCard } from "../src/components/EventCard";
 import { ProfileCard } from "../src/components/ProfileCard";
 import {
@@ -377,18 +378,12 @@ export default function SearchScreen() {
 
         {/* Content */}
         {!query && !hasNicheFilter ? (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="compass-outline"
-              size={56}
-              color={Colors.textTertiary}
-            />
-            <Text style={styles.emptyTitle}>Find your community</Text>
-            <Text style={styles.emptySubtitle}>
-              Search for creators by name or niche,{"\n"}or find events
-              happening around Toronto
-            </Text>
-          </View>
+          <EmptyState
+            icon="compass-outline"
+            iconSize={56}
+            title="Find your community"
+            subtitle={"Search for creators by name or niche,\nor find events happening around Toronto"}
+          />
         ) : isLoading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={Colors.primary} size="large" />
@@ -547,26 +542,6 @@ const styles = StyleSheet.create({
   sectionCount: {
     fontSize: Typography.size.sm,
     color: Colors.textTertiary,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.md,
-    paddingBottom: 80,
-  },
-  emptyTitle: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: Typography.size.base,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
   },
   loadingState: {
     flex: 1,

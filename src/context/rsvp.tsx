@@ -13,7 +13,7 @@ import {
   useDeclineRequest,
 } from '../hooks/useRSVP';
 import { scheduleEventReminder, cancelEventReminder } from '../hooks/useNotifications';
-import type { RSVPStatus, Profile, EventWithHost, Event } from '../types';
+import type { RSVPStatus, Profile, Event } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,11 +32,9 @@ interface RSVPContextValue {
   declineRequest: (eventId: string, profileId: string) => void;
   getPendingCount: (eventId: string) => number;
 
-  // Event edits / cancellations (now persisted to Supabase)
-  cancelledEventIds: string[];
+  // Event edits / cancellations (persisted to Supabase)
   cancelEvent: (eventId: string) => Promise<void>;
   updateEventLocally: (eventId: string, updates: Partial<Event>) => Promise<void>;
-  getEffectiveEvent: (event: EventWithHost) => EventWithHost;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -188,11 +186,6 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Events now come from Supabase with the correct status — no local override needed
-  function getEffectiveEvent(event: EventWithHost): EventWithHost {
-    return event;
-  }
-
   return (
     <RSVPContext.Provider
       value={{
@@ -203,10 +196,8 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
         approveRequest,
         declineRequest,
         getPendingCount,
-        cancelledEventIds: [],
         cancelEvent,
         updateEventLocally,
-        getEffectiveEvent,
       }}
     >
       {children}

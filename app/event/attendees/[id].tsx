@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { useRefreshHandler } from "../../../src/hooks/useRefreshHandler";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { EmptyState } from "../../../src/components/EmptyState";
 import {
   BorderRadius,
   Colors,
@@ -41,13 +43,7 @@ export default function EventAttendeesScreen() {
   } = useEventAttendees(id, activeTab === "going" ? "GOING" : "INTERESTED");
 
   const revokeMutation = useRevokeAttendee();
-  const [refreshing, setRefreshing] = useState(false);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }
+  const { refreshing, handleRefresh } = useRefreshHandler(refetch);
 
   function handleRevoke(profile: Profile) {
     if (!id) return;
@@ -214,11 +210,7 @@ export default function EventAttendeesScreen() {
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
       ) : visibleAttendees.length === 0 ? (
-        <View style={styles.centered}>
-          <Ionicons name={empty.icon} size={48} color={Colors.textTertiary} />
-          <Text style={styles.emptyTitle}>{empty.title}</Text>
-          <Text style={styles.emptySubtitle}>{empty.subtitle}</Text>
-        </View>
+        <EmptyState icon={empty.icon} title={empty.title} subtitle={empty.subtitle} />
       ) : (
         <FlatList
           data={visibleAttendees}
@@ -302,18 +294,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.sm,
     paddingHorizontal: Spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-    textAlign: "center",
-    marginTop: Spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    textAlign: "center",
   },
   list: {
     padding: Spacing.md,

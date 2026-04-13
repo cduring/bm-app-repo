@@ -1,10 +1,3 @@
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
-export interface User {
-  id: string;
-  email: string;
-}
-
 // ─── Profiles ────────────────────────────────────────────────────────────────
 
 export type ProfileType = 'CREATOR' | 'BUSINESS';
@@ -35,11 +28,6 @@ export interface Niche {
   id: string;
   name: string;
   color?: string;
-}
-
-export interface ProfileNiche {
-  profile_id: string;
-  niche_id: string;
 }
 
 // ─── External Links ──────────────────────────────────────────────────────────
@@ -127,20 +115,6 @@ export interface Event {
 // ─── RSVPs ───────────────────────────────────────────────────────────────────
 
 export type RSVPStatus = 'INTERESTED' | 'REQUESTED' | 'GOING' | 'DECLINED';
-
-export interface EventRSVP {
-  event_id: string;
-  profile_id: string;
-  status: RSVPStatus;
-}
-
-// ─── Social Graph ─────────────────────────────────────────────────────────────
-
-export interface Follow {
-  follower_id: string;
-  following_id: string;
-  created_at: string;
-}
 
 // ─── Portfolio ───────────────────────────────────────────────────────────────
 

@@ -8,23 +8,9 @@ import {
 } from "react-native";
 import { BorderRadius, Colors, Spacing, Typography } from "../constants/theme";
 import type { EventWithHost } from "../types";
+import { formatDateComponents } from "../utils/date";
+import { Badge } from "./Badge";
 import { EventTypeBadge } from "./EventTypeBadge";
-
-const MONTHS = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
-];
-const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 interface EventCardProps {
   event: EventWithHost;
@@ -32,10 +18,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onPress }: EventCardProps) {
-  const startDate = new Date(event.start_time);
-  const month = MONTHS[startDate.getUTCMonth()];
-  const day = startDate.getUTCDate();
-  const weekday = WEEKDAYS[startDate.getUTCDay()];
+  const { month, day, weekday } = formatDateComponents(event.start_time);
 
   return (
     <TouchableOpacity
@@ -71,10 +54,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <View style={styles.badgeRow}>
             <EventTypeBadge eventType={event.event_type} small />
             {event.privacy === "EXCLUSIVE" && (
-              <View style={styles.exclusiveBadge}>
-                <Ionicons name="lock-closed" size={9} color={Colors.primary} />
-                <Text style={styles.exclusiveBadgeText}>Exclusive</Text>
-              </View>
+              <Badge icon="lock-closed" text="Exclusive" />
             )}
           </View>
 
@@ -168,22 +148,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: Spacing.sm,
     alignItems: "center",
-  },
-  exclusiveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: Colors.primary + "20",
-    borderWidth: 1,
-    borderColor: Colors.primary + "60",
-    borderRadius: BorderRadius.chip,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  exclusiveBadgeText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
   },
   countsRow: {
     flexDirection: "row",

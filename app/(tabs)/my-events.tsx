@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   Animated,
   ActivityIndicator,
@@ -14,6 +15,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Badge } from "../../src/components/Badge";
+import { EmptyState } from "../../src/components/EmptyState";
 import { ErrorState } from "../../src/components/ErrorState";
 import { EventCard } from "../../src/components/EventCard";
 import {
@@ -58,9 +61,10 @@ export default function MyEventsScreen() {
   const { data: eventsData, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useEvents();
   const { data: hostedEventsData, isLoading: hostedLoading, error: hostedError, refetch: refetchHosted } = useHostedEvents(profileId);
 
+  const { refreshing, handleRefresh } = useRefreshHandler(refetchEvents, refetchHosted);
+
   const [mode, setMode] = useState<Mode>("attending");
   const [activeTab, setActiveTab] = useState<AttendingTab>("interested");
-  const [refreshing, setRefreshing] = useState(false);
   const [headerWidth, setHeaderWidth] = useState(0);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
@@ -94,12 +98,6 @@ export default function MyEventsScreen() {
 
   // Hosting — uses dedicated hook that includes DRAFT/CANCELLED (with RSVP counts)
   const hostedEvents: EventWithHost[] = hostedEventsData ?? [];
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    await Promise.all([refetchEvents(), refetchHosted()]);
-    setRefreshing(false);
-  }
 
   return (
     <View style={styles.root}>
@@ -428,24 +426,12 @@ function AttendingView({
         </View>
       )}
       ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Ionicons
-            name={empty.icon as any}
-            size={48}
-            color={Colors.textTertiary}
-          />
-          <Text style={styles.emptyTitle}>{empty.title}</Text>
-          <Text style={styles.emptySubtitle}>{empty.subtitle}</Text>
-          <TouchableOpacity
-            style={styles.emptyAction}
-            onPress={() => router.push("/(tabs)/map")}
-            activeOpacity={0.8}
-            accessibilityLabel="Explore the map"
-            accessibilityRole="link"
-          >
-            <Text style={styles.emptyActionText}>Explore the Map →</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon={empty.icon as any}
+          title={empty.title}
+          subtitle={empty.subtitle}
+          action={{ label: "Explore the Map", onPress: () => router.push("/(tabs)/map") }}
+        />
       }
     />
   );
@@ -474,26 +460,12 @@ function HostingView({
           />
         }
       >
-        <View style={styles.emptyState}>
-          <Ionicons
-            name="megaphone-outline"
-            size={48}
-            color={Colors.textTertiary}
-          />
-          <Text style={styles.emptyTitle}>No hosted events yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Events you create will appear here so you can manage them.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyAction}
-            onPress={() => router.push("/host")}
-            activeOpacity={0.8}
-            accessibilityLabel="Create an event"
-            accessibilityRole="link"
-          >
-            <Text style={styles.emptyActionText}>Create an Event →</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="megaphone-outline"
+          title="No hosted events yet"
+          subtitle="Events you create will appear here so you can manage them."
+          action={{ label: "Create an Event", onPress: () => router.push("/host") }}
+        />
       </ScrollView>
     );
   }
@@ -534,38 +506,15 @@ function HostingView({
             </Text>
             <View style={styles.hostedCardMeta}>
               {event.status === "CANCELLED" ? (
-                <View style={styles.cancelledBadge}>
-                  <Text style={styles.cancelledBadgeText}>Cancelled</Text>
-                </View>
+                <Badge text="Cancelled" color={Colors.cancelled} size="medium" />
               ) : (
-                <View
-                  style={[
-                    styles.privacyBadge,
-                    event.privacy === "EXCLUSIVE" &&
-                      styles.privacyBadgeExclusive,
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      event.privacy === "EXCLUSIVE" ? "lock-closed" : "earth"
-                    }
-                    size={10}
-                    color={
-                      event.privacy === "EXCLUSIVE"
-                        ? Colors.primary
-                        : Colors.textTertiary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.privacyBadgeText,
-                      event.privacy === "EXCLUSIVE" &&
-                        styles.privacyBadgeTextExclusive,
-                    ]}
-                  >
-                    {event.privacy === "EXCLUSIVE" ? "Exclusive" : "Public"}
-                  </Text>
-                </View>
+                <Badge
+                  icon={event.privacy === "EXCLUSIVE" ? "lock-closed" : "earth"}
+                  iconSize={10}
+                  text={event.privacy === "EXCLUSIVE" ? "Exclusive" : "Public"}
+                  color={event.privacy === "EXCLUSIVE" ? Colors.primary : Colors.textTertiary}
+                  size="medium"
+                />
               )}
               <Text style={styles.rsvpCountText}>
                 {event.interested_count} interested · {event.going_count} going
@@ -714,41 +663,6 @@ const styles = StyleSheet.create({
     position: "relative",
   },
 
-  // ── Empty state ──
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.xl,
-    gap: Spacing.sm,
-  },
-  emptyTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: Colors.textPrimary,
-    textAlign: "center",
-    marginTop: Spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  emptyAction: {
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary + "60",
-    backgroundColor: Colors.primary + "10",
-  },
-  emptyActionText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.medium,
-    color: Colors.primary,
-  },
 
   // ── Hosted event cards ──
   hostedCard: {
@@ -789,42 +703,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     flexWrap: "wrap",
     marginTop: 2,
-  },
-  privacyBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.border,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  privacyBadgeExclusive: {
-    backgroundColor: Colors.primary + "15",
-    borderColor: Colors.primary + "40",
-  },
-  privacyBadgeText: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textTertiary,
-  },
-  privacyBadgeTextExclusive: {
-    color: Colors.primary,
-  },
-  cancelledBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.cancelled + "15",
-    borderWidth: 1,
-    borderColor: Colors.cancelled + "40",
-  },
-  cancelledBadgeText: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.medium,
-    color: Colors.cancelled,
   },
   rsvpCountText: {
     fontSize: Typography.size.xs,
