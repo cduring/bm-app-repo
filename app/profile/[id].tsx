@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { usePostHog } from "posthog-react-native";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +10,7 @@ import {
   Linking,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -37,6 +37,7 @@ import {
 } from "../../src/hooks/useFollow";
 import { usePortfolio } from "../../src/hooks/usePortfolio";
 import { useProfile, useProfileById } from "../../src/hooks/useProfile";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -64,7 +65,10 @@ export default function ViewProfileScreen() {
   // Track profile view
   useEffect(() => {
     if (id && supabaseData?.profile) {
-      posthog?.capture('profile_viewed', { profile_id: id, profile_type: supabaseData.profile.profile_type });
+      posthog?.capture("profile_viewed", {
+        profile_id: id,
+        profile_type: supabaseData.profile.profile_type,
+      });
     }
   }, [id, supabaseData?.profile]);
 
@@ -80,12 +84,30 @@ export default function ViewProfileScreen() {
   const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(id);
   const { data: hostedEventsRaw = [], refetch: refetchHosted } =
     useHostedEvents(id);
-  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetchProfile, refetchPortfolio, refetchHosted);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(
+    refetchProfile,
+    refetchPortfolio,
+    refetchHosted,
+  );
   const hostedEvents = hostedEventsRaw.filter((e) => e.status !== "DRAFT");
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
 
   const data = supabaseData ?? null;
+
+  async function handleShare() {
+    if (!data) return;
+    try {
+      const url = `https://loam.app/profile/${profile.id}`;
+      await Share.share({
+        title: profile.display_name,
+        message: `Check out ${profile.display_name} on Loam!\n\n${url}`,
+        url,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   function openLink(url: string) {
     const full = url.startsWith("http") ? url : `https://${url}`;
@@ -128,6 +150,18 @@ export default function ViewProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleShare}
+          accessibilityLabel="Share profile"
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name="arrow-redo"
+            size={25}
+            color={Colors.textPrimary}
+          />
+        </TouchableOpacity>
         {/* Follow button — hidden on own profile */}
         {!isOwnProfile && (
           <TouchableOpacity
@@ -348,7 +382,10 @@ export default function ViewProfileScreen() {
                   onPress={() => {
                     setLightboxIndex(idx);
                     setLightboxVisible(true);
-                    posthog?.capture('portfolio_image_viewed', { profile_id: id, image_index: idx });
+                    posthog?.capture("portfolio_image_viewed", {
+                      profile_id: id,
+                      image_index: idx,
+                    });
                   }}
                   accessibilityLabel={`Portfolio image ${idx + 1}`}
                   accessibilityRole="image"
@@ -437,6 +474,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.semibold,
     color: Colors.textPrimary,
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "flex-end",
   },
   followButton: {
     paddingVertical: 8,

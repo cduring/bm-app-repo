@@ -98,7 +98,7 @@ async function fetchDiscoveryProfiles(): Promise<ProfileWithNiches[]> {
       ),
       external_links (*)
     `)
-    .order('follower_count', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(50);
 
   if (error) throw error;

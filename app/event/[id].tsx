@@ -149,7 +149,7 @@ export default function EventDetailScreen() {
           accessibilityRole="button"
           onPress={handleShare}
         >
-          <Ionicons name="share" size={25} color={Colors.textPrimary} />
+          <Ionicons name="arrow-redo" size={25} color={Colors.textPrimary} />
         </TouchableOpacity>
         {isHost && !isCancelled && (
           <TouchableOpacity
