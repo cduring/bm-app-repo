@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -19,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { APP_VERSION, APP_WEBSITE } from "../src/constants/app";
 import {
   BorderRadius,
   Colors,
@@ -30,6 +32,15 @@ import { useProfile } from "../src/hooks/useProfile";
 import { useSearchProfiles } from "../src/hooks/useSearch";
 import { supabase } from "../src/lib/supabase";
 import type { Profile } from "../src/types";
+
+async function sendEmail(body: {
+  type: "contact_support" | "report_user";
+  fromUser: { email: string; displayName: string };
+  payload: Record<string, string>;
+}) {
+  const { error } = await supabase.functions.invoke("send-email", { body });
+  if (error) throw error;
+}
 
 // ─── Reusable row ────────────────────────────────────────────────────────────
 
@@ -94,17 +105,40 @@ function Section({
 function ContactSupportModal({
   visible,
   onClose,
+  senderEmail,
+  senderDisplayName,
 }: {
   visible: boolean;
   onClose: () => void;
+  senderEmail: string;
+  senderDisplayName: string;
 }) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
     setSubject("");
     setMessage("");
     onClose();
+  }
+
+  async function handleSubmit() {
+    if (!subject.trim() || !message.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await sendEmail({
+        type: "contact_support",
+        fromUser: { email: senderEmail, displayName: senderDisplayName },
+        payload: { subject: subject.trim(), message: message.trim() },
+      });
+      Alert.alert("Sent!", "We've received your message and will get back to you soon.");
+      handleClose();
+    } catch {
+      Alert.alert("Something went wrong", "Your message couldn't be sent. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -153,14 +187,18 @@ function ContactSupportModal({
           <TouchableOpacity
             style={[
               styles.submitButton,
-              !(subject.trim() && message.trim()) &&
+              (!(subject.trim() && message.trim()) || isSubmitting) &&
                 styles.submitButtonDisabled,
             ]}
-            onPress={handleClose}
+            onPress={handleSubmit}
             activeOpacity={0.8}
-            disabled={!subject.trim() || !message.trim()}
+            disabled={!subject.trim() || !message.trim() || isSubmitting}
           >
-            <Text style={styles.submitButtonText}>Submit</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={Colors.textPrimary} />
+            ) : (
+              <Text style={styles.submitButtonText}>Submit</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -173,9 +211,13 @@ function ContactSupportModal({
 function ReportUserModal({
   visible,
   onClose,
+  senderEmail,
+  senderDisplayName,
 }: {
   visible: boolean;
   onClose: () => void;
+  senderEmail: string;
+  senderDisplayName: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -184,6 +226,7 @@ function ReportUserModal({
     "id" | "display_name" | "profile_picture_url"
   > | null>(null);
   const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: searchResults = [], isFetching } =
@@ -204,6 +247,28 @@ function ReportUserModal({
     setReason("");
     Keyboard.dismiss();
     onClose();
+  }
+
+  async function handleSubmit() {
+    if (!selectedUser || !reason.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await sendEmail({
+        type: "report_user",
+        fromUser: { email: senderEmail, displayName: senderDisplayName },
+        payload: {
+          reportedUserId: selectedUser.id,
+          reportedDisplayName: selectedUser.display_name,
+          reason: reason.trim(),
+        },
+      });
+      Alert.alert("Report submitted", "Thank you for keeping Loam safe. We'll review this shortly.");
+      handleClose();
+    } catch {
+      Alert.alert("Something went wrong", "Your report couldn't be sent. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleSelectUser(
@@ -358,13 +423,18 @@ function ReportUserModal({
           <TouchableOpacity
             style={[
               styles.submitButton,
-              !(selectedUser && reason.trim()) && styles.submitButtonDisabled,
+              (!(selectedUser && reason.trim()) || isSubmitting) &&
+                styles.submitButtonDisabled,
             ]}
-            onPress={handleClose}
+            onPress={handleSubmit}
             activeOpacity={0.8}
-            disabled={!selectedUser || !reason.trim()}
+            disabled={!selectedUser || !reason.trim() || isSubmitting}
           >
-            <Text style={styles.submitButtonText}>Submit Report</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={Colors.textPrimary} />
+            ) : (
+              <Text style={styles.submitButtonText}>Submit Report</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -379,6 +449,9 @@ export default function SettingsScreen() {
   const userId = session?.user?.id;
   const { data: profileData } = useProfile(userId);
   const profileId = profileData?.profile?.id;
+
+  const senderEmail = session?.user?.email ?? "";
+  const senderDisplayName = profileData?.profile?.display_name ?? senderEmail;
 
   const [supportVisible, setSupportVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
@@ -488,6 +561,20 @@ export default function SettingsScreen() {
             label="Report a User"
             onPress={() => setReportVisible(true)}
           />
+          <Separator />
+          <SettingsRow
+            icon="document-text-outline"
+            label="Terms of Use"
+            onPress={() => openExternal(`${APP_WEBSITE}/terms`)}
+            external
+          />
+          <Separator />
+          <SettingsRow
+            icon="shield-checkmark-outline"
+            label="Privacy Policy"
+            onPress={() => openExternal(`${APP_WEBSITE}/privacy`)}
+            external
+          />
         </Section>
 
         {/* Group 4 — External */}
@@ -495,7 +582,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="star-outline"
             label="Rate on App Store"
-            onPress={() => openExternal("https://apps.apple.com")}
+            onPress={() => openExternal(`${APP_WEBSITE}/rate`)}
             external
           />
           <Separator />
@@ -532,15 +619,32 @@ export default function SettingsScreen() {
             destructive
           />
         </Section>
+
+        {/* Footer — wordmark + version */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={() => openExternal(APP_WEBSITE)}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel="Loam website"
+          >
+            <Text style={styles.footerWordmark}>loam</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerVersion}>Version {APP_VERSION}</Text>
+        </View>
       </ScrollView>
 
       <ContactSupportModal
         visible={supportVisible}
         onClose={() => setSupportVisible(false)}
+        senderEmail={senderEmail}
+        senderDisplayName={senderDisplayName}
       />
       <ReportUserModal
         visible={reportVisible}
         onClose={() => setReportVisible(false)}
+        senderEmail={senderEmail}
+        senderDisplayName={senderDisplayName}
       />
     </SafeAreaView>
   );
@@ -778,5 +882,24 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: Typography.weight.medium,
     flexShrink: 1,
+  },
+
+  // Footer
+  footer: {
+    alignItems: "center",
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.md,
+    gap: Spacing.xs,
+  },
+  footerWordmark: {
+    fontSize: 22,
+    fontWeight: Typography.weight.bold,
+    color: Colors.textTertiary,
+    letterSpacing: 2,
+  },
+  footerVersion: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+    opacity: 0.6,
   },
 });

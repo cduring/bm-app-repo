@@ -11,6 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.loamapp.loam",
+      "associatedDomains": [
+        "applinks:loamapp.xyz"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Loam needs access to your photo library to upload profile photos, event covers, and portfolio images.",
         "NSLocationWhenInUseUsageDescription": "Loam uses your location to show you and other creators on the map.",
@@ -25,6 +28,28 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.loamapp.loam",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "loamapp.xyz",
+              "pathPrefix": "/event/"
+            },
+            {
+              "scheme": "https",
+              "host": "loamapp.xyz",
+              "pathPrefix": "/profile/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
@@ -68,6 +93,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "867880fe-1891-4d31-85c2-aaa4b093b92c"
+      }
     }
   }
 }

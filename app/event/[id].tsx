@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { APP_WEBSITE } from "../../src/constants/app";
 import { ErrorState } from "../../src/components/ErrorState";
 import { EventTypeBadge } from "../../src/components/EventTypeBadge";
 import { LocationMapPreview } from "../../src/components/LocationMapPreview";
@@ -93,7 +94,7 @@ export default function EventDetailScreen() {
   async function handleShare() {
     if (!event) return;
     try {
-      const url = `https://loam.app/event/${event.id}`;
+      const url = `${APP_WEBSITE}/event/${event.id}`;
       await Share.share({
         title: event.title,
         message: `Check out ${event.title} on Loam!\n\n${url}`,

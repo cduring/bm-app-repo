@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -28,7 +29,7 @@ import { supabase } from "../../src/lib/supabase";
 import type { ProfileType } from "../../src/types";
 import { resolvePostalCode } from "../../src/utils/location";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 interface OnboardingData {
   profileType: ProfileType | null;
@@ -51,6 +52,9 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   // Step 5 postal prefix input (not saved to Supabase directly; drives coordinate generation)
   const [postalPrefix, setPostalPrefix] = useState("");
   const [data, setData] = useState<OnboardingData>({
@@ -87,6 +91,10 @@ export default function OnboardingScreen() {
     }
     if (step === 5 && postalPrefix.length > 0 && postalPrefix.length < 3) {
       setError("Enter all 3 characters of your postal code area (e.g. M5V).");
+      return;
+    }
+    if (step === 6 && (!ageConfirmed || !termsAccepted || !privacyAccepted)) {
+      setError("Please confirm all three items to continue.");
       return;
     }
 
@@ -645,6 +653,86 @@ export default function OnboardingScreen() {
             </View>
           )}
 
+          {/* ── Step 6: Terms & Age ── */}
+          {step === 6 && (
+            <View style={styles.stepContent}>
+              <Text style={styles.title}>One last step</Text>
+              <Text style={styles.subtitle}>
+                Please confirm the following to continue.
+              </Text>
+              <View style={styles.checkList}>
+                <TouchableOpacity
+                  style={styles.checkRow}
+                  onPress={() => setAgeConfirmed((v) => !v)}
+                  activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: ageConfirmed }}
+                >
+                  <Ionicons
+                    name={ageConfirmed ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={ageConfirmed ? Colors.primary : Colors.textTertiary}
+                  />
+                  <Text style={styles.checkLabel}>
+                    I am at least 18 years of age
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.checkRow}
+                  onPress={() => setTermsAccepted((v) => !v)}
+                  activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: termsAccepted }}
+                >
+                  <Ionicons
+                    name={termsAccepted ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={termsAccepted ? Colors.primary : Colors.textTertiary}
+                  />
+                  <Text style={styles.checkLabel}>
+                    I have read and agree to the{" "}
+                    <Text
+                      style={styles.checkLink}
+                      onPress={() =>
+                        Linking.openURL("https://loamapp.xyz/terms")
+                      }
+                    >
+                      Terms of Use
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.checkRow}
+                  onPress={() => setPrivacyAccepted((v) => !v)}
+                  activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: privacyAccepted }}
+                >
+                  <Ionicons
+                    name={privacyAccepted ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={
+                      privacyAccepted ? Colors.primary : Colors.textTertiary
+                    }
+                  />
+                  <Text style={styles.checkLabel}>
+                    I have read and agree to the{" "}
+                    <Text
+                      style={styles.checkLink}
+                      onPress={() =>
+                        Linking.openURL("https://loamapp.xyz/privacy")
+                      }
+                    >
+                      Privacy Policy
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Error */}
           {error && (
             <View style={styles.errorBox}>
@@ -916,6 +1004,28 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.primary,
     lineHeight: 17,
+  },
+
+  // Terms & Age checkboxes
+  checkList: {
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: Spacing.sm,
+  },
+  checkLabel: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.size.base,
+    lineHeight: 22,
+  },
+  checkLink: {
+    color: Colors.primary,
+    textDecorationLine: "underline",
   },
 
   // Error

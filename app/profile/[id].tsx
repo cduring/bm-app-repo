@@ -28,6 +28,7 @@ import {
   Spacing,
   Typography,
 } from "../../src/constants/theme";
+import { APP_WEBSITE } from "../../src/constants/app";
 import { useAuth } from "../../src/context/auth";
 import { useHostedEvents } from "../../src/hooks/useEvents";
 import {
@@ -98,10 +99,10 @@ export default function ViewProfileScreen() {
   async function handleShare() {
     if (!data) return;
     try {
-      const url = `https://loam.app/profile/${profile.id}`;
+      const url = `${APP_WEBSITE}/profile/${data.profile?.id}`;
       await Share.share({
-        title: profile.display_name,
-        message: `Check out ${profile.display_name} on Loam!\n\n${url}`,
+        title: data.profile?.display_name ?? "Loam",
+        message: `Check out ${data.profile?.display_name ?? "this creator"} on Loam!\n\n${url}`,
         url,
       });
     } catch (error) {
