@@ -22,15 +22,15 @@ import { EventCard } from "../../src/components/EventCard";
 import { NicheTag } from "../../src/components/NicheTag";
 import { PlatformIcon } from "../../src/components/PlatformIcon";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
+import { APP_WEBSITE } from "../../src/constants/app";
 import {
   BorderRadius,
   Colors,
   Spacing,
   Typography,
 } from "../../src/constants/theme";
-import { APP_WEBSITE } from "../../src/constants/app";
 import { useAuth } from "../../src/context/auth";
-import { useHostedEvents } from "../../src/hooks/useEvents";
+import { useAttendingEvents, useHostedEvents } from "../../src/hooks/useEvents";
 import {
   useFollowMutation,
   useIsFollowing,
@@ -83,13 +83,17 @@ export default function ViewProfileScreen() {
     }
   }
 
-  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(validId);
+  const { data: portfolioImages, refetch: refetchPortfolio } =
+    usePortfolio(validId);
   const { data: hostedEventsRaw = [], refetch: refetchHosted } =
     useHostedEvents(validId);
+  const { data: attendingEvents = [], refetch: refetchAttending } =
+    useAttendingEvents(validId);
   const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(
     refetchProfile,
     refetchPortfolio,
     refetchHosted,
+    refetchAttending,
   );
   const hostedEvents = hostedEventsRaw.filter((e) => e.status !== "DRAFT");
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -119,7 +123,9 @@ export default function ViewProfileScreen() {
   }
 
   if (!validId) {
-    return <ErrorState message="Invalid profile link" onBack={() => router.back()} />;
+    return (
+      <ErrorState message="Invalid profile link" onBack={() => router.back()} />
+    );
   }
 
   if (isLoading) {
@@ -162,11 +168,7 @@ export default function ViewProfileScreen() {
           accessibilityLabel="Share profile"
           accessibilityRole="button"
         >
-          <Ionicons
-            name="arrow-redo"
-            size={25}
-            color={Colors.textPrimary}
-          />
+          <Ionicons name="arrow-redo" size={25} color={Colors.textPrimary} />
         </TouchableOpacity>
         {/* Follow button — hidden on own profile */}
         {!isOwnProfile && (
@@ -416,7 +418,7 @@ export default function ViewProfileScreen() {
         {/* Hosted Events */}
         {hostedEvents.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Events</Text>
+            <Text style={styles.sectionTitle}>Hosting</Text>
             {hostedEvents.map((event) => (
               <View
                 key={event.id}
@@ -434,6 +436,20 @@ export default function ViewProfileScreen() {
                   </View>
                 )}
               </View>
+            ))}
+          </View>
+        )}
+
+        {/* Events Attending */}
+        {attendingEvents.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Events Attending</Text>
+            {attendingEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onPress={() => router.push(`/event/${event.id}` as any)}
+              />
             ))}
           </View>
         )}

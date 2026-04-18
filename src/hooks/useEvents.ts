@@ -62,6 +62,41 @@ export function useEventById(id: string | undefined) {
   });
 }
 
+async function fetchAttendingEvents(profileId: string): Promise<EventWithHost[]> {
+  const { data: rsvpData, error: rsvpError } = await supabase
+    .from('event_rsvps')
+    .select('event_id')
+    .eq('profile_id', profileId)
+    .eq('status', 'GOING');
+
+  if (rsvpError) throw rsvpError;
+  if (!rsvpData || rsvpData.length === 0) return [];
+
+  const eventIds = rsvpData.map((r: { event_id: string }) => r.event_id);
+
+  const { data, error } = await supabase
+    .from('events_with_host')
+    .select('*')
+    .in('id', eventIds)
+    .eq('status', 'PUBLISHED')
+    .eq('privacy', 'PUBLIC')
+    .gt('end_time', new Date().toISOString())
+    .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map(normalizeEventRow) as EventWithHost[];
+}
+
+/** Returns PUBLIC PUBLISHED upcoming events the profile has RSVPed GOING to */
+export function useAttendingEvents(profileId: string | undefined) {
+  return useQuery<EventWithHost[]>({
+    queryKey: ['attendingEvents', profileId],
+    queryFn: () => fetchAttendingEvents(profileId!),
+    enabled: !!profileId,
+    staleTime: STALE_2MIN,
+  });
+}
+
 /** Returns all events hosted by a profile including DRAFT and CANCELLED with RSVP counts */
 export function useHostedEvents(profileId: string | undefined) {
   return useQuery<EventWithHost[]>({
