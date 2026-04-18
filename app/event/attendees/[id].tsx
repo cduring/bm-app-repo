@@ -21,7 +21,9 @@ import {
   Spacing,
   Typography,
 } from "../../../src/constants/theme";
+import { useAuth } from "../../../src/context/auth";
 import { useEventById } from "../../../src/hooks/useEvents";
+import { useProfile } from "../../../src/hooks/useProfile";
 import {
   useEventAttendees,
   useRevokeAttendee,
@@ -33,7 +35,10 @@ export default function EventAttendeesScreen() {
   const [activeTab, setActiveTab] = useState<"going" | "interested">("going");
   const [revokedIds, setRevokedIds] = useState<Set<string>>(new Set());
 
+  const { session } = useAuth();
+  const { data: profileData } = useProfile(session?.user?.id);
   const { data: event } = useEventById(id);
+  const isHost = !!profileData && !!event && profileData.profile.id === event.host_id;
   const isExclusive = event?.privacy === "EXCLUSIVE";
 
   const {
@@ -133,7 +138,7 @@ export default function EventAttendeesScreen() {
         </TouchableOpacity>
 
         {/* Revoke (host only, Going tab, exclusive events) */}
-        {isExclusive && activeTab === "going" && (
+        {isHost && isExclusive && activeTab === "going" && (
           <TouchableOpacity
             style={styles.revokeButton}
             onPress={() => handleRevoke(item)}
@@ -168,7 +173,7 @@ export default function EventAttendeesScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
+      {/* Tabs — Interested tab is host-only */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "going" && styles.tabActive]}
@@ -185,23 +190,25 @@ export default function EventAttendeesScreen() {
             {event && event.going_count > 0 ? ` · ${event.going_count}` : ""}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "interested" && styles.tabActive]}
-          onPress={() => setActiveTab("interested")}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "interested" && styles.tabTextActive,
-            ]}
+        {isHost && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "interested" && styles.tabActive]}
+            onPress={() => setActiveTab("interested")}
+            activeOpacity={0.7}
           >
-            Interested
-            {event && event.interested_count > 0
-              ? ` · ${event.interested_count}`
-              : ""}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "interested" && styles.tabTextActive,
+              ]}
+            >
+              Interested
+              {event && event.interested_count > 0
+                ? ` · ${event.interested_count}`
+                : ""}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Content */}

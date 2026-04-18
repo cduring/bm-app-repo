@@ -65,6 +65,23 @@ export default function EventDetailScreen() {
 
   function handleRSVP(status: RSVPStatus) {
     if (!id) return;
+
+    if (event?.privacy === "EXCLUSIVE" && rsvp === "GOING") {
+      Alert.alert(
+        "Leave exclusive event?",
+        "You were accepted by the host. Leaving will remove your spot and you would need to request access again.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Leave",
+            style: "destructive",
+            onPress: () => setRSVP(id, rsvp === status ? null : status),
+          },
+        ]
+      );
+      return;
+    }
+
     setRSVP(id, rsvp === status ? null : status);
   }
 
@@ -123,6 +140,7 @@ export default function EventDetailScreen() {
       <ErrorState
         message={eventError ? "Couldn't load event" : "Event not found"}
         onRetry={eventError ? refetchEvent : undefined}
+        onBack={() => router.back()}
       />
     );
   }
@@ -130,6 +148,7 @@ export default function EventDetailScreen() {
   const bannerColor = EVENT_TYPE_COLOR[event.event_type];
   const isPublic = event.privacy === "PUBLIC";
   const isHost = !!profileData && profileData.profile.id === event.host_id;
+  const canSeeAttendees = isHost || isPublic || rsvp === "GOING";
   const isCancelled = event.status === "CANCELLED";
   const pendingCount = id ? getPendingCount(id) : 0;
   const requestors = id ? (eventRequestors[id] ?? []) : [];
@@ -273,7 +292,7 @@ export default function EventDetailScreen() {
             <Text style={styles.statLabel}>Interested</Text>
           </View>
           <View style={styles.statDivider} />
-          {isHost ? (
+          {canSeeAttendees ? (
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => router.push(`/event/attendees/${event.id}`)}

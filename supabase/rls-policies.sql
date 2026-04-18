@@ -165,6 +165,49 @@ CREATE POLICY "event_rsvps: host read"
     )
   );
 
+-- Any authenticated user can read GOING RSVPs for public events (interested is host-only)
+CREATE POLICY "event_rsvps: public event read"
+  ON event_rsvps FOR SELECT
+  USING (
+    event_rsvps.status = 'GOING'
+    AND EXISTS (
+      SELECT 1 FROM events e
+      WHERE e.id = event_rsvps.event_id
+        AND e.privacy = 'PUBLIC'
+    )
+  );
+
+-- Helper: check if the current user is GOING to a given event.
+-- Must be SECURITY DEFINER to bypass RLS and avoid recursive policy evaluation
+-- (the events_with_host view joins event_rsvps under security_invoker = true).
+CREATE OR REPLACE FUNCTION user_is_going_to_event(p_event_id bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM event_rsvps
+    WHERE event_id = p_event_id
+      AND profile_id = auth_profile_id()
+      AND status = 'GOING'
+  );
+$$;
+
+-- Users who are GOING on an exclusive event can read GOING RSVPs for that event (interested is host-only)
+CREATE POLICY "event_rsvps: exclusive going read"
+  ON event_rsvps FOR SELECT
+  USING (
+    event_rsvps.status = 'GOING'
+    AND EXISTS (
+      SELECT 1 FROM events e
+      WHERE e.id = event_rsvps.event_id
+        AND e.privacy = 'EXCLUSIVE'
+    )
+    AND user_is_going_to_event(event_rsvps.event_id)
+  );
+
 -- Users can insert their own RSVPs
 CREATE POLICY "event_rsvps: insert own"
   ON event_rsvps FOR INSERT
