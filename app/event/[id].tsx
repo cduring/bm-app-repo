@@ -36,13 +36,14 @@ import { formatDayDate, formatTimeRange } from "../../src/utils/date";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const validId = id && /^\d+$/.test(id) ? id : undefined;
   const { session } = useAuth();
   const {
     data: event,
     isLoading,
     error: eventError,
     refetch: refetchEvent,
-  } = useEventById(id);
+  } = useEventById(validId);
   const { data: profileData } = useProfile(session?.user?.id);
   const { refreshing, handleRefresh: onRefresh } =
     useRefreshHandler(refetchEvent);
@@ -103,6 +104,10 @@ export default function EventDetailScreen() {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  if (!validId) {
+    return <ErrorState message="Invalid event link" onBack={() => router.back()} />;
   }
 
   if (isLoading && !event) {

@@ -42,6 +42,7 @@ import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const validId = id && /^\d+$/.test(id) ? id : undefined;
   const { session } = useAuth();
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
@@ -51,10 +52,10 @@ export default function ViewProfileScreen() {
     isLoading,
     error: profileError,
     refetch: refetchProfile,
-  } = useProfileById(id);
+  } = useProfileById(validId);
   const { data: isFollowing, isLoading: followLoading } = useIsFollowing(
     myProfileId,
-    id,
+    validId,
   );
   const followMutation = useFollowMutation();
   const unfollowMutation = useUnfollowMutation();
@@ -82,9 +83,9 @@ export default function ViewProfileScreen() {
     }
   }
 
-  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(id);
+  const { data: portfolioImages, refetch: refetchPortfolio } = usePortfolio(validId);
   const { data: hostedEventsRaw = [], refetch: refetchHosted } =
-    useHostedEvents(id);
+    useHostedEvents(validId);
   const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(
     refetchProfile,
     refetchPortfolio,
@@ -115,6 +116,10 @@ export default function ViewProfileScreen() {
     Linking.openURL(full).catch(() =>
       Alert.alert("Error", "Could not open this link."),
     );
+  }
+
+  if (!validId) {
+    return <ErrorState message="Invalid profile link" onBack={() => router.back()} />;
   }
 
   if (isLoading) {

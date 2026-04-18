@@ -20,8 +20,16 @@ function normalizeProfileRow(row: any): ProfileWithNiches {
   };
 }
 
+function sanitizeQuery(raw: string): string {
+  return raw
+    .trim()
+    .slice(0, 80)
+    .replace(/[%_\\]/g, '\\$&')  // escape ilike wildcards so they match literally
+    .replace(/[(),]/g, '');       // strip PostgREST .or() filter metacharacters
+}
+
 async function searchProfiles(query: string): Promise<ProfileWithNiches[]> {
-  const trimmed = query.trim();
+  const trimmed = sanitizeQuery(query);
   if (!trimmed) return [];
 
   const { data, error } = await supabase
@@ -43,7 +51,7 @@ async function searchProfiles(query: string): Promise<ProfileWithNiches[]> {
 }
 
 async function searchEvents(query: string): Promise<EventWithHost[]> {
-  const trimmed = query.trim();
+  const trimmed = sanitizeQuery(query);
   if (!trimmed) return [];
 
   const { data, error } = await supabase

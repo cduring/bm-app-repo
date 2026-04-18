@@ -339,7 +339,7 @@ export default function EventEditScreen() {
             onChangeText={setTitle}
             placeholder="Event title"
             placeholderTextColor={Colors.textTertiary}
-            maxLength={80}
+            maxLength={100}
           />
         </View>
 
@@ -355,7 +355,7 @@ export default function EventEditScreen() {
             multiline
             numberOfLines={5}
             textAlignVertical="top"
-            maxLength={800}
+            maxLength={2000}
           />
         </View>
 
@@ -376,6 +376,7 @@ export default function EventEditScreen() {
               placeholderTextColor={Colors.textTertiary}
               autoCorrect={false}
               returnKeyType="done"
+              maxLength={200}
             />
             {geocoding ? (
               <ActivityIndicator style={styles.locationStatus} color={Colors.textTertiary} size="small" />

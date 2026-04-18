@@ -450,9 +450,42 @@ CREATE POLICY "portfolio_images: owner write"
 
 
 -- ─── Storage Bucket Policies ──────────────────────────────────────────────────
--- Set these in the Supabase dashboard under Storage → Policies,
--- or via the SQL Editor using storage.objects policies.
+-- These policies are active in the Supabase dashboard.
+-- Mirrored here for source tracking — run via SQL Editor or Storage → Policies.
 
--- avatars bucket: public read, authenticated upload to own folder
--- post-media bucket: public read, authenticated upload
--- event-covers bucket: public read, authenticated upload
+-- ── avatars ── path: {auth.uid()}/profile.jpg
+-- CREATE POLICY "avatars: owner write"
+--   ON storage.objects FOR ALL TO authenticated
+--   USING  (bucket_id = 'avatars' AND (SELECT auth.uid()::text) = (storage.foldername(name))[1])
+--   WITH CHECK (bucket_id = 'avatars' AND (SELECT auth.uid()::text) = (storage.foldername(name))[1]);
+
+-- ── banners ── path: {auth.uid()}/banner.jpg
+-- CREATE POLICY "banners: owner write"
+--   ON storage.objects FOR ALL TO authenticated
+--   USING  (bucket_id = 'banners' AND (SELECT auth.uid()::text) = (storage.foldername(name))[1])
+--   WITH CHECK (bucket_id = 'banners' AND (SELECT auth.uid()::text) = (storage.foldername(name))[1]);
+
+-- ── event-covers ── path: {eventId}/cover.jpg
+-- CREATE POLICY "event-covers: host write"
+--   ON storage.objects FOR ALL TO authenticated
+--   USING (bucket_id = 'event-covers' AND EXISTS (
+--     SELECT 1 FROM events WHERE id::text = (storage.foldername(name))[1]
+--       AND host_id = auth_profile_id()))
+--   WITH CHECK (bucket_id = 'event-covers' AND EXISTS (
+--     SELECT 1 FROM events WHERE id::text = (storage.foldername(name))[1]
+--       AND host_id = auth_profile_id()));
+
+-- ── post-media ── path: portfolio/{profileId}/{timestamp}.ext
+-- NOTE: Original "authenticated users can upload" policy (no path restriction) was
+-- replaced. The prior update/delete policies used auth.uid() vs bigint profileId
+-- (never matched) and were replaced with this single owner-scoped policy.
+-- CREATE POLICY "post-media: owner write"
+--   ON storage.objects FOR ALL TO authenticated
+--   USING (bucket_id = 'post-media'
+--     AND (storage.foldername(name))[1] = 'portfolio'
+--     AND EXISTS (SELECT 1 FROM profiles p
+--       WHERE p.id::text = (storage.foldername(name))[2] AND p.user_id = auth.uid()))
+--   WITH CHECK (bucket_id = 'post-media'
+--     AND (storage.foldername(name))[1] = 'portfolio'
+--     AND EXISTS (SELECT 1 FROM profiles p
+--       WHERE p.id::text = (storage.foldername(name))[2] AND p.user_id = auth.uid()));

@@ -262,7 +262,22 @@ export default function EditProfileScreen() {
     const raw = newHandle.trim();
     if (!raw) return;
     const config = PLATFORM_HANDLE_CONFIG[newPlatform];
-    const url = config ? config.buildUrl(raw) : raw;
+    let url: string;
+    if (config) {
+      url = config.buildUrl(raw);
+    } else {
+      try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== 'https:') {
+          setError("Links must use https://");
+          return;
+        }
+        url = parsed.href;
+      } catch {
+        setError("Please enter a valid URL starting with https://");
+        return;
+      }
+    }
     setLinks((prev) => [...prev, { platform_name: newPlatform, url }]);
     setNewHandle("");
     setAddingLink(false);
@@ -491,6 +506,7 @@ export default function EditProfileScreen() {
                 autoCorrect={false}
                 autoComplete="name"
                 textContentType="name"
+                maxLength={50}
                 accessibilityLabel="Display name"
               />
             </View>
@@ -506,6 +522,7 @@ export default function EditProfileScreen() {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                maxLength={500}
                 accessibilityLabel="Bio"
               />
             </View>
@@ -541,6 +558,7 @@ export default function EditProfileScreen() {
                 textContentType="addressCity"
                 autoCorrect={false}
                 returnKeyType="done"
+                maxLength={100}
                 accessibilityLabel="Neighbourhood or area"
               />
               <Text style={styles.locationHint}>

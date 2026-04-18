@@ -121,7 +121,8 @@ export function useApproveRequest() {
         .from('event_rsvps')
         .update({ status: 'GOING' })
         .eq('event_id', eventId)
-        .eq('profile_id', requestorProfileId);
+        .eq('profile_id', requestorProfileId)
+        .eq('status', 'REQUESTED');
       if (error) throw error;
     },
     onSuccess: (_data, { hostProfileId, eventId }) => {
@@ -161,7 +162,8 @@ export function useRevokeAttendee() {
         .from('event_rsvps')
         .delete()
         .eq('event_id', eventId)
-        .eq('profile_id', profileId);
+        .eq('profile_id', profileId)
+        .eq('status', 'GOING');
       if (error) throw error;
     },
     onSuccess: (_data, { eventId }) => {

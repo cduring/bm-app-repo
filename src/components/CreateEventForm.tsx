@@ -772,6 +772,7 @@ export default function CreateEventForm() {
                   placeholderTextColor={Colors.textTertiary}
                   autoCorrect={false}
                   returnKeyType="next"
+                  maxLength={100}
                 />
               </View>
 
@@ -786,6 +787,7 @@ export default function CreateEventForm() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
+                  maxLength={2000}
                 />
               </View>
             </View>
@@ -1002,6 +1004,7 @@ export default function CreateEventForm() {
                     placeholderTextColor={Colors.textTertiary}
                     autoCorrect={false}
                     returnKeyType="done"
+                    maxLength={200}
                   />
                   {geocoding ? (
                     <ActivityIndicator
