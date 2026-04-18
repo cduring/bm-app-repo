@@ -18,7 +18,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -38,6 +37,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
+import { NicheFilterBar } from "../../src/components/NicheFilterBar";
 import { NicheTag } from "../../src/components/NicheTag";
 import {
   EVENT_TYPE_COLOR,
@@ -966,65 +966,13 @@ export default function MapScreen() {
         </View>
 
         {/* Niche filter chips */}
-        {
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.nichesRow}
-            style={styles.nichesScroll}
-          >
-            <TouchableOpacity
-              style={[
-                styles.nicheChip,
-                selectedNicheIds.size === 0 && styles.nicheChipActive,
-              ]}
-              onPress={() => {
-                setSelectedNicheIds(new Set());
-                deselectPin();
-              }}
-              activeOpacity={0.7}
-              accessibilityLabel="Show all niches"
-              accessibilityRole="button"
-              accessibilityState={{ selected: selectedNicheIds.size === 0 }}
-            >
-              <Text
-                style={[
-                  styles.nicheChipText,
-                  selectedNicheIds.size === 0 && styles.nicheChipTextActive,
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-            {allNiches.map((niche) => {
-              const active = selectedNicheIds.has(niche.id);
-              const color = niche.color ?? Colors.primary;
-              return (
-                <TouchableOpacity
-                  key={niche.id}
-                  style={[
-                    styles.nicheChip,
-                    active && { backgroundColor: color, borderColor: color },
-                  ]}
-                  onPress={() => handleToggleNiche(niche.id)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Filter by ${niche.name}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text
-                    style={[
-                      styles.nicheChipText,
-                      active && { color: Colors.textPrimary },
-                    ]}
-                  >
-                    {niche.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        }
+        <NicheFilterBar
+          niches={allNiches}
+          selectedIds={selectedNicheIds}
+          onToggle={handleToggleNiche}
+          onClearAll={() => setSelectedNicheIds(new Set())}
+          onClearAllExtra={deselectPin}
+        />
       </SafeAreaView>
 
       {/* Bottom preview card — swipe down to dismiss */}
@@ -1415,34 +1363,6 @@ const styles = StyleSheet.create({
   modeButtonTextActive: {
     color: Colors.textPrimary,
   },
-  nichesScroll: {
-    marginBottom: Spacing.sm,
-  },
-  nichesRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  nicheChip: {
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  nicheChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textSecondary,
-  },
-  nicheChipTextActive: {
-    color: Colors.textPrimary,
-  },
-
   // Bottom card banner overlay
   mapBannerOverlay: {
     ...StyleSheet.absoluteFillObject,

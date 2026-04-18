@@ -2,12 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DiscoverCreatorRow } from "../../src/components/DiscoverCreatorRow";
 import { EmptyState } from "../../src/components/EmptyState";
 import { ErrorState } from "../../src/components/ErrorState";
+import { IntroModal } from "../../src/components/IntroModal";
+import { NicheFilterBar } from "../../src/components/NicheFilterBar";
 import { NicheTag } from "../../src/components/NicheTag";
 import {
   BorderRadius,
@@ -24,13 +24,13 @@ import {
   Spacing,
   Typography,
 } from "../../src/constants/theme";
+import { useAuth } from "../../src/context/auth";
 import { useEvents } from "../../src/hooks/useEvents";
+import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { useNiches } from "../../src/hooks/useNiches";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
 import type { EventWithHost, ProfileWithNiches } from "../../src/types";
-import { useAuth } from "../../src/context/auth";
-import { IntroModal } from "../../src/components/IntroModal";
-import { useIntroModal } from "../../src/hooks/useIntroModal";
 
 type ActiveView = "CREATORS" | "EVENTS";
 
@@ -68,7 +68,7 @@ function formatEventTime(start_time: string): string {
 
 export default function DiscoverScreen() {
   const { session } = useAuth();
-  const introModal = useIntroModal('discover', session?.user?.id);
+  const introModal = useIntroModal("discover", session?.user?.id);
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
     new Set(),
@@ -88,7 +88,10 @@ export default function DiscoverScreen() {
     refetch: refetchCreators,
   } = useDiscoveryProfiles();
 
-  const { refreshing, handleRefresh } = useRefreshHandler(refetchEvents, refetchCreators);
+  const { refreshing, handleRefresh } = useRefreshHandler(
+    refetchEvents,
+    refetchCreators,
+  );
 
   const isLoading = activeView === "EVENTS" ? loadingEvents : loadingCreators;
   const activeError = activeView === "EVENTS" ? eventsError : creatorsError;
@@ -203,12 +206,18 @@ export default function DiscoverScreen() {
                 {formatEventTime(event.start_time)}
               </Text>
               <Ionicons
-                name={event.privacy === "EXCLUSIVE" ? "lock-closed-outline" : "location-outline"}
+                name={
+                  event.privacy === "EXCLUSIVE"
+                    ? "lock-closed-outline"
+                    : "location-outline"
+                }
                 size={12}
                 color={Colors.textTertiary}
               />
               <Text style={styles.eventMetaText} numberOfLines={1}>
-                {event.privacy === "EXCLUSIVE" ? "Location hidden" : event.address_name}
+                {event.privacy === "EXCLUSIVE"
+                  ? "Location hidden"
+                  : event.address_name}
               </Text>
             </View>
           </View>
@@ -295,58 +304,12 @@ export default function DiscoverScreen() {
       </View>
 
       {/* Niche filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={filterStyles.nichesRow}
-        style={filterStyles.nichesScroll}
-      >
-        <TouchableOpacity
-          style={[
-            filterStyles.nicheChip,
-            selectedNicheIds.size === 0 && filterStyles.nicheChipActive,
-          ]}
-          onPress={() => setSelectedNicheIds(new Set())}
-          activeOpacity={0.7}
-          accessibilityLabel="Show all niches"
-          accessibilityRole="button"
-          accessibilityState={{ selected: selectedNicheIds.size === 0 }}
-        >
-          <Text
-            style={[
-              filterStyles.nicheChipText,
-              selectedNicheIds.size === 0 && filterStyles.nicheChipTextActive,
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-        {niches.map((niche) => {
-          const active = selectedNicheIds.has(niche.id);
-          const color = niche.color ?? Colors.primary;
-          return (
-            <TouchableOpacity
-              key={niche.id}
-              style={[
-                filterStyles.nicheChip,
-                active && { backgroundColor: color, borderColor: color },
-              ]}
-              onPress={() => toggleNiche(niche.id)}
-              activeOpacity={0.7}
-              accessibilityLabel={`Filter by ${niche.name}`}
-            >
-              <Text
-                style={[
-                  filterStyles.nicheChipText,
-                  active && { color: Colors.textPrimary },
-                ]}
-              >
-                {niche.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <NicheFilterBar
+        niches={niches}
+        selectedIds={selectedNicheIds}
+        onToggle={toggleNiche}
+        onClearAll={() => setSelectedNicheIds(new Set())}
+      />
 
       {/* Feed */}
       {isLoading && !refreshing ? (
@@ -386,8 +349,8 @@ export default function DiscoverScreen() {
       <IntroModal
         visible={introModal.visible}
         onDismiss={introModal.dismiss}
-        title="Welcome to Discover"
-        body="Browse creators and upcoming events in your city. Use the niche filters to find exactly who and what interests you."
+        title="Welcome to Loam Discovery!"
+        body="Browse creators and upcoming events in the GTA. Use the niche filters to find exactly who and what interests you."
         icon="compass-outline"
       />
     </SafeAreaView>
@@ -397,7 +360,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
     backgroundColor: Colors.background,
   },
   topRow: {
@@ -516,41 +479,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     flexShrink: 1,
-  },
-});
-
-const filterStyles = StyleSheet.create({
-  nichesScroll: {
-    height: 36,
-    maxHeight: 36,
-    marginBottom: Spacing.sm,
-    flexShrink: 0,
-    flexGrow: 0,
-  },
-  nichesRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-    alignItems: "center",
-  },
-  nicheChip: {
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-    alignSelf: "flex-start",
-  },
-  nicheChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textSecondary,
-  },
-  nicheChipTextActive: {
-    color: Colors.textPrimary,
   },
 });

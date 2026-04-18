@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { LocationMapPreview } from '../../../src/components/LocationMapPreview';
+import { NicheSelector } from '../../../src/components/NicheSelector';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -278,42 +279,18 @@ export default function EventEditScreen() {
         {/* Niches */}
         <View style={styles.section}>
           <Text style={styles.label}>Niches</Text>
-          <View style={styles.nicheGrid}>
-            {niches.map(niche => {
-              const active = selectedNicheIds.has(niche.id);
-              const color = niche.color ?? Colors.primary;
-              return (
-                <TouchableOpacity
-                  key={niche.id}
-                  style={[
-                    styles.nicheChip,
-                    active && {
-                      borderColor: color,
-                      backgroundColor: color + '25',
-                      shadowColor: color,
-                      shadowOpacity: 0.5,
-                      shadowRadius: 10,
-                      shadowOffset: { width: 0, height: 0 },
-                      elevation: 5,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedNicheIds(prev => {
-                      const next = new Set(prev);
-                      if (next.has(niche.id)) next.delete(niche.id);
-                      else next.add(niche.id);
-                      return next;
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.nicheChipText, active && { color, fontWeight: Typography.weight.medium }]}>
-                    {niche.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <NicheSelector
+            niches={niches}
+            selectedIds={selectedNicheIds}
+            onToggle={(id) => {
+              setSelectedNicheIds(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
+          />
         </View>
 
         {/* Schedule (read-only display) */}
@@ -668,24 +645,5 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     lineHeight: 18,
     textAlign: 'center',
-  },
-
-  // Niche chips
-  nicheGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  nicheChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
   },
 });

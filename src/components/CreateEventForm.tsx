@@ -26,6 +26,7 @@ import { useProfile } from "../hooks/useProfile";
 import { supabase } from "../lib/supabase";
 import type { EventPrivacy, EventType } from "../types";
 import { LocationMapPreview } from "./LocationMapPreview";
+import { NicheSelector } from "./NicheSelector";
 
 type DatePickerTarget = "date" | "start-time" | "end-time";
 
@@ -875,40 +876,11 @@ export default function CreateEventForm() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Niches</Text>
               <Text style={styles.nicheHint}>Tag what your event is about</Text>
-              <View style={styles.nicheGrid}>
-                {niches.map((niche) => {
-                  const active = selectedNicheIds.has(niche.id);
-                  const color = niche.color ?? Colors.primary;
-                  return (
-                    <TouchableOpacity
-                      key={niche.id}
-                      style={[
-                        styles.nicheChip,
-                        active && {
-                          borderColor: color,
-                          backgroundColor: color + '25',
-                          shadowColor: color,
-                          shadowOpacity: 0.5,
-                          shadowRadius: 10,
-                          shadowOffset: { width: 0, height: 0 },
-                          elevation: 5,
-                        },
-                      ]}
-                      onPress={() => toggleNiche(niche.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.nicheChipText,
-                          active && { color, fontWeight: Typography.weight.medium },
-                        ]}
-                      >
-                        {niche.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <NicheSelector
+                niches={niches}
+                selectedIds={selectedNicheIds}
+                onToggle={toggleNiche}
+              />
             </View>
 
             {/* ── Schedule ── */}
@@ -1481,22 +1453,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     color: Colors.textTertiary,
     marginTop: -Spacing.xs,
-  },
-  nicheGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  nicheChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
   },
 });

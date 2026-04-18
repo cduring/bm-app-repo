@@ -6,7 +6,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { EmptyState } from "../src/components/EmptyState";
 import { EventCard } from "../src/components/EventCard";
+import { NicheFilterBar } from "../src/components/NicheFilterBar";
 import { ProfileCard } from "../src/components/ProfileCard";
 import {
   BorderRadius,
@@ -57,14 +57,9 @@ export default function SearchScreen() {
     error: eventSearchError,
     refetch: refetchEvents,
   } = useSearchEvents(query);
-  const {
-    data: discoveryProfiles = [],
-    isFetching: fetchingDiscovery,
-  } = useDiscoveryProfiles();
-  const {
-    data: allEvents = [],
-    isFetching: fetchingAllEvents,
-  } = useEvents();
+  const { data: discoveryProfiles = [], isFetching: fetchingDiscovery } =
+    useDiscoveryProfiles();
+  const { data: allEvents = [], isFetching: fetchingAllEvents } = useEvents();
 
   const hasNicheFilter = selectedNicheIds.size > 0;
 
@@ -80,7 +75,13 @@ export default function SearchScreen() {
     return source.filter((p) =>
       p.niches.some((n) => selectedNicheIds.has(n.id)),
     );
-  }, [query, profileResults, discoveryProfiles, selectedNicheIds, hasNicheFilter]);
+  }, [
+    query,
+    profileResults,
+    discoveryProfiles,
+    selectedNicheIds,
+    hasNicheFilter,
+  ]);
 
   const filteredEvents = useMemo(() => {
     const source = (query ? eventResults : allEvents) as EventWithHost[];
@@ -152,9 +153,7 @@ export default function SearchScreen() {
             count: filteredEvents.length,
           });
         }
-        filteredEvents.forEach((e) =>
-          items.push({ _type: "event", data: e }),
-        );
+        filteredEvents.forEach((e) => items.push({ _type: "event", data: e }));
       }
     }
 
@@ -277,60 +276,12 @@ export default function SearchScreen() {
         </View>
 
         {/* Niche filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={filterStyles.nichesRow}
-          style={filterStyles.nichesScroll}
-        >
-          <TouchableOpacity
-            style={[
-              filterStyles.nicheChip,
-              !hasNicheFilter && filterStyles.nicheChipActive,
-            ]}
-            onPress={() => setSelectedNicheIds(new Set())}
-            activeOpacity={0.7}
-            accessibilityLabel="Show all niches"
-            accessibilityRole="button"
-            accessibilityState={{ selected: !hasNicheFilter }}
-          >
-            <Text
-              style={[
-                filterStyles.nicheChipText,
-                !hasNicheFilter && filterStyles.nicheChipTextActive,
-              ]}
-            >
-              All
-            </Text>
-          </TouchableOpacity>
-          {niches.map((niche) => {
-            const active = selectedNicheIds.has(niche.id);
-            const color = niche.color ?? Colors.primary;
-            return (
-              <TouchableOpacity
-                key={niche.id}
-                style={[
-                  filterStyles.nicheChip,
-                  active && { backgroundColor: color, borderColor: color },
-                ]}
-                onPress={() => toggleNiche(niche.id)}
-                activeOpacity={0.7}
-                accessibilityLabel={`Filter by ${niche.name}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-              >
-                <Text
-                  style={[
-                    filterStyles.nicheChipText,
-                    active && { color: Colors.textPrimary },
-                  ]}
-                >
-                  {niche.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <NicheFilterBar
+          niches={niches}
+          selectedIds={selectedNicheIds}
+          onToggle={toggleNiche}
+          onClearAll={() => setSelectedNicheIds(new Set())}
+        />
 
         {/* Result tabs — shown when there's a query or niche filter */}
         {(query.length > 0 || hasNicheFilter) && (
@@ -382,7 +333,9 @@ export default function SearchScreen() {
             icon="compass-outline"
             iconSize={56}
             title="Find your community"
-            subtitle={"Search for creators by name or niche,\nor find events happening around Toronto"}
+            subtitle={
+              "Search for creators by name or niche,\nor find events happening around Toronto"
+            }
           />
         ) : isLoading ? (
           <View style={styles.loadingState}>
@@ -581,38 +534,3 @@ const styles = StyleSheet.create({
   },
 });
 
-const filterStyles = StyleSheet.create({
-  nichesScroll: {
-    height: 36,
-    maxHeight: 36,
-    marginBottom: Spacing.sm,
-    flexShrink: 0,
-    flexGrow: 0,
-  },
-  nichesRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-    alignItems: "center",
-  },
-  nicheChip: {
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-    alignSelf: "flex-start",
-  },
-  nicheChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textSecondary,
-  },
-  nicheChipTextActive: {
-    color: Colors.textPrimary,
-  },
-});

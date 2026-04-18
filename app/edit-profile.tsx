@@ -19,6 +19,7 @@ import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { DraggablePinMap } from "../src/components/DraggablePinMap";
+import { NicheSelector } from "../src/components/NicheSelector";
 import { useAuth } from "../src/context/auth";
 import { supabase } from "../src/lib/supabase";
 import { useProfile } from "../src/hooks/useProfile";
@@ -630,46 +631,11 @@ export default function EditProfileScreen() {
           {/* ── Niches ── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Niches</Text>
-            <View style={styles.nichesGrid}>
-              {niches.map((niche) => {
-                const selected = selectedNicheIds.includes(niche.id);
-                const color = niche.color ?? Colors.primary;
-                return (
-                  <TouchableOpacity
-                    key={niche.id}
-                    style={[
-                      styles.nicheChip,
-                      selected && {
-                        borderColor: color,
-                        backgroundColor: color + "25",
-                        shadowColor: color,
-                        shadowOpacity: 0.5,
-                        shadowRadius: 10,
-                        shadowOffset: { width: 0, height: 0 },
-                        elevation: 5,
-                      },
-                    ]}
-                    onPress={() => toggleNiche(niche.id)}
-                    activeOpacity={0.7}
-                    accessibilityLabel={`${niche.name}, ${selected ? "selected" : "not selected"}`}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: selected }}
-                  >
-                    <Text
-                      style={[
-                        styles.nicheChipText,
-                        selected && {
-                          color,
-                          fontWeight: Typography.weight.medium,
-                        },
-                      ]}
-                    >
-                      {niche.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <NicheSelector
+              niches={niches}
+              selectedIds={selectedNicheIds}
+              onToggle={toggleNiche}
+            />
           </View>
 
           {/* ── External Links ── */}
@@ -1018,25 +984,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.primary,
     lineHeight: 17,
-  },
-
-  // Niches
-  nichesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  nicheChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  nicheChipText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
   },
 
   // Links

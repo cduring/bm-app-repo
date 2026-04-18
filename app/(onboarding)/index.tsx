@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DraggablePinMap } from "../../src/components/DraggablePinMap";
+import { NicheSelector } from "../../src/components/NicheSelector";
 import { useNiches } from "../../src/hooks/useNiches";
 import {
   BorderRadius,
@@ -473,40 +474,11 @@ export default function OnboardingScreen() {
               <Text style={styles.subtitle}>
                 Select all that apply. This helps others find you.
               </Text>
-              <View style={styles.chipGrid}>
-                {niches.map((niche) => {
-                  const selected = data.selectedNicheIds.includes(niche.id);
-                  const color = niche.color ?? Colors.primary;
-                  return (
-                    <TouchableOpacity
-                      key={niche.id}
-                      style={[
-                        styles.chip,
-                        selected && {
-                          borderColor: color,
-                          backgroundColor: color + '25',
-                          shadowColor: color,
-                          shadowOpacity: 0.5,
-                          shadowRadius: 10,
-                          shadowOffset: { width: 0, height: 0 },
-                          elevation: 5,
-                        },
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => toggleNiche(niche.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && { color, fontWeight: Typography.weight.medium },
-                        ]}
-                      >
-                        {niche.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <NicheSelector
+                niches={niches}
+                selectedIds={data.selectedNicheIds}
+                onToggle={toggleNiche}
+              />
             </View>
           )}
 
@@ -886,26 +858,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     textAlign: "right",
-  },
-
-  // Niche chips
-  chipGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  chipText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
-    fontWeight: Typography.weight.medium,
   },
 
   // Photo
