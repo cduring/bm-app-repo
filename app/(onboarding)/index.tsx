@@ -239,6 +239,10 @@ export default function OnboardingScreen() {
       return;
     }
 
+    await supabase
+      .from('profile_settings')
+      .upsert({ profile_id: profile.id }, { onConflict: 'profile_id' });
+
     if (data.selectedNicheIds.length > 0) {
       // Delete any stale rows first so retrying doesn't insert duplicates.
       await supabase

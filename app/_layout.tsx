@@ -82,13 +82,21 @@ export default function RootLayout() {
 
     supabase
       .from('profiles')
-      .select('id, notifications_enabled')
+      .select('id')
       .eq('user_id', userId)
       .maybeSingle()
-      .then(({ data }) => {
-        setProfileExists(!!data);
-        setProfileId(data?.id ?? null);
-        setNotificationsEnabled(data?.notifications_enabled ?? true);
+      .then(async ({ data: profileData }) => {
+        setProfileExists(!!profileData);
+        setProfileId(profileData?.id ?? null);
+
+        if (profileData?.id) {
+          const { data: settings } = await supabase
+            .from('profile_settings')
+            .select('notifications_enabled')
+            .eq('profile_id', profileData.id)
+            .maybeSingle();
+          setNotificationsEnabled(settings?.notifications_enabled ?? true);
+        }
       });
   }, [userId]);
 

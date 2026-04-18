@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BorderRadius, Colors, Spacing, Typography } from '../src/constants/theme';
 import { useAuth } from '../src/context/auth';
 import { useProfile } from '../src/hooks/useProfile';
-import { supabase } from '../src/lib/supabase';
+import { useProfileSettings, useUpdateProfileSettings } from '../src/hooks/useProfileSettings';
 import {
   registerForPushNotifications,
   cancelAllLocalNotifications,
@@ -27,9 +26,11 @@ import {
 export default function NotificationPreferencesScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
-  const { data, isLoading } = useProfile(userId);
+  const { data } = useProfile(userId);
   const profile = data?.profile;
-  const queryClient = useQueryClient();
+
+  const { data: settings, isLoading } = useProfileSettings(profile?.id ? String(profile.id) : undefined);
+  const updateSettings = useUpdateProfileSettings(profile?.id ? String(profile.id) : undefined);
 
   const [allowNotifications, setAllowNotifications] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,44 +41,33 @@ export default function NotificationPreferencesScreen() {
 
   // Check iOS permission status and sync with DB
   const checkAndSyncPermission = useCallback(async () => {
-    if (!profile) return;
+    if (!profile || !settings) return;
     const status = await getNotificationPermissionStatus();
     const denied = status === 'denied';
     setIosPermissionDenied(denied);
 
-    if (denied && profile.notifications_enabled) {
+    if (denied && settings.notifications_enabled) {
       // iOS permission was revoked — sync DB to match
       wasDeviceDenied.current = true;
       setAllowNotifications(false);
-      await supabase
-        .from('profiles')
-        .update({ notifications_enabled: false, push_token: null })
-        .eq('id', profile.id);
+      await updateSettings.mutateAsync({ notifications_enabled: false, push_token: null });
       await cancelAllLocalNotifications();
-      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
-    } else if (status === 'granted' && !profile.notifications_enabled && wasDeviceDenied.current) {
+    } else if (status === 'granted' && !settings.notifications_enabled && wasDeviceDenied.current) {
       // iOS permission was re-granted after a device-level denial — re-enable
       wasDeviceDenied.current = false;
       setAllowNotifications(true);
       const token = await registerForPushNotifications();
-      await supabase
-        .from('profiles')
-        .update({
-          notifications_enabled: true,
-          push_token: token ?? null,
-        })
-        .eq('id', profile.id);
-      queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      await updateSettings.mutateAsync({ notifications_enabled: true, push_token: token ?? null });
     }
-  }, [profile, userId, queryClient]);
+  }, [profile, settings, updateSettings]);
 
-  // Sync toggle with DB value once profile loads, then check iOS permission
+  // Sync toggle with DB value once settings load, then check iOS permission
   useEffect(() => {
-    if (profile) {
-      setAllowNotifications(profile.notifications_enabled ?? true);
+    if (settings) {
+      setAllowNotifications(settings.notifications_enabled ?? true);
       checkAndSyncPermission();
     }
-  }, [profile?.notifications_enabled, checkAndSyncPermission]);
+  }, [settings?.notifications_enabled, checkAndSyncPermission]);
 
   // Re-check when app returns to foreground (user may have changed in iOS Settings)
   useEffect(() => {
@@ -120,12 +110,8 @@ export default function NotificationPreferencesScreen() {
         }
 
         setAllowNotifications(true);
-        await supabase
-          .from('profiles')
-          .update({ notifications_enabled: true, push_token: token ?? null })
-          .eq('id', profile.id);
+        await updateSettings.mutateAsync({ notifications_enabled: true, push_token: token ?? null });
         setIosPermissionDenied(false);
-        queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       } catch (_) {
         // Revert on error
         setAllowNotifications(false);
@@ -137,12 +123,8 @@ export default function NotificationPreferencesScreen() {
       setAllowNotifications(false);
       setSaving(true);
       try {
-        await supabase
-          .from('profiles')
-          .update({ notifications_enabled: false, push_token: null })
-          .eq('id', profile.id);
+        await updateSettings.mutateAsync({ notifications_enabled: false, push_token: null });
         await cancelAllLocalNotifications();
-        queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       } catch (_) {
         setAllowNotifications(true);
       } finally {

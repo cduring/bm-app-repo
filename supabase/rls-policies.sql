@@ -297,17 +297,11 @@ CREATE POLICY "portfolio_images: owner write"
   WITH CHECK (profile_id = auth_profile_id());
 
 
--- ─── Stage 8: Push Notifications ────────────────────────────────────────────
--- Add push_token column to profiles for Expo push notification delivery.
--- Run in Supabase SQL Editor:
-
--- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
-
--- Users can update their own push token:
--- CREATE POLICY "profiles: update own push_token"
---   ON profiles FOR UPDATE
---   USING (auth.uid() = user_id)
---   WITH CHECK (auth.uid() = user_id);
+-- ─── Stage 8: Push Notifications (superseded by Stage 9b — see below) ───────
+-- push_token was originally added to profiles. It has since been moved to the
+-- profile_settings table for security (push tokens are private device identifiers
+-- and should not be readable by other users via the public profiles SELECT policy).
+-- Do NOT add push_token or notifications_enabled to the profiles table.
 
 
 -- ─── Stage 9: Notifications System ──────────────────────────────────────────
@@ -402,6 +396,57 @@ CREATE POLICY "portfolio_images: owner write"
 -- CREATE TRIGGER trg_rsvp_notification
 --   AFTER INSERT OR UPDATE OR DELETE ON event_rsvps
 --   FOR EACH ROW EXECUTE FUNCTION create_rsvp_notification();
+
+
+-- ─── Stage 9b: profile_settings Table ───────────────────────────────────────
+-- Moves push_token + notifications_enabled out of profiles (public-read) into a
+-- private owner-only table. Run each statement in order in the SQL Editor.
+
+-- 1. Create table
+-- CREATE TABLE profile_settings (
+--   profile_id            BIGINT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+--   push_token            TEXT,
+--   notifications_enabled BOOLEAN NOT NULL DEFAULT true
+-- );
+
+-- 2. Migrate existing data (only needed if you previously added the columns to profiles)
+-- INSERT INTO profile_settings (profile_id, push_token, notifications_enabled)
+-- SELECT id, push_token, COALESCE(notifications_enabled, true)
+-- FROM profiles
+-- ON CONFLICT (profile_id) DO NOTHING;
+
+-- 3. Enable RLS and add owner-only policies
+-- ALTER TABLE profile_settings ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY "profile_settings: read own"
+--   ON profile_settings FOR SELECT
+--   USING (profile_id = auth_profile_id());
+--
+-- CREATE POLICY "profile_settings: write own"
+--   ON profile_settings FOR ALL
+--   USING (profile_id = auth_profile_id())
+--   WITH CHECK (profile_id = auth_profile_id());
+
+-- 4. Drop the now-private columns from profiles (run AFTER verifying migration)
+-- ALTER TABLE profiles DROP COLUMN IF EXISTS push_token;
+-- ALTER TABLE profiles DROP COLUMN IF EXISTS notifications_enabled;
+
+-- 5. Seed a profile_settings row for new users on sign-up
+--    (Add this to the existing handle_new_profile trigger function, or create a
+--    separate trigger that inserts a default row into profile_settings whenever
+--    a new profiles row is created.)
+-- CREATE OR REPLACE FUNCTION create_profile_settings()
+-- RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+-- BEGIN
+--   INSERT INTO profile_settings (profile_id) VALUES (NEW.id)
+--   ON CONFLICT (profile_id) DO NOTHING;
+--   RETURN NULL;
+-- END;
+-- $$;
+-- DROP TRIGGER IF EXISTS trg_create_profile_settings ON profiles;
+-- CREATE TRIGGER trg_create_profile_settings
+--   AFTER INSERT ON profiles
+--   FOR EACH ROW EXECUTE FUNCTION create_profile_settings();
 
 
 -- ─── Storage Bucket Policies ──────────────────────────────────────────────────

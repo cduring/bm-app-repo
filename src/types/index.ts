@@ -17,9 +17,13 @@ export interface Profile {
   longitude?: number;
   follower_count: number;
   following_count: number;
-  notifications_enabled: boolean;
-  push_token?: string | null;
   created_at: string;
+}
+
+export interface ProfileSettings {
+  profile_id: string;
+  push_token: string | null;
+  notifications_enabled: boolean;
 }
 
 // ─── Niches ──────────────────────────────────────────────────────────────────

@@ -58,12 +58,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 }
 
-/** Store the Expo push token on the user's profile row in Supabase */
+/** Store the Expo push token on the user's profile_settings row in Supabase */
 async function savePushToken(profileId: string, token: string | null) {
   await supabase
-    .from('profiles')
+    .from('profile_settings')
     .update({ push_token: token })
-    .eq('id', profileId);
+    .eq('profile_id', profileId);
 }
 
 /**
