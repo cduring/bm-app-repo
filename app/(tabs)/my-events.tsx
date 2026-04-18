@@ -30,6 +30,8 @@ import { useRSVP } from "../../src/context/rsvp";
 import { useEvents, useHostedEvents } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
 import type { EventWithHost } from "../../src/types";
+import { IntroModal } from "../../src/components/IntroModal";
+import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { formatDayDate } from "../../src/utils/date";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,6 +57,7 @@ const TAB_LABELS: Record<AttendingTab, string> = {
 
 export default function MyEventsScreen() {
   const { session } = useAuth();
+  const introModal = useIntroModal('my-events', session?.user?.id);
   const { data: profileData } = useProfile(session?.user?.id);
   const profileId = profileData?.profile.id;
   const { myRSVPs } = useRSVP();
@@ -201,6 +204,13 @@ export default function MyEventsScreen() {
           />
         )}
       </SafeAreaView>
+      <IntroModal
+        visible={introModal.visible}
+        onDismiss={introModal.dismiss}
+        title="Your Events Hub"
+        body="Track events you're interested in, requested, or attending — and manage events you're hosting, all in one place."
+        icon="calendar-outline"
+      />
     </View>
   );
 }

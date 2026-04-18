@@ -51,6 +51,9 @@ import {
 } from "../../src/constants/theme";
 import { useMapEvents, useMapProfiles } from "../../src/hooks/useMapData";
 import type { EventWithHost, Niche, ProfileWithNiches } from "../../src/types";
+import { useAuth } from "../../src/context/auth";
+import { IntroModal } from "../../src/components/IntroModal";
+import { useIntroModal } from "../../src/hooks/useIntroModal";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN!);
 
@@ -403,6 +406,8 @@ function formatEventDate(isoString: string): string {
 }
 
 export default function MapScreen() {
+  const { session } = useAuth();
+  const introModal = useIntroModal('map', session?.user?.id);
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
@@ -1073,6 +1078,13 @@ export default function MapScreen() {
           )}
         </SwipeDismissCard>
       )}
+      <IntroModal
+        visible={introModal.visible}
+        onDismiss={introModal.dismiss}
+        title="Explore the Map"
+        body="See creators and events pinned around the city. Tap any pin to preview details, then explore your neighbourhood."
+        icon="map-outline"
+      />
     </View>
   );
 }

@@ -28,6 +28,9 @@ import { useEvents } from "../../src/hooks/useEvents";
 import { useNiches } from "../../src/hooks/useNiches";
 import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
 import type { EventWithHost, ProfileWithNiches } from "../../src/types";
+import { useAuth } from "../../src/context/auth";
+import { IntroModal } from "../../src/components/IntroModal";
+import { useIntroModal } from "../../src/hooks/useIntroModal";
 
 type ActiveView = "CREATORS" | "EVENTS";
 
@@ -64,6 +67,8 @@ function formatEventTime(start_time: string): string {
 }
 
 export default function DiscoverScreen() {
+  const { session } = useAuth();
+  const introModal = useIntroModal('discover', session?.user?.id);
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
     new Set(),
@@ -378,6 +383,13 @@ export default function DiscoverScreen() {
           }
         />
       )}
+      <IntroModal
+        visible={introModal.visible}
+        onDismiss={introModal.dismiss}
+        title="Welcome to Discover"
+        body="Browse creators and upcoming events in your city. Use the niche filters to find exactly who and what interests you."
+        icon="compass-outline"
+      />
     </SafeAreaView>
   );
 }

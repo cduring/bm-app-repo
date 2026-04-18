@@ -3,7 +3,6 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
-import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -20,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../src/components/ErrorState";
+import { IntroModal } from "../../src/components/IntroModal";
 import { NicheTag } from "../../src/components/NicheTag";
 import { PlatformIcon } from "../../src/components/PlatformIcon";
 import { PortfolioLightbox } from "../../src/components/PortfolioLightbox";
@@ -31,6 +31,7 @@ import {
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
 import { useHostedEvents } from "../../src/hooks/useEvents";
+import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { useUnreadCount } from "../../src/hooks/useNotificationsData";
 import {
   useAddPortfolioImage,
@@ -38,12 +39,14 @@ import {
   useRemovePortfolioImage,
 } from "../../src/hooks/usePortfolio";
 import { useProfile } from "../../src/hooks/useProfile";
+import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { supabase } from "../../src/lib/supabase";
 import { formatDayDate } from "../../src/utils/date";
 
 export default function AccountScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const introModal = useIntroModal("account", userId);
   const { data, isLoading, error, refetch } = useProfile(userId);
   const profileId = data?.profile?.id;
   const { data: unreadCount = 0 } = useUnreadCount(profileId);
@@ -53,7 +56,11 @@ export default function AccountScreen() {
     usePortfolio(profileId);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
-  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(refetch, refetchHosted, refetchPortfolio);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(
+    refetch,
+    refetchHosted,
+    refetchPortfolio,
+  );
   const addPortfolioImage = useAddPortfolioImage();
   const removePortfolioImage = useRemovePortfolioImage();
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -667,6 +674,13 @@ export default function AccountScreen() {
           )}
         </View>
       </ScrollView>
+      <IntroModal
+        visible={introModal.visible}
+        onDismiss={introModal.dismiss}
+        title="Your Profile"
+        body="This is your public presence on Loam. Add portfolio work, build your following, and manage your settings."
+        icon="person-outline"
+      />
     </SafeAreaView>
   );
 }
