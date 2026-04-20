@@ -42,6 +42,11 @@
               "scheme": "https",
               "host": "loamapp.xyz",
               "pathPrefix": "/profile/"
+            },
+            {
+              "scheme": "https",
+              "host": "loamapp.xyz",
+              "pathPrefix": "/auth/"
             }
           ],
           "category": [

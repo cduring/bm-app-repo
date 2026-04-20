@@ -106,9 +106,10 @@ export default function RootLayout() {
 
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
+    const inAuthCallback = segments[0] === 'auth';
 
     if (!session) {
-      if (!inAuth) router.replace('/(auth)');
+      if (!inAuth && !inAuthCallback) router.replace('/(auth)');
       return;
     }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,13 @@ import {
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -22,6 +25,19 @@ export default function SignUpScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => setResendCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
+
+  function getRedirectTo() {
+    return Linking.createURL('/auth/callback');
+  }
 
   async function handleSignUp() {
     if (!email.trim() || !password) {
@@ -39,14 +55,31 @@ export default function SignUpScreen() {
     const { error: authError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: { emailRedirectTo: getRedirectTo() },
     });
 
     setLoading(false);
 
     if (authError) {
       setError(authError.message);
+      return;
     }
-    // On success: auth state change fires in _layout.tsx, guard routes to /(onboarding)
+    setSubmitted(true);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+  }
+
+  async function handleResend() {
+    setResendError(null);
+    const { error: resendErr } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: getRedirectTo() },
+    });
+    if (resendErr) {
+      setResendError(resendErr.message);
+      return;
+    }
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
   }
 
   return (
@@ -61,104 +94,143 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
 
-          <View style={styles.header}>
-            <Text style={styles.title}>Create account</Text>
-            <Text style={styles.subtitle}>Join Toronto's creator community.</Text>
-          </View>
+          {submitted ? (
+            <View style={styles.successBox}>
+              <Ionicons name="mail-outline" size={56} color={Colors.primary} />
+              <Text style={styles.successTitle}>Check your email</Text>
+              <Text style={styles.successBody}>
+                We sent a verification link to{' '}
+                <Text style={styles.successEmail}>{email.trim()}</Text>. Tap it
+                to finish creating your account.
+              </Text>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.textTertiary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
-              />
-            </View>
+              {resendError && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.cancelled} />
+                  <Text style={styles.errorText}>{resendError}</Text>
+                </View>
+              )}
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordRow}>
-                {passwordVisible ? (
-                  <TextInput
-                    style={[styles.input, styles.passwordInput]}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Min. 6 characters"
-                    placeholderTextColor={Colors.textTertiary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                  />
-                ) : (
-                  <TextInput
-                    style={[styles.input, styles.passwordInput]}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Min. 6 characters"
-                    placeholderTextColor={Colors.textTertiary}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    textContentType="newPassword"
-                  />
-                )}
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setPasswordVisible(v => !v)}
+              <TouchableOpacity
+                onPress={handleResend}
+                disabled={resendCooldown > 0}
+                style={styles.resendButton}
+              >
+                <Text
+                  style={[
+                    styles.footerLink,
+                    resendCooldown > 0 && styles.resendDisabled,
+                  ]}
                 >
-                  <Ionicons
-                    name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={Colors.textTertiary}
+                  {resendCooldown > 0
+                    ? `Resend email (${resendCooldown}s)`
+                    : "Didn't get it? Resend email"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
+                <Text style={styles.footerLink}>Back to sign in</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <View style={styles.header}>
+                <Text style={styles.title}>Create account</Text>
+                <Text style={styles.subtitle}>Join Toronto's creator community.</Text>
+              </View>
+
+              <View style={styles.form}>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    placeholderTextColor={Colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
                   />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <View style={styles.passwordRow}>
+                    {passwordVisible ? (
+                      <TextInput
+                        style={[styles.input, styles.passwordInput]}
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Min. 6 characters"
+                        placeholderTextColor={Colors.textTertiary}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                      />
+                    ) : (
+                      <TextInput
+                        style={[styles.input, styles.passwordInput]}
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Min. 6 characters"
+                        placeholderTextColor={Colors.textTertiary}
+                        secureTextEntry
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() => setPasswordVisible(v => !v)}
+                    >
+                      <Ionicons
+                        name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
+                        size={20}
+                        color={Colors.textTertiary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {error && (
+                  <View style={styles.errorBox}>
+                    <Ionicons name="alert-circle-outline" size={16} color={Colors.cancelled} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                  activeOpacity={0.85}
+                  onPress={handleSignUp}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={Colors.textPrimary} />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Create Account</Text>
+                  )}
                 </TouchableOpacity>
               </View>
-            </View>
 
-            {error && (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={16} color={Colors.cancelled} />
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
+                  <Text style={styles.footerLink}>Log in</Text>
+                </TouchableOpacity>
               </View>
-            )}
-
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              activeOpacity={0.85}
-              onPress={handleSignUp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.textPrimary} />
-              ) : (
-                <Text style={styles.submitButtonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/sign-in')}>
-              <Text style={styles.footerLink}>Log in</Text>
-            </TouchableOpacity>
-          </View>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -276,5 +348,34 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.primary,
+  },
+  successBox: {
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingTop: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+  },
+  successTitle: {
+    fontSize: Typography.size['2xl'],
+    fontWeight: Typography.weight.bold,
+    color: Colors.textPrimary,
+    marginTop: Spacing.sm,
+  },
+  successBody: {
+    fontSize: Typography.size.base,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.md,
+  },
+  successEmail: {
+    color: Colors.textPrimary,
+    fontWeight: Typography.weight.semibold,
+  },
+  resendButton: {
+    marginTop: Spacing.sm,
+  },
+  resendDisabled: {
+    color: Colors.textTertiary,
   },
 });
