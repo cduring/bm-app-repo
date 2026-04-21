@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../lib/supabase';
+import { Sentry } from '../lib/sentry';
 import { useAuth } from './auth';
 import { useProfile } from '../hooks/useProfile';
 import {
@@ -104,7 +105,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     // Persist to Supabase
     setRSVPMutation.mutate({ eventId, profileId, status }, {
       onError: (err) => {
-        console.error('[rsvp] set RSVP error:', err);
+        Sentry.captureException(err, { tags: { context: 'rsvp_set' } });
         Alert.alert('Action failed', 'We encountered an error trying to update your RSVP. Please try again.');
       },
     });
@@ -127,7 +128,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
 
     approveMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
       onError: (err) => {
-        console.error('[rsvp] approve request error:', err);
+        Sentry.captureException(err, { tags: { context: 'rsvp_approve' } });
         Alert.alert('Action failed', 'We encountered an error trying to approve this request. Please try again.');
       },
     });
@@ -144,7 +145,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
 
     declineMutation.mutate({ eventId, requestorProfileId, hostProfileId: profileId }, {
       onError: (err) => {
-        console.error('[rsvp] decline request error:', err);
+        Sentry.captureException(err, { tags: { context: 'rsvp_decline' } });
         Alert.alert('Action failed', 'We encountered an error trying to decline this request. Please try again.');
       },
     });
@@ -162,7 +163,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .update({ status: 'CANCELLED' })
       .eq('id', eventId);
     if (error) {
-      console.error('[rsvp] cancel event error:', error);
+      Sentry.captureException(error, { tags: { context: 'event_cancel' } });
       Alert.alert('Action failed', 'We encountered an error trying to cancel your event. Please try again.');
     } else {
       qc.invalidateQueries({ queryKey: ['events'] });
@@ -177,7 +178,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
       .update(updates)
       .eq('id', eventId);
     if (error) {
-      console.error('[rsvp] update event error:', error);
+      Sentry.captureException(error, { tags: { context: 'event_update' } });
       Alert.alert('Action failed', 'We encountered an error trying to save your changes. Please try again.');
     } else {
       qc.invalidateQueries({ queryKey: ['events'] });

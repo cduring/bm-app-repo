@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
+import { initSentry, Sentry } from '../src/lib/sentry';
+
+initSentry();
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PostHogProvider } from 'posthog-react-native';
 import type { Session } from '@supabase/supabase-js';
@@ -18,6 +21,12 @@ function NotificationSetup({ profileId, notificationsEnabled }: { profileId: str
 }
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => Sentry.captureException(error),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => Sentry.captureException(error),
+  }),
   defaultOptions: {
     queries: {
       retry: 2,
@@ -27,7 +36,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function RootLayout() {
+function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -100,6 +109,15 @@ export default function RootLayout() {
       });
   }, [userId]);
 
+  // Sync authenticated user identity with Sentry for error attribution
+  useEffect(() => {
+    if (session) {
+      Sentry.setUser({ id: session.user.id, email: session.user.email ?? undefined });
+    } else if (session === null) {
+      Sentry.setUser(null);
+    }
+  }, [session]);
+
   // Navigation guard — runs whenever auth state or route segment changes
   useEffect(() => {
     if (session === undefined) return; // still reading session from storage
@@ -144,12 +162,24 @@ export default function RootLayout() {
           <RSVPProvider>
             <NotificationSetup profileId={profileId} notificationsEnabled={notificationsEnabled} />
             <StatusBar style="light" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="host" options={{ presentation: 'fullScreenModal', headerShown: false }} />
-              <Stack.Screen name="settings" options={{ headerShown: false }} />
-              <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
-              <Stack.Screen name="notifications" options={{ headerShown: false, animation: 'slide_from_left' }} />
-            </Stack>
+            <Sentry.ErrorBoundary
+              fallback={({ error, resetError }) => (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A', padding: 32 }}>
+                  <Text style={{ color: '#FF5E1A', fontSize: 18, marginBottom: 12 }}>Something went wrong</Text>
+                  <Text style={{ color: '#999', marginBottom: 24, textAlign: 'center' }}>{error instanceof Error ? error.message : 'An unexpected error occurred'}</Text>
+                  <TouchableOpacity onPress={resetError}>
+                    <Text style={{ color: '#FF5E1A' }}>Try Again</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            >
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="host" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+                <Stack.Screen name="settings" options={{ headerShown: false }} />
+                <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
+                <Stack.Screen name="notifications" options={{ headerShown: false, animation: 'slide_from_left' }} />
+              </Stack>
+            </Sentry.ErrorBoundary>
             {isLoading && (
               <View style={StyleSheet.absoluteFill}>
                 <LoadingScreen />
@@ -162,3 +192,5 @@ export default function RootLayout() {
     </PostHogProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

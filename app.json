@@ -93,6 +93,13 @@
           "icon": "./assets/images/loam-icon.png",
           "color": "#FF5E1A"
         }
+      ],
+      [
+        "@sentry/react-native",
+        {
+          "organization": "YOUR_ORG_SLUG",
+          "project": "YOUR_PROJECT_SLUG"
+        }
       ]
     ],
     "experiments": {
