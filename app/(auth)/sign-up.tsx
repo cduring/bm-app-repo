@@ -11,11 +11,11 @@ import {
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
+import { APP_WEBSITE } from '../../src/constants/app';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -36,7 +36,7 @@ export default function SignUpScreen() {
   }, [resendCooldown]);
 
   function getRedirectTo() {
-    return Linking.createURL('/auth/callback');
+    return `${APP_WEBSITE}/auth/callback`;
   }
 
   async function handleSignUp() {
