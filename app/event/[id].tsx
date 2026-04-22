@@ -66,6 +66,8 @@ export default function EventDetailScreen() {
   function handleRSVP(status: RSVPStatus) {
     if (!id) return;
 
+    const eventMeta = event ? { title: event.title, startTime: event.start_time } : undefined;
+
     if (event?.privacy === "EXCLUSIVE" && rsvp === "GOING") {
       Alert.alert(
         "Leave exclusive event?",
@@ -75,14 +77,14 @@ export default function EventDetailScreen() {
           {
             text: "Leave",
             style: "destructive",
-            onPress: () => setRSVP(id, rsvp === status ? null : status),
+            onPress: () => setRSVP(id, rsvp === status ? null : status, eventMeta),
           },
         ]
       );
       return;
     }
 
-    setRSVP(id, rsvp === status ? null : status);
+    setRSVP(id, rsvp === status ? null : status, eventMeta);
   }
 
   function handleApprove(profileId: string) {

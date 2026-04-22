@@ -60,10 +60,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 /** Store the Expo push token on the user's profile_settings row in Supabase */
 async function savePushToken(profileId: string, token: string | null) {
-  await supabase
+  const { error } = await supabase
     .from('profile_settings')
     .update({ push_token: token })
     .eq('profile_id', profileId);
+  if (error) throw error;
 }
 
 /**
@@ -149,9 +150,11 @@ export function useNotifications(
 
     if (profileId) {
       if (notificationsEnabled) {
-        registerForPushNotifications().then(token => {
-          if (token) savePushToken(profileId, token);
-        });
+        registerForPushNotifications()
+          .then(token => {
+            if (token) savePushToken(profileId, token);
+          })
+          .catch(() => {});
       } else {
         // User disabled notifications — clear push token and cancel local reminders
         savePushToken(profileId, null);

@@ -11,9 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.loamapp.loam",
-      "associatedDomains": [
-        "applinks:loamapp.xyz"
-      ],
+      "associatedDomains": ["applinks:loamapp.xyz"],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Loam needs access to your photo library to upload profile photos, event covers, and portfolio images.",
         "NSLocationWhenInUseUsageDescription": "Loam uses your location to show you and other creators on the map.",
@@ -49,10 +47,7 @@
               "pathPrefix": "/auth/"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "permissions": [
@@ -98,8 +93,8 @@
       [
         "@sentry/react-native",
         {
-          "organization": "YOUR_ORG_SLUG",
-          "project": "YOUR_PROJECT_SLUG"
+          "organization": "loam-6p",
+          "project": "react-native"
         }
       ]
     ],

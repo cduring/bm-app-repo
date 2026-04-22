@@ -392,13 +392,10 @@ function EventClusterPin({ items }: { items: EventWithHost[] }) {
 
 function formatEventDate(isoString: string): string {
   const date = new Date(isoString);
-  const month = date.toLocaleString("en-US", {
-    month: "short",
-    timeZone: "UTC",
-  });
-  const day = date.getUTCDate();
-  const hours = date.getUTCHours();
-  const mins = date.getUTCMinutes();
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  const hours = date.getHours();
+  const mins = date.getMinutes();
   const ampm = hours >= 12 ? "PM" : "AM";
   const h = hours % 12 || 12;
   const m = mins.toString().padStart(2, "0");

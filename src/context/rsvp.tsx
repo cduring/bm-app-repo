@@ -81,6 +81,8 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
   function setRSVP(eventId: string, status: RSVPStatus | null, eventMeta?: { title: string; startTime: string }) {
     if (!profileId) return;
 
+    const previousRSVPs = { ...localRSVPs };
+
     // Optimistic update
     setLocalRSVPs(prev => {
       const next = { ...prev };
@@ -105,6 +107,7 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
     // Persist to Supabase
     setRSVPMutation.mutate({ eventId, profileId, status }, {
       onError: (err) => {
+        setLocalRSVPs(previousRSVPs);
         Sentry.captureException(err, { tags: { context: 'rsvp_set' } });
         Alert.alert('Action failed', 'We encountered an error trying to update your RSVP. Please try again.');
       },

@@ -76,7 +76,8 @@ export function useFollowMutation() {
       qc.invalidateQueries({ queryKey: ['followers', followingId] });
       qc.invalidateQueries({ queryKey: ['following', followerId] });
       qc.invalidateQueries({ queryKey: ['profile'] });
-      qc.invalidateQueries({ queryKey: ['profileById'] });
+      qc.invalidateQueries({ queryKey: ['profileById', followingId] });
+      qc.invalidateQueries({ queryKey: ['profileById', followerId] });
     },
   });
 }
@@ -131,7 +132,8 @@ export function useUnfollowMutation() {
       qc.invalidateQueries({ queryKey: ['followers', followingId] });
       qc.invalidateQueries({ queryKey: ['following', followerId] });
       qc.invalidateQueries({ queryKey: ['profile'] });
-      qc.invalidateQueries({ queryKey: ['profileById'] });
+      qc.invalidateQueries({ queryKey: ['profileById', followingId] });
+      qc.invalidateQueries({ queryKey: ['profileById', followerId] });
     },
   });
 }

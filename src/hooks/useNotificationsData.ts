@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { Sentry } from '../lib/sentry';
 import type { AppNotification } from '../types';
 
 const NOTIFICATIONS_QUERY_KEY = (profileId: string) => ['notifications', profileId];
@@ -66,6 +67,9 @@ export function useMarkRead() {
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY(profileId) });
       queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY(profileId) });
     },
+    onError: (err) => {
+      Sentry.captureException(err, { tags: { context: 'mark_notification_read' } });
+    },
   });
 }
 
@@ -84,6 +88,9 @@ export function useMarkAllRead() {
     onSuccess: (profileId) => {
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY(profileId) });
       queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY(profileId) });
+    },
+    onError: (err) => {
+      Sentry.captureException(err, { tags: { context: 'mark_all_notifications_read' } });
     },
   });
 }

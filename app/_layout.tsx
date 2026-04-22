@@ -99,12 +99,16 @@ function RootLayout() {
         setProfileId(profileData?.id ?? null);
 
         if (profileData?.id) {
-          const { data: settings } = await supabase
-            .from('profile_settings')
-            .select('notifications_enabled')
-            .eq('profile_id', profileData.id)
-            .maybeSingle();
-          setNotificationsEnabled(settings?.notifications_enabled ?? true);
+          try {
+            const { data: settings } = await supabase
+              .from('profile_settings')
+              .select('notifications_enabled')
+              .eq('profile_id', profileData.id)
+              .maybeSingle();
+            setNotificationsEnabled(settings?.notifications_enabled ?? true);
+          } catch {
+            setNotificationsEnabled(true);
+          }
         }
       });
   }, [userId]);
