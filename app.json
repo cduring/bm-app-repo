@@ -69,10 +69,11 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withPodfileSource",
       [
         "@rnmapbox/maps",
         {
-          "RNMapboxMapsVersion": "11.16.2"
+          "RNMapboxMapsVersion": "~> 11.18.2"
         }
       ],
       [

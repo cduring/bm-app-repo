@@ -1,9 +1,9 @@
-import { Tabs, router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity } from 'react-native';
-import { Colors } from '../../src/constants/theme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs, router } from "expo-router";
+import { TouchableOpacity } from "react-native";
+import { Colors } from "../../src/constants/theme";
 
-type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface TabIconProps {
   name: IoniconsName;
@@ -27,7 +27,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.tabBackground,
-          borderTopColor: '#1E1E1E',
+          borderTopColor: "#1E1E1E",
           borderTopWidth: 1,
           paddingBottom: 24,
           paddingTop: 4,
@@ -37,7 +37,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors.tabInactive,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: "500",
           marginTop: 2,
         },
       }}
@@ -45,32 +45,40 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Discover',
+          title: "Discover",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'compass' : 'compass-outline'} focused={focused} />
+            <TabIcon
+              name={focused ? "compass" : "compass-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Map',
+          title: "Map",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'map' : 'map-outline'} focused={focused} />
+            <TabIcon name={focused ? "map" : "map-outline"} focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
-          title: 'Host',
+          title: "Host",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'add-circle' : 'add-circle-outline'} focused={focused} />
+            <TabIcon
+              name={focused ? "add-circle" : "add-circle-outline"}
+              focused={focused}
+            />
           ),
           tabBarButton: (props) => (
             <TouchableOpacity
               style={props.style}
-              onPress={() => router.push('/host')}
+              onPress={() => {
+                router.push("/host");
+              }}
             >
               {props.children}
             </TouchableOpacity>
@@ -80,18 +88,24 @@ export default function TabLayout() {
       <Tabs.Screen
         name="my-events"
         options={{
-          title: 'Events',
+          title: "Events",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'calendar' : 'calendar-outline'} focused={focused} />
+            <TabIcon
+              name={focused ? "calendar" : "calendar-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
-          title: 'Account',
+          title: "Account",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'person' : 'person-outline'} focused={focused} />
+            <TabIcon
+              name={focused ? "person" : "person-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
