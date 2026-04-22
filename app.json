@@ -11,11 +11,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.loamapp.loam",
-      "associatedDomains": ["applinks:loamapp.xyz"],
+      "associatedDomains": [
+        "applinks:loamapp.xyz",
+        "applinks:loamapp.xyz"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Loam needs access to your photo library to upload profile photos, event covers, and portfolio images.",
         "NSLocationWhenInUseUsageDescription": "Loam uses your location to show you and other creators on the map.",
-        "NSUserNotificationsUsageDescription": "Loam will send you event reminders and notify you when people RSVP to your events."
+        "NSUserNotificationsUsageDescription": "Loam will send you event reminders and notify you when people RSVP to your events.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -47,7 +51,10 @@
               "pathPrefix": "/auth/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [

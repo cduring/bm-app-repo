@@ -8,19 +8,65 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ehlphkiirtvphtewipzv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVobHBoa2lpcnR2cGh0ZXdpcHp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Nzk3NzEsImV4cCI6MjA5MjE1NTc3MX0.nr7CpQb0Hjf_vfJBoslZtDdhiOTsu_LDg-xmoPUy22w",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiY2R1cmluZyIsImEiOiJjbW1iZ2p4eGgwbzl0MnNvaG53c2M3Y25nIn0.3nfR5SNWyXeAis0_-LUyTw",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_rzQBBwnFunGQTHY3wECpVipDz9jh5Tcgfijr8xhqjNpB",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6b9a13030ee726089ac679779a4adf00@o4511259190624256.ingest.us.sentry.io/4511259193114624",
+        "EXPO_PUBLIC_APP_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ehlphkiirtvphtewipzv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVobHBoa2lpcnR2cGh0ZXdpcHp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Nzk3NzEsImV4cCI6MjA5MjE1NTc3MX0.nr7CpQb0Hjf_vfJBoslZtDdhiOTsu_LDg-xmoPUy22w",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiY2R1cmluZyIsImEiOiJjbW1iZ2p4eGgwbzl0MnNvaG53c2M3Y25nIn0.3nfR5SNWyXeAis0_-LUyTw",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_rzQBBwnFunGQTHY3wECpVipDz9jh5Tcgfijr8xhqjNpB",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6b9a13030ee726089ac679779a4adf00@o4511259190624256.ingest.us.sentry.io/4511259193114624",
+        "EXPO_PUBLIC_APP_ENV": "development"
+      }
+    },
+    "staging": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ehlphkiirtvphtewipzv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVobHBoa2lpcnR2cGh0ZXdpcHp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Nzk3NzEsImV4cCI6MjA5MjE1NTc3MX0.nr7CpQb0Hjf_vfJBoslZtDdhiOTsu_LDg-xmoPUy22w",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiY2R1cmluZyIsImEiOiJjbW1iZ2p4eGgwbzl0MnNvaG53c2M3Y25nIn0.3nfR5SNWyXeAis0_-LUyTw",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_rzQBBwnFunGQTHY3wECpVipDz9jh5Tcgfijr8xhqjNpB",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6b9a13030ee726089ac679779a4adf00@o4511259190624256.ingest.us.sentry.io/4511259193114624",
+        "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ldicavngyrrhgnrjijyi.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_1eGSiGET3m2zmW5rTOYyZg_SzDQ8n-K",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiY2R1cmluZyIsImEiOiJjbW1iZ2p4eGgwbzl0MnNvaG53c2M3Y25nIn0.3nfR5SNWyXeAis0_-LUyTw",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_rzQBBwnFunGQTHY3wECpVipDz9jh5Tcgfijr8xhqjNpB",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6b9a13030ee726089ac679779a4adf00@o4511259190624256.ingest.us.sentry.io/4511259193114624",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
     }
   },
   "submit": {
+    "staging": {
+      "ios": {
+        "appleId": "chimdi.during@gmail.com",
+        "ascAppId": "6762098846",
+        "appleTeamId": "ZX3J2CK4SK"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "chimdi.during@gmail.com",
@@ -28,7 +74,6 @@
         "appleTeamId": "ZX3J2CK4SK"
       },
       "android": {}
-
     }
   }
 }
