@@ -24,8 +24,7 @@ export function useUpdateProfileSettings(profileId: string | undefined) {
     mutationFn: async (updates: Partial<Pick<ProfileSettings, 'push_token' | 'notifications_enabled'>>) => {
       const { error } = await supabase
         .from('profile_settings')
-        .update(updates)
-        .eq('profile_id', profileId!);
+        .upsert({ profile_id: profileId!, ...updates }, { onConflict: 'profile_id' });
       if (error) throw error;
     },
     onSettled: () => {
