@@ -1169,7 +1169,7 @@ function EventCard({
             {formatEventDate(event.start_time)}
           </Text>
         </View>
-        <View style={styles.eventMeta}>
+        <View style={[styles.eventMeta, styles.eventMetaAddress]}>
           <Ionicons
             name={
               event.privacy === "EXCLUSIVE"
@@ -1575,7 +1575,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flexShrink: 0,
+  },
+  eventMetaAddress: {
     flexShrink: 1,
+    maxWidth: "50%",
   },
   eventMetaText: {
     fontSize: Typography.size.sm,
