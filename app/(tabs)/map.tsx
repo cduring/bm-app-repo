@@ -133,6 +133,33 @@ function getExclusiveOffset(id: string): [number, number] {
   return [dlat, dlng];
 }
 
+// For pins sharing the exact same lat/lng, spreads them in a small circle (~11m radius)
+// so both pins are reachable when zoomed in past CLUSTER_MAX_ZOOM.
+function getOverlapOffsets<T extends { id: string; latitude: number; longitude: number }>(
+  items: T[],
+): Map<string, [number, number]> {
+  const byCoord = new Map<string, T[]>();
+  for (const item of items) {
+    const key = `${item.latitude},${item.longitude}`;
+    const group = byCoord.get(key) ?? [];
+    group.push(item);
+    byCoord.set(key, group);
+  }
+  const offsets = new Map<string, [number, number]>();
+  for (const group of byCoord.values()) {
+    if (group.length === 1) {
+      offsets.set(group[0].id, [0, 0]);
+    } else {
+      const R = 0.0001;
+      group.forEach((item, i) => {
+        const angle = (2 * Math.PI * i) / group.length;
+        offsets.set(item.id, [R * Math.sin(angle), R * Math.cos(angle)]);
+      });
+    }
+  }
+  return offsets;
+}
+
 function CreatorPinComponent({
   initial,
   imageUrl,
@@ -522,6 +549,20 @@ export default function MapScreen() {
     return clusterPoints(pts, currentZoom);
   }, [visibleEvents, currentZoom]);
 
+  const overlapOffsets = useMemo(() => {
+    if (currentZoom < CLUSTER_MAX_ZOOM) return new Map<string, [number, number]>();
+    return getOverlapOffsets(visibleEvents);
+  }, [visibleEvents, currentZoom >= CLUSTER_MAX_ZOOM]);
+
+  const creatorOverlapOffsets = useMemo(() => {
+    if (currentZoom < CLUSTER_MAX_ZOOM) return new Map<string, [number, number]>();
+    const withCoords = visibleProfiles.filter(
+      (p): p is typeof p & { latitude: number; longitude: number } =>
+        p.latitude != null && p.longitude != null,
+    );
+    return getOverlapOffsets(withCoords);
+  }, [visibleProfiles, currentZoom >= CLUSTER_MAX_ZOOM]);
+
   useEffect(() => {
     return () => {
       if (topPinTimerRef.current) clearTimeout(topPinTimerRef.current);
@@ -719,10 +760,11 @@ export default function MapScreen() {
             const isSelected =
               selectedPin?.type === "CREATOR" &&
               selectedPin.data.id === profile.id;
+            const [creatorDlat, creatorDlng] = creatorOverlapOffsets.get(profile.id) ?? [0, 0];
             return (
               <MarkerView
                 key={profile.id}
-                coordinate={[profile.longitude!, profile.latitude!]}
+                coordinate={[profile.longitude! + creatorDlng, profile.latitude! + creatorDlat]}
                 anchor={{ x: 0.5, y: 0.5 }}
                 allowOverlap
               >
@@ -757,10 +799,11 @@ export default function MapScreen() {
             const isSelected =
               selectedPin?.type === "CREATOR" &&
               selectedPin.data.id === profile.id;
+            const [creatorDlat, creatorDlng] = creatorOverlapOffsets.get(profile.id) ?? [0, 0];
             return (
               <MarkerView
                 key={`top-${profile.id}`}
-                coordinate={[profile.longitude!, profile.latitude!]}
+                coordinate={[profile.longitude! + creatorDlng, profile.latitude! + creatorDlat]}
                 anchor={{ x: 0.5, y: 0.5 }}
                 allowOverlap
               >
@@ -806,9 +849,10 @@ export default function MapScreen() {
               selectedPin?.type === "EVENT" && selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
             const isExclusive = event.privacy === "EXCLUSIVE";
-            const [dlat, dlng] = isExclusive
-              ? getExclusiveOffset(event.id)
-              : [0, 0];
+            const [overlapDlat, overlapDlng] = overlapOffsets.get(event.id) ?? [0, 0];
+            const [exclusiveDlat, exclusiveDlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
+            const dlat = exclusiveDlat + overlapDlat;
+            const dlng = exclusiveDlng + overlapDlng;
             return (
               <MarkerView
                 key={event.id}
@@ -854,9 +898,10 @@ export default function MapScreen() {
               selectedPin?.type === "EVENT" && selectedPin.data.id === event.id;
             const color = EVENT_TYPE_COLOR[event.event_type];
             const isExclusive = event.privacy === "EXCLUSIVE";
-            const [dlat, dlng] = isExclusive
-              ? getExclusiveOffset(event.id)
-              : [0, 0];
+            const [overlapDlat, overlapDlng] = overlapOffsets.get(event.id) ?? [0, 0];
+            const [exclusiveDlat, exclusiveDlng] = isExclusive ? getExclusiveOffset(event.id) : [0, 0];
+            const dlat = exclusiveDlat + overlapDlat;
+            const dlng = exclusiveDlng + overlapDlng;
             return (
               <MarkerView
                 key={`top-${event.id}`}
