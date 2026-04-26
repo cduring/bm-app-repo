@@ -34,7 +34,7 @@ import { useHostedEvents } from "../../src/hooks/useEvents";
 import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { useUnreadCount } from "../../src/hooks/useNotificationsData";
 import {
-  useAddPortfolioImage,
+  useAddPortfolioImages,
   usePortfolio,
   useRemovePortfolioImage,
 } from "../../src/hooks/usePortfolio";
@@ -61,7 +61,7 @@ export default function AccountScreen() {
     refetchHosted,
     refetchPortfolio,
   );
-  const addPortfolioImage = useAddPortfolioImage();
+  const addPortfolioImages = useAddPortfolioImages();
   const removePortfolioImage = useRemovePortfolioImage();
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
@@ -71,18 +71,19 @@ export default function AccountScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsMultipleSelection: true,
+      selectionLimit: 9,
     });
-    if (!result.canceled && result.assets[0]) {
-      addPortfolioImage.mutate(
-        { profileId, imageUri: result.assets[0].uri },
+    if (!result.canceled && result.assets.length > 0) {
+      const uris = result.assets.map((asset) => asset.uri);
+      addPortfolioImages.mutate(
+        { profileId, imageUris: uris },
         {
           onError: (err) => {
             console.error("[account] portfolio upload error:", err);
             Alert.alert(
               "Upload failed",
-              "We encountered an error trying to upload your image. Please try again.",
+              "We encountered an error trying to upload your images. Please try again.",
             );
           },
         },
