@@ -8,6 +8,7 @@ import {
   Alert,
   Dimensions,
   Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   Share,
@@ -105,9 +106,10 @@ export default function ViewProfileScreen() {
     if (!data) return;
     try {
       const url = `${APP_WEBSITE}/profile/${data.profile?.id}`;
+      const text = `Check out ${data.profile?.display_name ?? "this creator"} on Loam!`;
       await Share.share({
-        title: data.profile?.display_name ?? "Loam",
-        message: `Check out ${data.profile?.display_name ?? "this creator"} on Loam!\n\n${url}`,
+        // iOS renders both message + url; Android ignores url.
+        message: Platform.OS === "android" ? `${text}\n\n${url}` : text,
         url,
       });
     } catch (error) {

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   RefreshControl,
   ScrollView,
   Share,
@@ -115,9 +116,10 @@ export default function EventDetailScreen() {
     if (!event) return;
     try {
       const url = `${APP_WEBSITE}/event/${event.id}`;
+      const text = `Check out ${event.title} on Loam!`;
       await Share.share({
-        title: event.title,
-        message: `Check out ${event.title} on Loam!\n\n${url}`,
+        // iOS renders both message + url; Android ignores url.
+        message: Platform.OS === "android" ? `${text}\n\n${url}` : text,
         url,
       });
     } catch (error) {
