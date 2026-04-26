@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Switch,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -28,7 +29,7 @@ import type { EventPrivacy, EventType } from "../types";
 import { LocationMapPreview } from "./LocationMapPreview";
 import { NicheSelector } from "./NicheSelector";
 
-type DatePickerTarget = "date" | "start-time" | "end-time";
+type DatePickerTarget = "date" | "end-date" | "start-time" | "end-time";
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString("en-US", {
@@ -431,6 +432,7 @@ export default function CreateEventForm() {
   const [privacy, setPrivacy] = useState<EventPrivacy>("PUBLIC");
   const [startDate, setStartDate] = useState<Date>(defaultStart);
   const [endDate, setEndDate] = useState<Date>(defaultEnd);
+  const [sameDay, setSameDay] = useState(true);
   const [addressName, setAddressName] = useState("");
   const [latitude, setLatitude] = useState(43.6532);
   const [longitude, setLongitude] = useState(-79.3832);
@@ -455,20 +457,21 @@ export default function CreateEventForm() {
   const [pickerTarget, setPickerTarget] = useState<DatePickerTarget>("date");
 
   const pickerValue =
-    pickerTarget === "date"
+    pickerTarget === "date" || pickerTarget === "start-time"
       ? startDate
-      : pickerTarget === "start-time"
-        ? startDate
-        : endDate;
+      : endDate;
 
-  const pickerMode = pickerTarget === "date" ? "date" : "time";
+  const pickerMode =
+    pickerTarget === "date" || pickerTarget === "end-date" ? "date" : "time";
 
   const pickerTitle =
     pickerTarget === "date"
-      ? "Select Date"
-      : pickerTarget === "start-time"
-        ? "Start Time"
-        : "End Time";
+      ? "Start Date"
+      : pickerTarget === "end-date"
+        ? "End Date"
+        : pickerTarget === "start-time"
+          ? "Start Time"
+          : "End Time";
 
   function openPicker(target: DatePickerTarget) {
     setPickerTarget(target);
@@ -493,6 +496,16 @@ export default function CreateEventForm() {
         selected.getDate(),
       );
       setStartDate(s);
+      if (sameDay) {
+        const e = new Date(endDate);
+        e.setFullYear(
+          selected.getFullYear(),
+          selected.getMonth(),
+          selected.getDate(),
+        );
+        setEndDate(e);
+      }
+    } else if (pickerTarget === "end-date") {
       const e = new Date(endDate);
       e.setFullYear(
         selected.getFullYear(),
@@ -509,6 +522,19 @@ export default function CreateEventForm() {
       e.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
       setEndDate(e);
     }
+  }
+
+  function handleSameDayToggle() {
+    if (sameDay) {
+      const e = new Date(endDate);
+      e.setFullYear(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1);
+      setEndDate(e);
+    } else {
+      const e = new Date(endDate);
+      e.setFullYear(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      setEndDate(e);
+    }
+    setSameDay((prev) => !prev);
   }
 
   async function pickCover() {
@@ -898,7 +924,7 @@ export default function CreateEventForm() {
                     size={18}
                     color={Colors.textTertiary}
                   />
-                  <Text style={styles.scheduleLabel}>Date</Text>
+                  <Text style={styles.scheduleLabel}>Start Date</Text>
                 </View>
                 <View style={styles.scheduleRowRight}>
                   <Text style={styles.scheduleValue}>{fmtDate(startDate)}</Text>
@@ -909,6 +935,31 @@ export default function CreateEventForm() {
                   />
                 </View>
               </TouchableOpacity>
+
+              {!sameDay && (
+                <TouchableOpacity
+                  style={styles.scheduleRow}
+                  onPress={() => openPicker("end-date")}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.scheduleRowLeft}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={Colors.textTertiary}
+                    />
+                    <Text style={styles.scheduleLabel}>End Date</Text>
+                  </View>
+                  <View style={styles.scheduleRowRight}>
+                    <Text style={styles.scheduleValue}>{fmtDate(endDate)}</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={Colors.textTertiary}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.scheduleRow}
@@ -955,6 +1006,23 @@ export default function CreateEventForm() {
                   />
                 </View>
               </TouchableOpacity>
+
+              <View style={styles.scheduleRow}>
+                <View style={styles.scheduleRowLeft}>
+                  <Ionicons
+                    name="moon-outline"
+                    size={18}
+                    color={Colors.textTertiary}
+                  />
+                  <Text style={styles.scheduleLabel}>Same day</Text>
+                </View>
+                <Switch
+                  value={sameDay}
+                  onValueChange={handleSameDayToggle}
+                  trackColor={{ false: Colors.textTertiary, true: Colors.primary }}
+                  thumbColor="#fff"
+                />
+              </View>
             </View>
 
             {/* ── Location ── */}
