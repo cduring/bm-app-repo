@@ -616,6 +616,7 @@ export default function EventDetailScreen() {
                   key={niche.id}
                   name={niche.name}
                   color={niche.color}
+                  onPress={() => router.push(`/events/${encodeURIComponent(niche.name)}` as any)}
                 />
               ))}
             </View>

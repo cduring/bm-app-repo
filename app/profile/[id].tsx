@@ -342,6 +342,7 @@ export default function ViewProfileScreen() {
                   key={niche.id}
                   name={niche.name}
                   color={niche.color}
+                  onPress={() => router.push(`/profiles/${encodeURIComponent(niche.name)}` as any)}
                 />
               ))}
             </View>

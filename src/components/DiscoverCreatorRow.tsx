@@ -66,7 +66,13 @@ export function DiscoverCreatorRow({ profile }: Props) {
           {visibleNiches.length > 0 && (
             <View style={styles.creatorNiches}>
               {visibleNiches.map((n) => (
-                <NicheTag key={n.id} name={n.name} small color={n.color} />
+                <NicheTag
+                  key={n.id}
+                  name={n.name}
+                  small
+                  color={n.color}
+                  onPress={() => router.push(`/profiles/${encodeURIComponent(n.name)}` as any)}
+                />
               ))}
             </View>
           )}

@@ -121,3 +121,76 @@ export function useDiscoveryProfiles() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+async function fetchProfilesByNiche(nicheName: string): Promise<ProfileWithNiches[]> {
+  const { data: nicheData, error: nicheError } = await supabase
+    .from('niches')
+    .select('id')
+    .ilike('name', nicheName)
+    .single();
+
+  if (nicheError || !nicheData) return [];
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      *,
+      profile_niches!inner (
+        niches (id, name, color)
+      ),
+      external_links (*)
+    `)
+    .eq('profile_niches.niche_id', nicheData.id)
+    .order('follower_count', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map(normalizeProfileRow);
+}
+
+export function useProfilesByNiche(nicheName: string) {
+  return useQuery<ProfileWithNiches[]>({
+    queryKey: ['profilesByNiche', nicheName],
+    queryFn: () => fetchProfilesByNiche(nicheName),
+    enabled: nicheName.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+async function fetchEventsByNiche(nicheName: string): Promise<EventWithHost[]> {
+  const { data: nicheData, error: nicheError } = await supabase
+    .from('niches')
+    .select('id')
+    .ilike('name', nicheName)
+    .single();
+
+  if (nicheError || !nicheData) return [];
+
+  const { data: linkData, error: linkError } = await supabase
+    .from('event_niches')
+    .select('event_id')
+    .eq('niche_id', nicheData.id);
+
+  if (linkError || !linkData?.length) return [];
+
+  const eventIds = linkData.map((r: { event_id: string }) => r.event_id);
+
+  const { data, error } = await supabase
+    .from('events_with_host')
+    .select('*')
+    .in('id', eventIds)
+    .eq('status', 'PUBLISHED')
+    .gt('end_time', new Date().toISOString())
+    .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as EventWithHost[];
+}
+
+export function useEventsByNiche(nicheName: string) {
+  return useQuery<EventWithHost[]>({
+    queryKey: ['eventsByNiche', nicheName],
+    queryFn: () => fetchEventsByNiche(nicheName),
+    enabled: nicheName.length > 0,
+    staleTime: 2 * 60 * 1000,
+  });
+}

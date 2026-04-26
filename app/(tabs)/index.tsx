@@ -192,7 +192,13 @@ export default function DiscoverScreen() {
             {event.niches.length > 0 && (
               <View style={styles.eventNiches}>
                 {event.niches.slice(0, 2).map((n) => (
-                  <NicheTag key={n.id} name={n.name} small color={n.color} />
+                  <NicheTag
+                    key={n.id}
+                    name={n.name}
+                    small
+                    color={n.color}
+                    onPress={() => router.push(`/events/${encodeURIComponent(n.name)}` as any)}
+                  />
                 ))}
               </View>
             )}
