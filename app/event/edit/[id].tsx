@@ -10,9 +10,12 @@ import {
   Switch,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { LocationMapPreview } from '../../../src/components/LocationMapPreview';
 import { NicheSelector } from '../../../src/components/NicheSelector';
+import { DatePickerSheet, fmtDate, fmtTime } from '../../../src/components/DatePickerSheet';
+import type { DatePickerTarget } from '../../../src/components/DatePickerSheet';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -23,8 +26,8 @@ import { supabase } from '../../../src/lib/supabase';
 import { useNiches } from '../../../src/hooks/useNiches';
 import { EventTypeBadge } from '../../../src/components/EventTypeBadge';
 import { Colors, Typography, Spacing, BorderRadius } from '../../../src/constants/theme';
-import { formatDayDate, formatTimeRange } from '../../../src/utils/date';
-import type { EventPrivacy } from '../../../src/types';
+import { EVENT_TYPES } from '../../../src/constants/eventTypes';
+import type { EventType } from '../../../src/types';
 
 export default function EventEditScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,14 +43,84 @@ export default function EventEditScreen() {
   const [geocoded, setGeocoded] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [privacy, setPrivacy] = useState<EventPrivacy>(event?.privacy ?? 'PUBLIC');
   const [coverUri, setCoverUri] = useState<string | null>(event?.cover_image_url ?? null);
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
+  // Event type
+  const [eventType, setEventType] = useState<EventType>(event?.event_type ?? 'NETWORKING');
+  const [showTypePicker, setShowTypePicker] = useState(false);
+
+  // Date & time
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [sameDay, setSameDay] = useState(true);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<DatePickerTarget>('date');
+
   useEffect(() => {
-    if (event) setSelectedNicheIds(new Set(event.niches.map(n => n.id)));
+    if (event) {
+      setSelectedNicheIds(new Set(event.niches.map(n => n.id)));
+      setEventType(event.event_type);
+      const s = new Date(event.start_time);
+      const e = new Date(event.end_time);
+      setStartDate(s);
+      setEndDate(e);
+      setSameDay(s.toDateString() === e.toDateString());
+    }
   }, [event?.id]);
+
+  const pickerValue = pickerTarget === 'date' || pickerTarget === 'start-time' ? startDate : endDate;
+  const pickerMode = pickerTarget === 'date' || pickerTarget === 'end-date' ? 'date' : 'time';
+  const pickerTitle: Record<DatePickerTarget, string> = {
+    date: 'Start Date',
+    'end-date': 'End Date',
+    'start-time': 'Start Time',
+    'end-time': 'End Time',
+  };
+
+  function openPicker(target: DatePickerTarget) {
+    setPickerTarget(target);
+    setShowDatePicker(true);
+  }
+
+  function handlePickerConfirm(selected: Date) {
+    if (pickerTarget === 'date') {
+      const s = new Date(startDate);
+      s.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setStartDate(s);
+      if (sameDay) {
+        const e = new Date(endDate);
+        e.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+        setEndDate(e);
+      }
+    } else if (pickerTarget === 'end-date') {
+      const e = new Date(endDate);
+      e.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setEndDate(e);
+    } else if (pickerTarget === 'start-time') {
+      const s = new Date(startDate);
+      s.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setStartDate(s);
+    } else {
+      const e = new Date(endDate);
+      e.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setEndDate(e);
+    }
+  }
+
+  function handleSameDayToggle() {
+    if (sameDay) {
+      const e = new Date(endDate);
+      e.setFullYear(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1);
+      setEndDate(e);
+    } else {
+      const e = new Date(endDate);
+      e.setFullYear(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      setEndDate(e);
+    }
+    setSameDay(prev => !prev);
+  }
 
   async function uploadCover(uri: string, eventId: string): Promise<string> {
     const response = await fetch(uri);
@@ -117,10 +190,13 @@ export default function EventEditScreen() {
       Alert.alert('Validation', 'Location is required.');
       return;
     }
+    if (endDate <= startDate) {
+      Alert.alert('Validation', 'End time must be after start time.');
+      return;
+    }
 
     setSaving(true);
     try {
-      // Upload new cover image if the user picked a local file
       let finalCoverUrl = coverUri;
       if (coverUri && !coverUri.startsWith('http')) {
         finalCoverUrl = await uploadCover(coverUri, id);
@@ -133,23 +209,15 @@ export default function EventEditScreen() {
           description: trimmedDescription,
           address_name: trimmedAddress,
           ...(geocoded ? { latitude, longitude } : {}),
-          privacy,
           cover_image_url: finalCoverUrl,
+          event_type: eventType,
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
         })
         .eq('id', id);
 
       if (error) throw error;
 
-      // Convert REQUESTED → GOING when switching EXCLUSIVE → PUBLIC
-      if (event?.privacy === 'EXCLUSIVE' && privacy === 'PUBLIC') {
-        await supabase
-          .from('event_rsvps')
-          .update({ status: 'GOING' })
-          .eq('event_id', id)
-          .eq('status', 'REQUESTED');
-      }
-
-      // Sync event niches: delete all then re-insert
       await supabase.from('event_niches').delete().eq('event_id', id);
       if (selectedNicheIds.size > 0) {
         const { error: nicheError } = await supabase.from('event_niches').insert(
@@ -267,13 +335,13 @@ export default function EventEditScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Event Type (read-only) */}
+        {/* Event Type */}
         <View style={styles.section}>
           <Text style={styles.label}>Event Type</Text>
-          <View style={styles.typeRow}>
-            <EventTypeBadge eventType={event.event_type} />
-            <Text style={styles.typeNote}>Type cannot be changed after creation</Text>
-          </View>
+          <TouchableOpacity style={styles.selectRow} onPress={() => setShowTypePicker(true)} activeOpacity={0.8}>
+            <EventTypeBadge eventType={eventType} />
+            <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+          </TouchableOpacity>
         </View>
 
         {/* Niches */}
@@ -282,29 +350,79 @@ export default function EventEditScreen() {
           <NicheSelector
             niches={niches}
             selectedIds={selectedNicheIds}
-            onToggle={(id) => {
+            onToggle={(nicheId) => {
               setSelectedNicheIds(prev => {
                 const next = new Set(prev);
-                if (next.has(id)) next.delete(id);
-                else next.add(id);
+                if (next.has(nicheId)) next.delete(nicheId);
+                else next.add(nicheId);
                 return next;
               });
             }}
           />
         </View>
 
-        {/* Schedule (read-only display) */}
+        {/* Date & Time */}
         <View style={styles.section}>
           <Text style={styles.label}>Date & Time</Text>
-          <View style={styles.scheduleDisplay}>
-            <Ionicons name="calendar-outline" size={16} color={Colors.textTertiary} />
-            <Text style={styles.scheduleText}>
-              {formatDayDate(event.start_time)} · {formatTimeRange(event.start_time, event.end_time)}
-            </Text>
+
+          <TouchableOpacity style={styles.scheduleRow} onPress={() => openPicker('date')} activeOpacity={0.8}>
+            <View style={styles.scheduleRowLeft}>
+              <Ionicons name="calendar-outline" size={18} color={Colors.textTertiary} />
+              <Text style={styles.scheduleLabel}>Start Date</Text>
+            </View>
+            <View style={styles.scheduleRowRight}>
+              <Text style={styles.scheduleValue}>{fmtDate(startDate)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          {!sameDay && (
+            <TouchableOpacity style={styles.scheduleRow} onPress={() => openPicker('end-date')} activeOpacity={0.8}>
+              <View style={styles.scheduleRowLeft}>
+                <Ionicons name="calendar-outline" size={18} color={Colors.textTertiary} />
+                <Text style={styles.scheduleLabel}>End Date</Text>
+              </View>
+              <View style={styles.scheduleRowRight}>
+                <Text style={styles.scheduleValue}>{fmtDate(endDate)}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.scheduleRow} onPress={() => openPicker('start-time')} activeOpacity={0.8}>
+            <View style={styles.scheduleRowLeft}>
+              <Ionicons name="time-outline" size={18} color={Colors.textTertiary} />
+              <Text style={styles.scheduleLabel}>Start Time</Text>
+            </View>
+            <View style={styles.scheduleRowRight}>
+              <Text style={styles.scheduleValue}>{fmtTime(startDate)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.scheduleRow} onPress={() => openPicker('end-time')} activeOpacity={0.8}>
+            <View style={styles.scheduleRowLeft}>
+              <Ionicons name="time-outline" size={18} color={Colors.textTertiary} />
+              <Text style={styles.scheduleLabel}>End Time</Text>
+            </View>
+            <View style={styles.scheduleRowRight}>
+              <Text style={styles.scheduleValue}>{fmtTime(endDate)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.scheduleRow}>
+            <View style={styles.scheduleRowLeft}>
+              <Ionicons name="moon-outline" size={18} color={Colors.textTertiary} />
+              <Text style={styles.scheduleLabel}>Same day</Text>
+            </View>
+            <Switch
+              value={sameDay}
+              onValueChange={handleSameDayToggle}
+              trackColor={{ false: Colors.textTertiary, true: Colors.primary }}
+              thumbColor="#fff"
+            />
           </View>
-          <Text style={styles.scheduleNote}>
-            Reschedule via the full edit flow (coming soon)
-          </Text>
         </View>
 
         {/* Title */}
@@ -369,33 +487,21 @@ export default function EventEditScreen() {
           )}
         </View>
 
-        {/* Privacy */}
+        {/* Privacy (read-only) */}
         <View style={styles.section}>
           <Text style={styles.label}>Privacy</Text>
           <View style={styles.privacyRow}>
-            <View style={styles.privacyInfo}>
-              <Ionicons
-                name={privacy === 'EXCLUSIVE' ? 'lock-closed-outline' : 'earth-outline'}
-                size={18}
-                color={privacy === 'EXCLUSIVE' ? Colors.primary : Colors.textSecondary}
-              />
-              <View>
-                <Text style={styles.privacyLabel}>
-                  {privacy === 'EXCLUSIVE' ? 'Exclusive' : 'Public'}
-                </Text>
-                <Text style={styles.privacyDesc}>
-                  {privacy === 'EXCLUSIVE'
-                    ? 'Attendees must request access'
-                    : 'Anyone can RSVP'}
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={privacy === 'EXCLUSIVE'}
-              onValueChange={val => setPrivacy(val ? 'EXCLUSIVE' : 'PUBLIC')}
-              trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
-              thumbColor={privacy === 'EXCLUSIVE' ? Colors.primary : Colors.textTertiary}
+            <Ionicons
+              name={event.privacy === 'EXCLUSIVE' ? 'lock-closed-outline' : 'earth-outline'}
+              size={18}
+              color={Colors.textSecondary}
             />
+            <View>
+              <Text style={styles.privacyLabel}>
+                {event.privacy === 'EXCLUSIVE' ? 'Exclusive' : 'Public'}
+              </Text>
+              <Text style={styles.privacyDesc}>Privacy cannot be changed after creation</Text>
+            </View>
           </View>
         </View>
 
@@ -415,6 +521,45 @@ export default function EventEditScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Event Type Modal */}
+      <Modal visible={showTypePicker} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Event Type</Text>
+            <TouchableOpacity onPress={() => setShowTypePicker(false)} style={styles.modalDoneBtn}>
+              <Text style={styles.modalDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.typeGrid} showsVerticalScrollIndicator={false}>
+            {EVENT_TYPES.map(({ value, label }) => (
+              <TouchableOpacity
+                key={value}
+                style={[styles.typeChip, eventType === value && styles.typeChipSelected]}
+                onPress={() => { setEventType(value); setShowTypePicker(false); }}
+                activeOpacity={0.7}
+              >
+                {eventType === value && (
+                  <Ionicons name="checkmark" size={13} color={Colors.primary} style={styles.typeChipCheck} />
+                )}
+                <Text style={[styles.typeChipText, eventType === value && styles.typeChipTextSelected]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Date/Time Picker Sheet */}
+      <DatePickerSheet
+        visible={showDatePicker}
+        title={pickerTitle[pickerTarget]}
+        mode={pickerMode}
+        value={pickerValue}
+        onDismiss={() => setShowDatePicker(false)}
+        onConfirm={handlePickerConfirm}
+      />
     </SafeAreaView>
   );
 }
@@ -459,9 +604,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
     alignItems: 'center',
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
+  saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: {
     fontSize: Typography.size.base,
     fontWeight: Typography.weight.bold,
@@ -476,11 +619,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     overflow: 'hidden',
   },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
+  coverImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   coverEditOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#00000060',
@@ -488,21 +627,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.xs,
   },
-  coverEditText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textPrimary,
-  },
-  coverPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  coverPlaceholderText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-  },
+  coverEditText: { fontSize: Typography.size.sm, fontWeight: Typography.weight.medium, color: Colors.textPrimary },
+  coverPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  coverPlaceholderText: { fontSize: Typography.size.sm, color: Colors.textTertiary },
 
   // Form sections
   section: {
@@ -518,39 +645,35 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 
-  // Event type row
-  typeRow: {
+  // Event type selector
+  selectRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
-  typeNote: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-  },
-
-  // Schedule display
-  scheduleDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
+    justifyContent: 'space-between',
     backgroundColor: Colors.surfaceElevated,
-    borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
   },
-  scheduleText: {
-    fontSize: Typography.size.base,
-    color: Colors.textSecondary,
+
+  // Schedule rows
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
   },
-  scheduleNote: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-    fontStyle: 'italic',
-  },
+  scheduleRowLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  scheduleRowRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  scheduleLabel: { fontSize: Typography.size.base, color: Colors.textSecondary },
+  scheduleValue: { fontSize: Typography.size.base, color: Colors.textPrimary, fontWeight: Typography.weight.medium },
 
   // Text inputs
   textInput: {
@@ -563,50 +686,25 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     color: Colors.textPrimary,
   },
-  textArea: {
-    minHeight: 120,
-    paddingTop: Spacing.sm + 2,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
+  textArea: { minHeight: 120, paddingTop: Spacing.sm + 2 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   locationInput: { flex: 1 },
   locationStatus: { width: 20 },
-  locationErrorText: {
-    fontSize: Typography.size.sm,
-    color: Colors.cancelled,
-    marginTop: Spacing.xs,
-  },
+  locationErrorText: { fontSize: Typography.size.sm, color: Colors.cancelled, marginTop: Spacing.xs },
 
-  // Privacy toggle
+  // Privacy (read-only)
   privacyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.sm,
     backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.md,
   },
-  privacyInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    flex: 1,
-  },
-  privacyLabel: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.textPrimary,
-  },
-  privacyDesc: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
+  privacyLabel: { fontSize: Typography.size.base, fontWeight: Typography.weight.semibold, color: Colors.textPrimary },
+  privacyDesc: { fontSize: Typography.size.xs, color: Colors.textTertiary, marginTop: 2 },
 
   // Danger zone
   dangerSection: {
@@ -635,15 +733,36 @@ const styles = StyleSheet.create({
     borderColor: Colors.cancelled + '40',
     backgroundColor: Colors.cancelled + '10',
   },
-  cancelEventText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.medium,
-    color: Colors.cancelled,
+  cancelEventText: { fontSize: Typography.size.base, fontWeight: Typography.weight.medium, color: Colors.cancelled },
+  cancelEventNote: { fontSize: Typography.size.xs, color: Colors.textTertiary, lineHeight: 18, textAlign: 'center' },
+
+  // Event type modal
+  modalSafeArea: { flex: 1, backgroundColor: Colors.background },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  cancelEventNote: {
-    fontSize: Typography.size.xs,
-    color: Colors.textTertiary,
-    lineHeight: 18,
-    textAlign: 'center',
+  modalTitle: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary },
+  modalDoneBtn: { padding: 4 },
+  modalDoneText: { fontSize: Typography.size.base, fontWeight: Typography.weight.semibold, color: Colors.primary },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: Spacing.lg, gap: Spacing.sm },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.chip,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
   },
+  typeChipSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '20' },
+  typeChipCheck: { marginRight: 4 },
+  typeChipText: { fontSize: Typography.size.sm, color: Colors.textSecondary },
+  typeChipTextSelected: { color: Colors.primary, fontWeight: Typography.weight.medium },
 });
