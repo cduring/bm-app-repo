@@ -64,7 +64,10 @@ async function searchEvents(query: string): Promise<EventWithHost[]> {
     .limit(20);
 
   if (error) throw error;
-  return (data ?? []) as EventWithHost[];
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    niches: (row.niches ?? []).map((n: any) => ({ ...n, id: String(n.id) })),
+  })) as EventWithHost[];
 }
 
 export function useSearchProfiles(query: string) {
