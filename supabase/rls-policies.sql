@@ -15,6 +15,26 @@ AS $$
 $$;
 
 
+-- ─── Helper: RSVP counts per event ───────────────────────────────────────────
+-- SECURITY DEFINER so it bypasses RLS on event_rsvps.
+-- Without this, the security_invoker view below would count 0 INTERESTED/REQUESTED
+-- rows for non-hosts because the read policies only expose GOING rows.
+
+CREATE OR REPLACE FUNCTION rsvp_counts_for_event(p_event_id bigint)
+RETURNS TABLE (interested_count int, going_count int, requested_count int)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    COUNT(CASE WHEN status = 'INTERESTED' THEN 1 END)::int,
+    COUNT(CASE WHEN status = 'GOING'      THEN 1 END)::int,
+    COUNT(CASE WHEN status = 'REQUESTED'  THEN 1 END)::int
+  FROM event_rsvps
+  WHERE event_id = p_event_id;
+$$;
+
 -- ─── View: events_with_host ───────────────────────────────────────────────────
 -- Joins events with host profile, RSVP counts, and niches.
 -- Used by useEvents() and useEventById() hooks.
@@ -24,23 +44,20 @@ WITH (security_invoker = true)
 AS
 SELECT
   e.*,
-  row_to_json(p)                         AS host,
-  COUNT(DISTINCT r_i.profile_id)::int    AS interested_count,
-  COUNT(DISTINCT r_g.profile_id)::int    AS going_count,
+  row_to_json(p) AS host,
+  rc.interested_count,
+  rc.going_count,
   COALESCE(
     (SELECT json_agg(row_to_json(n))
      FROM niches n
      JOIN event_niches en ON en.niche_id = n.id
      WHERE en.event_id = e.id),
     '[]'::json
-  )                                      AS niches,
-  COUNT(DISTINCT r_req.profile_id)::int  AS requested_count
+  )              AS niches,
+  rc.requested_count
 FROM events e
 JOIN profiles p ON p.id = e.host_id
-LEFT JOIN event_rsvps r_i   ON r_i.event_id   = e.id AND r_i.status   = 'INTERESTED'
-LEFT JOIN event_rsvps r_g   ON r_g.event_id   = e.id AND r_g.status   = 'GOING'
-LEFT JOIN event_rsvps r_req ON r_req.event_id = e.id AND r_req.status = 'REQUESTED'
-GROUP BY e.id, p.id;
+LEFT JOIN LATERAL rsvp_counts_for_event(e.id) rc ON true;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────

@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "seed:staging": "dotenv -e scripts/env/.env.staging.local -- tsx scripts/seed.ts",
-    "seed:reset": "dotenv -e scripts/env/.env.staging.local -- tsx scripts/seed.ts --reset"
+    "seed:reset": "dotenv -e scripts/env/.env.staging.local -- tsx scripts/seed.ts --reset",
+    "inflate-rsvps": "dotenv -e scripts/env/.env.staging.local -- tsx scripts/inflate-rsvps.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
