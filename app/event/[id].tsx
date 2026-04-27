@@ -46,16 +46,18 @@ export default function EventDetailScreen() {
     refetch: refetchEvent,
   } = useEventById(validId);
   const { data: profileData } = useProfile(session?.user?.id);
-  const { refreshing, handleRefresh: onRefresh } =
-    useRefreshHandler(refetchEvent);
   const {
     getRSVP,
     setRSVP,
+    refetchMyRSVPs,
     eventRequestors,
     approveRequest,
     declineRequest,
     getPendingCount,
+    refetchRequestors,
   } = useRSVP();
+  const { refreshing, handleRefresh: onRefresh } =
+    useRefreshHandler(refetchEvent, refetchMyRSVPs, refetchRequestors);
 
   const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
   const displayedInterestedCount = event

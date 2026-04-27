@@ -26,12 +26,14 @@ interface RSVPContextValue {
   myRSVPs: RSVPMap;
   setRSVP: (eventId: string, status: RSVPStatus | null, eventMeta?: { title: string; startTime: string }) => void;
   getRSVP: (eventId: string) => RSVPStatus | null;
+  refetchMyRSVPs: () => Promise<any>;
 
   // Attendance requests for exclusive events the user hosts
   eventRequestors: RequestorMap;
   approveRequest: (eventId: string, profileId: string) => void;
   declineRequest: (eventId: string, profileId: string) => void;
   getPendingCount: (eventId: string) => number;
+  refetchRequestors: () => Promise<any>;
 
   // Event edits / cancellations (persisted to Supabase)
   cancelEvent: (eventId: string) => Promise<void>;
@@ -52,8 +54,8 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
   const profileId = profileData?.profile.id;
 
   // ── RSVP data from Supabase ──
-  const { data: rsvpData } = useMyRSVPs(profileId);
-  const { data: requestorData } = useEventRequestors(profileId);
+  const { data: rsvpData, refetch: refetchMyRSVPs } = useMyRSVPs(profileId);
+  const { data: requestorData, refetch: refetchRequestors } = useEventRequestors(profileId);
 
   // Local optimistic state (mirrors Supabase, updated immediately on mutation)
   const [localRSVPs, setLocalRSVPs] = useState<RSVPMap>({});
@@ -196,10 +198,12 @@ export function RSVPProvider({ children }: { children: ReactNode }) {
         myRSVPs: localRSVPs,
         setRSVP,
         getRSVP,
+        refetchMyRSVPs,
         eventRequestors: localRequestors,
         approveRequest,
         declineRequest,
         getPendingCount,
+        refetchRequestors,
         cancelEvent,
         updateEventLocally,
       }}
