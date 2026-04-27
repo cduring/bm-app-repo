@@ -27,10 +27,13 @@ import {
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
 import { supabase } from "../../src/lib/supabase";
-import type { ProfileType } from "../../src/types";
+import { uploadPortfolioImages } from "../../src/lib/portfolioUpload";
+import { PLATFORMS, PLATFORM_HANDLE_CONFIG } from "../../src/lib/platforms";
+import { PlatformIcon } from "../../src/components/PlatformIcon";
+import type { ProfileType, PlatformName } from "../../src/types";
 import { resolvePostalCode } from "../../src/utils/location";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 interface OnboardingData {
   profileType: ProfileType | null;
@@ -42,6 +45,8 @@ interface OnboardingData {
   latitude: number | null;
   longitude: number | null;
   locationLabel: string;
+  portfolioImageUris: string[];
+  pendingLinks: { platform_name: PlatformName; url: string }[];
 }
 
 
@@ -58,6 +63,12 @@ export default function OnboardingScreen() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   // Step 5 postal prefix input (not saved to Supabase directly; drives coordinate generation)
   const [postalPrefix, setPostalPrefix] = useState("");
+  // Step 6 transient link form state
+  const [newLinkPlatform, setNewLinkPlatform] = useState<PlatformName>("Instagram");
+  const [newLinkHandle, setNewLinkHandle] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [addingLink, setAddingLink] = useState(false);
+
   const [data, setData] = useState<OnboardingData>({
     profileType: null,
     displayName: "",
@@ -68,6 +79,8 @@ export default function OnboardingScreen() {
     latitude: null,
     longitude: null,
     locationLabel: "",
+    portfolioImageUris: [],
+    pendingLinks: [],
   });
 
   function goBack() {
@@ -94,7 +107,7 @@ export default function OnboardingScreen() {
       setError("Enter all 3 characters of your postal code area (e.g. M5V).");
       return;
     }
-    if (step === 6 && (!ageConfirmed || !termsAccepted || !privacyAccepted)) {
+    if (step === 7 && (!ageConfirmed || !termsAccepted || !privacyAccepted)) {
       setError("Please confirm all three items to continue.");
       return;
     }
@@ -121,6 +134,58 @@ export default function OnboardingScreen() {
     if (!result.canceled) {
       setData((d) => ({ ...d, photoUri: result.assets[0].uri }));
     }
+  }
+
+  async function pickPortfolioImages() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      setError("Camera roll permission is required to pick photos.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images" as ImagePicker.MediaType,
+      allowsMultipleSelection: true,
+      selectionLimit: 9,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setData((d) => ({
+        ...d,
+        portfolioImageUris: [
+          ...d.portfolioImageUris,
+          ...result.assets.map((a) => a.uri),
+        ].slice(0, 9),
+      }));
+    }
+  }
+
+  function addOnboardingLink() {
+    const raw = newLinkHandle.trim();
+    if (!raw) return;
+    const config = PLATFORM_HANDLE_CONFIG[newLinkPlatform];
+    let url: string;
+    if (config) {
+      url = config.buildUrl(raw);
+    } else {
+      try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== "https:") {
+          setLinkError("Links must use https://");
+          return;
+        }
+        url = parsed.href;
+      } catch {
+        setLinkError("Please enter a valid URL starting with https://");
+        return;
+      }
+    }
+    setData((d) => ({
+      ...d,
+      pendingLinks: [...d.pendingLinks, { platform_name: newLinkPlatform, url }],
+    }));
+    setNewLinkHandle("");
+    setAddingLink(false);
+    setLinkError("");
   }
 
   async function handlePostalPrefixChange(text: string) {
@@ -265,12 +330,41 @@ export default function OnboardingScreen() {
       }
     }
 
+    // Save portfolio images — non-blocking so a failure never prevents account creation
+    if (data.portfolioImageUris.length > 0) {
+      try {
+        await uploadPortfolioImages(profile.id, data.portfolioImageUris);
+      } catch (err) {
+        console.error("[onboarding] portfolio upload failed (non-blocking):", err);
+      }
+    }
+
+    // Save external links — non-blocking
+    if (data.pendingLinks.length > 0) {
+      try {
+        const { error: linksErr } = await supabase
+          .from("external_links")
+          .insert(
+            data.pendingLinks.map((l) => ({
+              profile_id: profile.id,
+              platform_name: l.platform_name,
+              url: l.url,
+            })),
+          );
+        if (linksErr) throw linksErr;
+      } catch (err) {
+        console.error("[onboarding] external links save failed (non-blocking):", err);
+      }
+    }
+
     setLoading(false);
     posthog?.capture('onboarding_completed', {
       profile_type: data.profileType,
       niches_count: data.selectedNicheIds.length,
       has_photo: !!data.photoUri,
       has_location: data.latitude !== null,
+      portfolio_images_count: data.portfolioImageUris.length,
+      links_count: data.pendingLinks.length,
     });
     onboardingComplete();
   }
@@ -319,11 +413,6 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )}
           {step === 1 && <View style={styles.backButton} />}
-
-          {/* Step counter */}
-          <Text style={styles.stepCounter}>
-            Step {step} of {TOTAL_STEPS}
-          </Text>
 
           {/* ── Step 1: Profile type ── */}
           {step === 1 && (
@@ -629,8 +718,236 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* ── Step 6: Terms & Age ── */}
+          {/* ── Step 6: Portfolio & Links ── */}
           {step === 6 && (
+            <View style={styles.stepContent}>
+              <Text style={styles.title}>Design your profile</Text>
+              <Text style={styles.subtitle}>
+                Add portfolio images and social links — you can always edit
+                these later.
+              </Text>
+
+              {/* Portfolio images */}
+              <View style={styles.portfolioSection}>
+                <Text style={styles.sectionLabel}>Portfolio</Text>
+                {data.portfolioImageUris.length > 0 && (
+                  <View style={styles.portfolioGrid}>
+                    {data.portfolioImageUris.map((uri, i) => (
+                      <View key={i} style={styles.portfolioThumbWrap}>
+                        <Image source={{ uri }} style={styles.portfolioThumb} />
+                        <TouchableOpacity
+                          style={styles.portfolioRemove}
+                          onPress={() =>
+                            setData((d) => ({
+                              ...d,
+                              portfolioImageUris: d.portfolioImageUris.filter(
+                                (_, idx) => idx !== i,
+                              ),
+                            }))
+                          }
+                          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                          accessibilityLabel="Remove photo"
+                          accessibilityRole="button"
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={20}
+                            color={Colors.textPrimary}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {data.portfolioImageUris.length < 9 && (
+                  <TouchableOpacity
+                    style={styles.addPhotosButton}
+                    onPress={pickPortfolioImages}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Add portfolio photos"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons
+                      name="images-outline"
+                      size={18}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.addPhotosText}>
+                      {data.portfolioImageUris.length === 0
+                        ? "Add Photos"
+                        : "Add More"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* External links */}
+              <View style={styles.portfolioSection}>
+                <Text style={styles.sectionLabel}>Social Links</Text>
+                {data.pendingLinks.map((link, i) => (
+                  <View key={i} style={styles.linkRow}>
+                    <PlatformIcon
+                      platform={link.platform_name}
+                      size={18}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.linkPlatform}>
+                      {link.platform_name}
+                    </Text>
+                    <Text style={styles.linkUrl} numberOfLines={1}>
+                      {link.url}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setData((d) => ({
+                          ...d,
+                          pendingLinks: d.pendingLinks.filter(
+                            (_, idx) => idx !== i,
+                          ),
+                        }))
+                      }
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel={`Remove ${link.platform_name} link`}
+                      accessibilityRole="button"
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={20}
+                        color={Colors.textTertiary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {addingLink ? (
+                  <View style={styles.addLinkForm}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.platformScroll}
+                    >
+                      {PLATFORMS.map((platform) => (
+                        <TouchableOpacity
+                          key={platform}
+                          style={[
+                            styles.platformChip,
+                            newLinkPlatform === platform &&
+                              styles.platformChipSelected,
+                          ]}
+                          onPress={() => {
+                            setNewLinkPlatform(platform);
+                            setNewLinkHandle("");
+                            setLinkError("");
+                          }}
+                          activeOpacity={0.7}
+                          accessibilityLabel={platform}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            selected: newLinkPlatform === platform,
+                          }}
+                        >
+                          <PlatformIcon
+                            platform={platform}
+                            size={14}
+                            color={
+                              newLinkPlatform === platform
+                                ? Colors.primary
+                                : Colors.textTertiary
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.platformChipText,
+                              newLinkPlatform === platform &&
+                                styles.platformChipTextSelected,
+                            ]}
+                          >
+                            {platform}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    {PLATFORM_HANDLE_CONFIG[newLinkPlatform] ? (
+                      <View style={styles.handleInputRow}>
+                        <Text style={styles.handlePrefix}>
+                          {PLATFORM_HANDLE_CONFIG[newLinkPlatform]!.prefix}
+                        </Text>
+                        <TextInput
+                          style={styles.handleInput}
+                          value={newLinkHandle}
+                          onChangeText={setNewLinkHandle}
+                          placeholder="yourhandle"
+                          placeholderTextColor={Colors.textTertiary}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          returnKeyType="done"
+                          onSubmitEditing={addOnboardingLink}
+                        />
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={styles.input}
+                        value={newLinkHandle}
+                        onChangeText={setNewLinkHandle}
+                        placeholder="https://..."
+                        placeholderTextColor={Colors.textTertiary}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="url"
+                        textContentType="URL"
+                        returnKeyType="done"
+                        onSubmitEditing={addOnboardingLink}
+                      />
+                    )}
+
+                    {linkError ? (
+                      <Text style={styles.linkErrorText}>{linkError}</Text>
+                    ) : null}
+
+                    <View style={styles.addLinkActions}>
+                      <TouchableOpacity
+                        style={styles.cancelLinkButton}
+                        onPress={() => {
+                          setAddingLink(false);
+                          setNewLinkHandle("");
+                          setLinkError("");
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.cancelLinkText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.confirmLinkButton}
+                        onPress={addOnboardingLink}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.confirmLinkText}>Add</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.addLinkButton}
+                    onPress={() => setAddingLink(true)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Add link"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={18}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.addLinkButtonText}>Add Link</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* ── Step 7: Terms & Age ── */}
+          {step === 7 && (
             <View style={styles.stepContent}>
               <Text style={styles.title}>One last step</Text>
               <Text style={styles.subtitle}>
@@ -725,7 +1042,8 @@ export default function OnboardingScreen() {
         {/* CTA */}
         <View style={styles.footer}>
           {((step === 4 && !data.photoUri) ||
-            (step === 5 && !data.latitude)) && (
+            (step === 5 && !data.latitude) ||
+            step === 6) && (
             <TouchableOpacity style={styles.skipButton} onPress={goNext}>
               <Text style={styles.skipText}>Skip for now</Text>
             </TouchableOpacity>
@@ -777,11 +1095,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     justifyContent: "center",
-  },
-  stepCounter: {
-    fontSize: Typography.size.sm,
-    color: Colors.textTertiary,
-    marginBottom: Spacing.lg,
   },
   stepContent: {
     flex: 1,
@@ -960,6 +1273,184 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.primary,
     lineHeight: 17,
+  },
+
+  // Portfolio & Links (step 6)
+  portfolioSection: {
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  sectionLabel: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textTertiary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.8,
+    marginBottom: Spacing.xs,
+  },
+  portfolioGrid: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 6,
+  },
+  portfolioThumbWrap: {
+    position: "relative" as const,
+  },
+  portfolioThumb: {
+    width: 90,
+    height: 90,
+    borderRadius: BorderRadius.sm,
+  },
+  portfolioRemove: {
+    position: "absolute" as const,
+    top: -6,
+    right: -6,
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+  },
+  addPhotosButton: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary + "50",
+    borderStyle: "dashed" as const,
+    backgroundColor: Colors.primary + "08",
+  },
+  addPhotosText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.primary,
+  },
+  linkRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  linkPlatform: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textPrimary,
+    width: 80,
+  },
+  linkUrl: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+  },
+  addLinkButton: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary + "50",
+    borderStyle: "dashed" as const,
+    backgroundColor: Colors.primary + "08",
+  },
+  addLinkButtonText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.primary,
+  },
+  addLinkForm: {
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  platformScroll: {
+    marginBottom: Spacing.xs,
+  },
+  platformChip: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.chip,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    marginRight: Spacing.xs,
+  },
+  platformChipSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "15",
+  },
+  platformChipText: {
+    fontSize: Typography.size.xs,
+    color: Colors.textTertiary,
+  },
+  platformChipTextSelected: {
+    color: Colors.primary,
+    fontWeight: Typography.weight.medium,
+  },
+  handleInputRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    minHeight: 44,
+  },
+  handlePrefix: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+    marginRight: 2,
+  },
+  handleInput: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: Colors.textPrimary,
+    paddingVertical: Spacing.sm,
+  },
+  linkErrorText: {
+    fontSize: Typography.size.xs,
+    color: Colors.cancelled,
+  },
+  addLinkActions: {
+    flexDirection: "row" as const,
+    gap: Spacing.sm,
+  },
+  cancelLinkButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    alignItems: "center" as const,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cancelLinkText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+  },
+  confirmLinkButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    alignItems: "center" as const,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+  },
+  confirmLinkText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
   },
 
   // Terms & Age checkboxes
