@@ -164,6 +164,8 @@ export default function DiscoverScreen() {
 
     if (item._type === "event") {
       const event = item.data;
+      const eventVisibleNiches = event.niches.slice(0, 2);
+      const eventNicheOverflow = event.niches.length - eventVisibleNiches.length;
       return (
         <TouchableOpacity
           style={styles.eventRow}
@@ -189,9 +191,9 @@ export default function DiscoverScreen() {
             <Text style={styles.eventTitle} numberOfLines={2}>
               {event.title}
             </Text>
-            {event.niches.length > 0 && (
+            {eventVisibleNiches.length > 0 && (
               <View style={styles.eventNiches}>
-                {event.niches.slice(0, 2).map((n) => (
+                {eventVisibleNiches.map((n) => (
                   <NicheTag
                     key={n.id}
                     name={n.name}
@@ -200,6 +202,11 @@ export default function DiscoverScreen() {
                     onPress={() => router.push(`/events/${encodeURIComponent(n.name)}` as any)}
                   />
                 ))}
+                {eventNicheOverflow > 0 && (
+                  <View style={styles.nicheOverflowBubble}>
+                    <Text style={styles.nicheOverflowText}>+{eventNicheOverflow}</Text>
+                  </View>
+                )}
               </View>
             )}
             <View style={styles.eventMeta}>
@@ -485,5 +492,19 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     color: Colors.textTertiary,
     flexShrink: 1,
+  },
+  nicheOverflowBubble: {
+    backgroundColor: Colors.chipBackground,
+    borderWidth: 1,
+    borderColor: Colors.chipBorder,
+    borderRadius: BorderRadius.chip,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: "flex-start",
+  },
+  nicheOverflowText: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textSecondary,
   },
 });

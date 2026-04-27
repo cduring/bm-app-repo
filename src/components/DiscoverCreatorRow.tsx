@@ -28,6 +28,7 @@ export function DiscoverCreatorRow({ profile }: Props) {
   const [lightboxVisible, setLightboxVisible] = useState(false);
 
   const visibleNiches = profile.niches.slice(0, 2);
+  const nicheOverflow = profile.niches.length - visibleNiches.length;
   const hasStrip = !!portfolioImages && portfolioImages.length > 0;
   const stripImages = portfolioImages?.slice(0, STRIP_MAX) ?? [];
   const overflowCount = (portfolioImages?.length ?? 0) - STRIP_MAX;
@@ -74,6 +75,11 @@ export function DiscoverCreatorRow({ profile }: Props) {
                   onPress={() => router.push(`/profiles/${encodeURIComponent(n.name)}` as any)}
                 />
               ))}
+              {nicheOverflow > 0 && (
+                <View style={styles.nicheOverflowBubble}>
+                  <Text style={styles.nicheOverflowText}>+{nicheOverflow}</Text>
+                </View>
+              )}
             </View>
           )}
           <View style={styles.creatorMeta}>
@@ -221,6 +227,20 @@ const styles = StyleSheet.create({
   overflowText: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
+    color: Colors.textSecondary,
+  },
+  nicheOverflowBubble: {
+    backgroundColor: Colors.chipBackground,
+    borderWidth: 1,
+    borderColor: Colors.chipBorder,
+    borderRadius: BorderRadius.chip,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: "flex-start",
+  },
+  nicheOverflowText: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.medium,
     color: Colors.textSecondary,
   },
 });
