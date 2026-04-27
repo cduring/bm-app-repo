@@ -1,6 +1,13 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import TorontoSkyline from "../../src/components/TorontoSkyline";
 import {
   BorderRadius,
@@ -10,6 +17,17 @@ import {
 } from "../../src/constants/theme";
 
 export default function WelcomeScreen() {
+  const buttonsOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(buttonsOpacity, {
+      toValue: 1,
+      duration: 600,
+      delay: 1500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -20,11 +38,12 @@ export default function WelcomeScreen() {
             contentFit="contain"
           />
           <Text style={styles.tagline}>
-            Discover creators, attend events, and build your brand.
+            Toronto's creators, on one map. Find your people, by niche and by
+            neighborhood.
           </Text>
         </View>
 
-        <View style={styles.actions}>
+        <Animated.View style={[styles.actions, { opacity: buttonsOpacity }]}>
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.85}
@@ -39,7 +58,7 @@ export default function WelcomeScreen() {
           >
             <Text style={styles.loginLink}>Log In</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
 
       <View style={styles.skyline}>
@@ -66,15 +85,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   wordmark: {
-    width: 200,
-    height: 58,
+    width: 230,
+    height: 67,
     marginBottom: Spacing.md,
   },
   tagline: {
-    fontSize: Typography.size.base,
-    color: Colors.textSecondary,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textPrimary,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 24,
   },
   actions: {
     width: "100%",
