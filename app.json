@@ -71,6 +71,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       "./plugins/withPodfileSource",
       [
         "@rnmapbox/maps",

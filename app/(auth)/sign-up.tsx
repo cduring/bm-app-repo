@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
+import { signInWithApple, signInWithGoogle } from '../../src/lib/oauth';
 import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
 import { APP_WEBSITE } from '../../src/constants/app';
 
@@ -24,6 +25,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -34,6 +36,16 @@ export default function SignUpScreen() {
     const id = setInterval(() => setResendCooldown(c => Math.max(0, c - 1)), 1000);
     return () => clearInterval(id);
   }, [resendCooldown]);
+
+  async function handleOAuth(provider: 'apple' | 'google') {
+    setOauthLoading(provider);
+    setError(null);
+    const { error: oauthError } = provider === 'apple'
+      ? await signInWithApple()
+      : await signInWithGoogle();
+    setOauthLoading(null);
+    if (oauthError) setError(oauthError);
+  }
 
   function getRedirectTo() {
     return `${APP_WEBSITE}/auth/callback`;
@@ -141,6 +153,49 @@ export default function SignUpScreen() {
               <View style={styles.header}>
                 <Text style={styles.title}>Create account</Text>
                 <Text style={styles.subtitle}>Join Toronto's creator community.</Text>
+              </View>
+
+              {/* Social sign-in */}
+              <View style={styles.socialButtons}>
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={() => handleOAuth('apple')}
+                    disabled={!!oauthLoading}
+                    activeOpacity={0.85}
+                  >
+                    {oauthLoading === 'apple' ? (
+                      <ActivityIndicator color={Colors.textPrimary} />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color={Colors.textPrimary} />
+                        <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={() => handleOAuth('google')}
+                  disabled={!!oauthLoading}
+                  activeOpacity={0.85}
+                >
+                  {oauthLoading === 'google' ? (
+                    <ActivityIndicator color={Colors.textPrimary} />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />
+                      <Text style={styles.socialButtonText}>Continue with Google</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
               </View>
 
               <View style={styles.form}>
@@ -348,6 +403,41 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.primary,
+  },
+  socialButtons: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+  },
+  socialButtonText: {
+    fontSize: Typography.size.base,
+    color: Colors.textPrimary,
+    fontWeight: Typography.weight.medium,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  dividerText: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
   },
   successBox: {
     alignItems: 'center',
