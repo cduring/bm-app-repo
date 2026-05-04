@@ -53,9 +53,14 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "dotenv-cli": "^11.0.0",
+    "eas-cli": "^18.9.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "tsx": "^4.21.0",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "postcss": "^8.5.10",
+    "tar": "^7.5.11"
   }
 }
