@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
 import { usePostHog } from "posthog-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -18,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DraggablePinMap } from "../../src/components/DraggablePinMap";
 import { NicheSelector } from "../../src/components/NicheSelector";
-import { useNiches } from "../../src/hooks/useNiches";
+import { PlatformIcon } from "../../src/components/PlatformIcon";
 import {
   BorderRadius,
   Colors,
@@ -26,11 +27,12 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
-import { supabase } from "../../src/lib/supabase";
-import { uploadPortfolioImages } from "../../src/lib/portfolioUpload";
+import { useNiches } from "../../src/hooks/useNiches";
+import { registerForPushNotifications } from "../../src/hooks/useNotifications";
 import { PLATFORMS, PLATFORM_HANDLE_CONFIG } from "../../src/lib/platforms";
-import { PlatformIcon } from "../../src/components/PlatformIcon";
-import type { ProfileType, PlatformName } from "../../src/types";
+import { uploadPortfolioImages } from "../../src/lib/portfolioUpload";
+import { supabase } from "../../src/lib/supabase";
+import type { PlatformName, ProfileType } from "../../src/types";
 import { resolvePostalCode } from "../../src/utils/location";
 
 const TOTAL_STEPS = 7;
@@ -49,7 +51,6 @@ interface OnboardingData {
   pendingLinks: { platform_name: PlatformName; url: string }[];
 }
 
-
 export default function OnboardingScreen() {
   const posthog = usePostHog();
   const { session, onboardingComplete } = useAuth();
@@ -61,10 +62,12 @@ export default function OnboardingScreen() {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [notificationsOptIn, setNotificationsOptIn] = useState(true);
   // Step 5 postal prefix input (not saved to Supabase directly; drives coordinate generation)
   const [postalPrefix, setPostalPrefix] = useState("");
   // Step 6 transient link form state
-  const [newLinkPlatform, setNewLinkPlatform] = useState<PlatformName>("Instagram");
+  const [newLinkPlatform, setNewLinkPlatform] =
+    useState<PlatformName>("Instagram");
   const [newLinkHandle, setNewLinkHandle] = useState("");
   const [linkError, setLinkError] = useState("");
   const [addingLink, setAddingLink] = useState(false);
@@ -181,7 +184,10 @@ export default function OnboardingScreen() {
     }
     setData((d) => ({
       ...d,
-      pendingLinks: [...d.pendingLinks, { platform_name: newLinkPlatform, url }],
+      pendingLinks: [
+        ...d.pendingLinks,
+        { platform_name: newLinkPlatform, url },
+      ],
     }));
     setNewLinkHandle("");
     setAddingLink(false);
@@ -305,9 +311,18 @@ export default function OnboardingScreen() {
       return;
     }
 
-    await supabase
-      .from('profile_settings')
-      .upsert({ profile_id: profile.id }, { onConflict: 'profile_id' });
+    let pushToken: string | null = null;
+    if (notificationsOptIn) {
+      pushToken = (await registerForPushNotifications()) ?? null;
+    }
+    await supabase.from("profile_settings").upsert(
+      {
+        profile_id: profile.id,
+        notifications_enabled: notificationsOptIn,
+        push_token: pushToken,
+      },
+      { onConflict: "profile_id" },
+    );
 
     if (data.selectedNicheIds.length > 0) {
       // Delete any stale rows first so retrying doesn't insert duplicates.
@@ -335,7 +350,10 @@ export default function OnboardingScreen() {
       try {
         await uploadPortfolioImages(profile.id, data.portfolioImageUris);
       } catch (err) {
-        console.error("[onboarding] portfolio upload failed (non-blocking):", err);
+        console.error(
+          "[onboarding] portfolio upload failed (non-blocking):",
+          err,
+        );
       }
     }
 
@@ -353,12 +371,15 @@ export default function OnboardingScreen() {
           );
         if (linksErr) throw linksErr;
       } catch (err) {
-        console.error("[onboarding] external links save failed (non-blocking):", err);
+        console.error(
+          "[onboarding] external links save failed (non-blocking):",
+          err,
+        );
       }
     }
 
     setLoading(false);
-    posthog?.capture('onboarding_completed', {
+    posthog?.capture("onboarding_completed", {
       profile_type: data.profileType,
       niches_count: data.selectedNicheIds.length,
       has_photo: !!data.photoUri,
@@ -1023,6 +1044,27 @@ export default function OnboardingScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <View style={styles.notifRow}>
+                <View style={styles.notifRowLeft}>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={20}
+                    color={Colors.textPrimary}
+                  />
+                  <Text style={styles.checkLabel}>Enable notifications</Text>
+                </View>
+                <Switch
+                  value={notificationsOptIn}
+                  onValueChange={setNotificationsOptIn}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={Colors.textPrimary}
+                />
+              </View>
+              <Text style={styles.notifHint}>
+                Don't miss out on events, RSVPs, and updates from creators
+                around the city.
+              </Text>
             </View>
           )}
 
@@ -1473,6 +1515,28 @@ const styles = StyleSheet.create({
   checkLink: {
     color: Colors.primary,
     textDecorationLine: "underline",
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: Spacing.md,
+    marginTop: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  notifRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  notifHint: {
+    fontSize: Typography.size.sm,
+    color: Colors.textTertiary,
+    lineHeight: 18,
+    marginTop: Spacing.xs,
   },
 
   // Error
