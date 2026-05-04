@@ -88,19 +88,22 @@ export default function MyEventsScreen() {
 
   const allEvents: EventWithHost[] = eventsData ?? [];
 
+  const byDate = (a: EventWithHost, b: EventWithHost) =>
+    new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+
   // Attending — three separate buckets
-  const interestedEvents = allEvents.filter(
-    (e) => myRSVPs[e.id] === "INTERESTED" && e.status !== "CANCELLED",
-  );
-  const requestedEvents = allEvents.filter(
-    (e) => myRSVPs[e.id] === "REQUESTED" && e.status !== "CANCELLED",
-  );
-  const goingEvents = allEvents.filter(
-    (e) => myRSVPs[e.id] === "GOING" && e.status !== "CANCELLED",
-  );
+  const interestedEvents = allEvents
+    .filter((e) => myRSVPs[e.id] === "INTERESTED" && e.status !== "CANCELLED")
+    .sort(byDate);
+  const requestedEvents = allEvents
+    .filter((e) => myRSVPs[e.id] === "REQUESTED" && e.status !== "CANCELLED")
+    .sort(byDate);
+  const goingEvents = allEvents
+    .filter((e) => myRSVPs[e.id] === "GOING" && e.status !== "CANCELLED")
+    .sort(byDate);
 
   // Hosting — uses dedicated hook that includes DRAFT/CANCELLED (with RSVP counts)
-  const hostedEvents: EventWithHost[] = hostedEventsData ?? [];
+  const hostedEvents: EventWithHost[] = (hostedEventsData ?? []).slice().sort(byDate);
 
   return (
     <View style={styles.root}>

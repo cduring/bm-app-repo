@@ -10,7 +10,6 @@ import {
   Switch,
   Alert,
   Image,
-  Modal,
 } from 'react-native';
 import { LocationMapPreview } from '../../../src/components/LocationMapPreview';
 import { NicheSelector } from '../../../src/components/NicheSelector';
@@ -25,8 +24,8 @@ import { useEventById } from '../../../src/hooks/useEvents';
 import { supabase } from '../../../src/lib/supabase';
 import { useNiches } from '../../../src/hooks/useNiches';
 import { EventTypeBadge } from '../../../src/components/EventTypeBadge';
+import { EventTypePickerModal } from '../../../src/components/EventTypePickerModal';
 import { Colors, Typography, Spacing, BorderRadius } from '../../../src/constants/theme';
-import { EVENT_TYPES } from '../../../src/constants/eventTypes';
 import type { EventType } from '../../../src/types';
 
 export default function EventEditScreen() {
@@ -523,33 +522,12 @@ export default function EventEditScreen() {
       </ScrollView>
 
       {/* Event Type Modal */}
-      <Modal visible={showTypePicker} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalSafeArea}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Event Type</Text>
-            <TouchableOpacity onPress={() => setShowTypePicker(false)} style={styles.modalDoneBtn}>
-              <Text style={styles.modalDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.typeGrid} showsVerticalScrollIndicator={false}>
-            {EVENT_TYPES.map(({ value, label }) => (
-              <TouchableOpacity
-                key={value}
-                style={[styles.typeChip, eventType === value && styles.typeChipSelected]}
-                onPress={() => { setEventType(value); setShowTypePicker(false); }}
-                activeOpacity={0.7}
-              >
-                {eventType === value && (
-                  <Ionicons name="checkmark" size={13} color={Colors.primary} style={styles.typeChipCheck} />
-                )}
-                <Text style={[styles.typeChipText, eventType === value && styles.typeChipTextSelected]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+      <EventTypePickerModal
+        visible={showTypePicker}
+        onClose={() => setShowTypePicker(false)}
+        eventType={eventType}
+        onSelect={(v) => { setEventType(v); setShowTypePicker(false); }}
+      />
 
       {/* Date/Time Picker Sheet */}
       <DatePickerSheet
@@ -736,33 +714,4 @@ const styles = StyleSheet.create({
   cancelEventText: { fontSize: Typography.size.base, fontWeight: Typography.weight.medium, color: Colors.cancelled },
   cancelEventNote: { fontSize: Typography.size.xs, color: Colors.textTertiary, lineHeight: 18, textAlign: 'center' },
 
-  // Event type modal
-  modalSafeArea: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.textPrimary },
-  modalDoneBtn: { padding: 4 },
-  modalDoneText: { fontSize: Typography.size.base, fontWeight: Typography.weight.semibold, color: Colors.primary },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: Spacing.lg, gap: Spacing.sm },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  typeChipSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '20' },
-  typeChipCheck: { marginRight: 4 },
-  typeChipText: { fontSize: Typography.size.sm, color: Colors.textSecondary },
-  typeChipTextSelected: { color: Colors.primary, fontWeight: Typography.weight.medium },
 });

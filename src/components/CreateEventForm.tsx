@@ -8,7 +8,6 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -28,6 +27,7 @@ import { supabase } from "../lib/supabase";
 import type { EventPrivacy, EventType } from "../types";
 import { LocationMapPreview } from "./LocationMapPreview";
 import { NicheSelector } from "./NicheSelector";
+import { EventTypePickerModal } from "./EventTypePickerModal";
 import { DatePickerSheet, fmtDate, fmtTime } from "./DatePickerSheet";
 import type { DatePickerTarget } from "./DatePickerSheet";
 
@@ -704,59 +704,12 @@ export default function CreateEventForm() {
       </KeyboardAvoidingView>
 
       {/* ── Event Type Picker Modal ── */}
-      <Modal
+      <EventTypePickerModal
         visible={showTypePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalSafeArea}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Event Type</Text>
-            <TouchableOpacity
-              onPress={() => setShowTypePicker(false)}
-              style={styles.modalDoneBtn}
-            >
-              <Text style={styles.modalDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            contentContainerStyle={styles.typeGrid}
-            showsVerticalScrollIndicator={false}
-          >
-            {EVENT_TYPES.map(({ value, label }) => (
-              <TouchableOpacity
-                key={value}
-                style={[
-                  styles.typeChip,
-                  eventType === value && styles.typeChipSelected,
-                ]}
-                onPress={() => {
-                  setEventType(value);
-                  setShowTypePicker(false);
-                }}
-                activeOpacity={0.7}
-              >
-                {eventType === value && (
-                  <Ionicons
-                    name="checkmark"
-                    size={13}
-                    color={Colors.primary}
-                    style={styles.typeChipCheck}
-                  />
-                )}
-                <Text
-                  style={[
-                    styles.typeChipText,
-                    eventType === value && styles.typeChipTextSelected,
-                  ]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setShowTypePicker(false)}
+        eventType={eventType}
+        onSelect={(v) => { setEventType(v); setShowTypePicker(false); }}
+      />
 
       {/* ── Date / Time Picker (pure JS — works in Expo Go) ── */}
       <DatePickerSheet
@@ -1086,61 +1039,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     fontWeight: Typography.weight.medium,
     color: "#FFFFFF",
-  },
-
-  // Event type picker modal
-  modalSafeArea: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: Colors.textPrimary,
-  },
-  modalDoneBtn: { padding: 4 },
-  modalDoneText: {
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.primary,
-  },
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  typeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.chip,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceElevated,
-  },
-  typeChipSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "20",
-  },
-  typeChipCheck: { marginRight: 4 },
-  typeChipText: {
-    fontSize: Typography.size.sm,
-    color: Colors.textSecondary,
-  },
-  typeChipTextSelected: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
   },
 
   // Niche chips

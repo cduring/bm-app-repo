@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BorderRadius, Colors, Spacing, Typography } from "../constants/theme";
+import { useAuth } from "../context/auth";
+import { useProfile } from "../hooks/useProfile";
 import type { Niche } from "../types";
 
 const BUBBLE_COLLAPSED = 33;
@@ -23,6 +25,9 @@ export function NicheFilterBar({
   onClearAll,
   onClearAllExtra,
 }: NicheFilterBarProps) {
+  const { session } = useAuth();
+  const { data: profileData } = useProfile(session?.user?.id);
+
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState("");
   const inputRef = useRef<TextInput>(null);
@@ -45,12 +50,20 @@ export function NicheFilterBar({
     inputRef.current?.blur();
   }
 
+  const pinnedIds = profileData?.niches.map((n) => n.id) ?? [];
+  const sortedNiches = pinnedIds.length
+    ? [
+        ...niches.filter((n) => pinnedIds.includes(n.id)),
+        ...niches.filter((n) => !pinnedIds.includes(n.id)),
+      ]
+    : niches;
+
   const visibleNiches =
     searchActive && searchText.length > 0
-      ? niches.filter((n) =>
+      ? sortedNiches.filter((n) =>
           n.name.toLowerCase().includes(searchText.toLowerCase()),
         )
-      : niches;
+      : sortedNiches;
 
   return (
     <ScrollView
