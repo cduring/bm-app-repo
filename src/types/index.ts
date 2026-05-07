@@ -89,6 +89,21 @@ export type EventType =
   | 'COMPETITION'
   | 'CHARITY'
   | 'VIRTUAL_EVENT'
+  | 'CONCERT'
+  | 'FESTIVAL'
+  | 'NIGHTLIFE'
+  | 'CONFERENCE'
+  | 'SEMINAR'
+  | 'WEBINAR'
+  | 'MEETUP'
+  | 'DINING'
+  | 'HAPPY_HOUR'
+  | 'GALA'
+  | 'AWARDS'
+  | 'WELLNESS_SESSION'
+  | 'TOURNAMENT'
+  | 'DROP_IN'
+  | 'PARTY'
   | 'OTHER';
 
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED';

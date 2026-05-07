@@ -3,39 +3,9 @@
 // /src/mock/mockData.ts
 // ─────────────────────────────────────────────
 
-export type ProfileType = 'CREATOR' | 'BUSINESS';
+import type { EventType } from '../types';
 
-export type EventType =
-  | 'FASHION_SHOW'
-  | 'PERFORMANCE'
-  | 'OPEN_MIC'
-  | 'SCREENING'
-  | 'LISTENING_PARTY'
-  | 'STUDIO_SESSION'
-  | 'WORKSHOP'
-  | 'MASTERCLASS'
-  | 'PANEL'
-  | 'CRITIQUE_SESSION'
-  | 'HACKATHON'
-  | 'NETWORKING'
-  | 'COMMUNITY'
-  | 'COLLAB_SESSION'
-  | 'OPEN_CALL'
-  | 'POP_UP'
-  | 'MARKET'
-  | 'LAUNCH_PARTY'
-  | 'EXHIBITION'
-  | 'OPEN_STUDIO'
-  | 'PHOTOSHOOT'
-  | 'GROUP_RUN'
-  | 'FITNESS_CLASS'
-  | 'RETREAT'
-  | 'GAME_NIGHT'
-  | 'BLOCK_PARTY'
-  | 'COMPETITION'
-  | 'CHARITY'
-  | 'VIRTUAL_EVENT'
-  | 'OTHER';
+export type ProfileType = 'CREATOR' | 'BUSINESS';
 
 export type PlatformName =
   | 'Instagram'

@@ -38,6 +38,27 @@ export const EVENT_TYPE_COLOR: Record<EventType, string> = {
   COMPETITION:      '#EF4444', // red — competitive
   CHARITY:          '#22C55E', // green — giving
   VIRTUAL_EVENT:    '#6366F1', // indigo — digital
+  // Entertainment
+  CONCERT:          '#8B5CF6', // violet — music
+  FESTIVAL:         '#F43F5E', // rose — large scale / high energy
+  NIGHTLIFE:        '#7C3AED', // violet (darker) — club / late night
+  // Professional
+  CONFERENCE:       '#3B82F6', // blue — formal professional
+  SEMINAR:          '#6366F1', // indigo — educational
+  WEBINAR:          '#06B6D4', // cyan — digital / info
+  MEETUP:           '#3B82F6', // blue — casual pro
+  // Food & Drink
+  DINING:           '#F97316', // orange — culinary
+  HAPPY_HOUR:       '#F59E0B', // amber — social drinking
+  // Formal
+  GALA:             '#111827', // near-black — high formal
+  AWARDS:           '#F59E0B', // amber — achievement / gold
+  // Wellness & Competition
+  WELLNESS_SESSION: '#10B981', // emerald — health / mindfulness
+  TOURNAMENT:       '#EF4444', // red — competition
+  // Flexible / Social
+  DROP_IN:          '#6B7280', // gray — casual / flexible
+  PARTY:            '#EC4899', // pink — general social
   OTHER:            '#6B7280', // gray — catchall
 };
 
@@ -71,6 +92,21 @@ export const EVENT_TYPE_LABEL: Record<EventType, string> = {
   COMPETITION:      'Competition',
   CHARITY:          'Charity',
   VIRTUAL_EVENT:    'Virtual Event',
+  CONCERT:          'Concert',
+  FESTIVAL:         'Festival',
+  NIGHTLIFE:        'Nightlife',
+  CONFERENCE:       'Conference',
+  SEMINAR:          'Seminar',
+  WEBINAR:          'Webinar',
+  MEETUP:           'Meetup',
+  DINING:           'Dining',
+  HAPPY_HOUR:       'Happy Hour',
+  GALA:             'Gala',
+  AWARDS:           'Awards',
+  WELLNESS_SESSION: 'Wellness Session',
+  TOURNAMENT:       'Tournament',
+  DROP_IN:          'Drop-In',
+  PARTY:            'Party',
   OTHER:            'Other',
 };
 
@@ -105,5 +141,20 @@ export const EVENT_TYPES: { value: EventType; label: string }[] = [
   { value: 'COMPETITION',      label: EVENT_TYPE_LABEL.COMPETITION },
   { value: 'CHARITY',          label: EVENT_TYPE_LABEL.CHARITY },
   { value: 'VIRTUAL_EVENT',    label: EVENT_TYPE_LABEL.VIRTUAL_EVENT },
+  { value: 'CONCERT',          label: EVENT_TYPE_LABEL.CONCERT },
+  { value: 'FESTIVAL',         label: EVENT_TYPE_LABEL.FESTIVAL },
+  { value: 'NIGHTLIFE',        label: EVENT_TYPE_LABEL.NIGHTLIFE },
+  { value: 'CONFERENCE',       label: EVENT_TYPE_LABEL.CONFERENCE },
+  { value: 'SEMINAR',          label: EVENT_TYPE_LABEL.SEMINAR },
+  { value: 'WEBINAR',          label: EVENT_TYPE_LABEL.WEBINAR },
+  { value: 'MEETUP',           label: EVENT_TYPE_LABEL.MEETUP },
+  { value: 'DINING',           label: EVENT_TYPE_LABEL.DINING },
+  { value: 'HAPPY_HOUR',       label: EVENT_TYPE_LABEL.HAPPY_HOUR },
+  { value: 'GALA',             label: EVENT_TYPE_LABEL.GALA },
+  { value: 'AWARDS',           label: EVENT_TYPE_LABEL.AWARDS },
+  { value: 'WELLNESS_SESSION', label: EVENT_TYPE_LABEL.WELLNESS_SESSION },
+  { value: 'TOURNAMENT',       label: EVENT_TYPE_LABEL.TOURNAMENT },
+  { value: 'DROP_IN',          label: EVENT_TYPE_LABEL.DROP_IN },
+  { value: 'PARTY',            label: EVENT_TYPE_LABEL.PARTY },
   { value: 'OTHER',            label: EVENT_TYPE_LABEL.OTHER },
 ];

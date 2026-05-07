@@ -8,3 +8,5 @@ android/
 dist/
 web-build/
 supabase/.temp/
+scripts/
+src/mock/
