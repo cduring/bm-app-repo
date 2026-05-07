@@ -31,6 +31,12 @@ import { EventTypePickerModal } from "./EventTypePickerModal";
 import { DatePickerSheet, fmtDate, fmtTime } from "./DatePickerSheet";
 import type { DatePickerTarget } from "./DatePickerSheet";
 
+type AddressSuggestion = {
+  id: string;
+  place_name: string;
+  center: [number, number];
+};
+
 function defaultStart() {
   const d = new Date();
   d.setHours(19, 0, 0, 0);
@@ -71,6 +77,7 @@ export default function CreateEventForm() {
 
   // UI state
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
 
   // Overlay: 'submitting' | 'success' | 'error' | null
   const [overlayState, setOverlayState] = useState<
@@ -182,32 +189,41 @@ export default function CreateEventForm() {
     if (!result.canceled && result.assets[0]) setCoverUri(result.assets[0].uri);
   }
 
-  async function geocodeAddress(text: string) {
-    if (!text.trim()) return;
+  useEffect(() => {
+    if (geocoded) return;
+    if (addressName.trim().length < 3) {
+      setSuggestions([]);
+      setGeocoding(false);
+      return;
+    }
+    const timer = setTimeout(() => fetchSuggestions(addressName), 300);
+    return () => clearTimeout(timer);
+  }, [addressName, geocoded]);
+
+  async function fetchSuggestions(text: string) {
     setGeocoding(true);
-    setLocationError(null);
     try {
       const query = encodeURIComponent(text.trim());
       const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&country=ca&limit=1`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&country=ca&limit=5`;
       const res = await fetch(url);
       const data = await res.json();
-      const feature = data.features?.[0];
-      if (feature && feature.relevance >= 0.6) {
-        const [lng, lat] = feature.center;
-        setLatitude(lat);
-        setLongitude(lng);
-        setGeocoded(true);
-      } else {
-        setLocationError(
-          "Location not found. Try a more specific address (e.g. 55 Mill St, Toronto).",
-        );
-      }
+      setSuggestions(data.features ?? []);
     } catch {
-      setLocationError("Could not look up this address. Please try again.");
+      setSuggestions([]);
     } finally {
       setGeocoding(false);
     }
+  }
+
+  function handleSuggestionSelect(feature: AddressSuggestion) {
+    const [lng, lat] = feature.center;
+    setAddressName(feature.place_name);
+    setLatitude(lat);
+    setLongitude(lng);
+    setGeocoded(true);
+    setSuggestions([]);
+    setLocationError(null);
   }
 
   async function uploadCover(uri: string, eventId: string): Promise<string> {
@@ -235,6 +251,7 @@ export default function CreateEventForm() {
     setLatitude(43.6532);
     setLongitude(-79.3832);
     setGeocoded(false);
+    setSuggestions([]);
     setCoverUri(null);
     setSelectedNicheIds(new Set());
     setLocationError(null);
@@ -664,9 +681,7 @@ export default function CreateEventForm() {
                     onChangeText={(t) => {
                       setAddressName(t);
                       setGeocoded(false);
-                      setLocationError(null);
                     }}
-                    onEndEditing={(e) => geocodeAddress(e.nativeEvent.text)}
                     placeholder="e.g. Distillery District, 55 Mill St"
                     placeholderTextColor={Colors.textTertiary}
                     autoCorrect={false}
@@ -688,6 +703,25 @@ export default function CreateEventForm() {
                     />
                   ) : null}
                 </View>
+                {suggestions.length > 0 && !geocoded && (
+                  <View style={styles.suggestionsContainer}>
+                    {suggestions.map((feature, index) => (
+                      <TouchableOpacity
+                        key={feature.id}
+                        style={[
+                          styles.suggestionItem,
+                          index === suggestions.length - 1 && styles.suggestionItemLast,
+                        ]}
+                        onPress={() => handleSuggestionSelect(feature)}
+                      >
+                        <Ionicons name="location-outline" size={14} color={Colors.textTertiary} />
+                        <Text style={styles.suggestionText} numberOfLines={2}>
+                          {feature.place_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 {locationError && (
                   <Text style={styles.locationErrorText}>{locationError}</Text>
                 )}
@@ -991,6 +1025,31 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     color: Colors.cancelled,
     marginTop: Spacing.xs,
+  },
+  suggestionsContainer: {
+    marginTop: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceElevated,
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  suggestionItemLast: {
+    borderBottomWidth: 0,
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: Colors.textPrimary,
   },
 
   // ── Full-screen overlay ──
