@@ -1,43 +1,49 @@
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   StyleSheet,
-} from 'react-native';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../src/lib/supabase';
-import { signInWithApple, signInWithGoogle } from '../../src/lib/oauth';
-import { Colors, Typography, Spacing, BorderRadius } from '../../src/constants/theme';
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from "../../src/constants/theme";
+import { signInWithApple, signInWithGoogle } from "../../src/lib/oauth";
+import { supabase } from "../../src/lib/supabase";
 
 export default function SignInScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'apple' | 'google' | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<"apple" | "google" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
-  async function handleOAuth(provider: 'apple' | 'google') {
+  async function handleOAuth(provider: "apple" | "google") {
     setOauthLoading(provider);
     setError(null);
-    const { error: oauthError } = provider === 'apple'
-      ? await signInWithApple()
-      : await signInWithGoogle();
+    const { error: oauthError } =
+      provider === "apple" ? await signInWithApple() : await signInWithGoogle();
     setOauthLoading(null);
     if (oauthError) setError(oauthError);
   }
 
   async function handleSignIn() {
     if (!email.trim() || !password) {
-      setError('Please fill in all fields.');
+      setError("Please fill in all fields.");
       return;
     }
 
@@ -54,7 +60,7 @@ export default function SignInScreen() {
     if (authError) {
       setError(authError.message);
     } else {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }
 
@@ -62,7 +68,7 @@ export default function SignInScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           style={styles.flex}
@@ -71,7 +77,10 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
 
@@ -82,35 +91,47 @@ export default function SignInScreen() {
 
           {/* Social sign-in */}
           <View style={styles.socialButtons}>
-            {Platform.OS === 'ios' && (
+            {Platform.OS === "ios" && (
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => handleOAuth('apple')}
+                onPress={() => handleOAuth("apple")}
                 disabled={!!oauthLoading}
                 activeOpacity={0.85}
               >
-                {oauthLoading === 'apple' ? (
+                {oauthLoading === "apple" ? (
                   <ActivityIndicator color={Colors.textPrimary} />
                 ) : (
                   <>
-                    <Ionicons name="logo-apple" size={20} color={Colors.textPrimary} />
-                    <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                    <Ionicons
+                      name="logo-apple"
+                      size={20}
+                      color={Colors.textPrimary}
+                    />
+                    <Text style={styles.socialButtonText}>
+                      Continue with Apple
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
             )}
             <TouchableOpacity
               style={styles.socialButton}
-              onPress={() => handleOAuth('google')}
+              onPress={() => handleOAuth("google")}
               disabled={!!oauthLoading}
               activeOpacity={0.85}
             >
-              {oauthLoading === 'google' ? (
+              {oauthLoading === "google" ? (
                 <ActivityIndicator color={Colors.textPrimary} />
               ) : (
                 <>
-                  <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  <Ionicons
+                    name="logo-google"
+                    size={20}
+                    color={Colors.textPrimary}
+                  />
+                  <Text style={styles.socialButtonText}>
+                    Continue with Google
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -174,10 +195,10 @@ export default function SignInScreen() {
                 )}
                 <TouchableOpacity
                   style={styles.eyeButton}
-                  onPress={() => setPasswordVisible(v => !v)}
+                  onPress={() => setPasswordVisible((v) => !v)}
                 >
                   <Ionicons
-                    name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
+                    name={passwordVisible ? "eye-off-outline" : "eye-outline"}
                     size={20}
                     color={Colors.textTertiary}
                   />
@@ -187,20 +208,27 @@ export default function SignInScreen() {
 
             <TouchableOpacity
               style={styles.forgotPassword}
-              onPress={() => router.push('/(auth)/forgot-password')}
+              onPress={() => router.push("/(auth)/forgot-password")}
             >
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
 
             {error && (
               <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={16} color={Colors.cancelled} />
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={16}
+                  color={Colors.cancelled}
+                />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
 
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                loading && styles.submitButtonDisabled,
+              ]}
               activeOpacity={0.85}
               onPress={handleSignIn}
               disabled={loading}
@@ -216,7 +244,7 @@ export default function SignInScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/sign-up')}>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/sign-up")}>
               <Text style={styles.footerLink}>Sign up</Text>
             </TouchableOpacity>
           </View>
@@ -244,13 +272,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     width: 40,
     height: 40,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   header: {
     marginBottom: Spacing.xl,
   },
   title: {
-    fontSize: Typography.size['2xl'],
+    fontSize: Typography.size["2xl"],
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.xs,
@@ -282,25 +310,25 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   passwordRow: {
-    position: 'relative',
+    position: "relative",
   },
   passwordInput: {
     paddingRight: 48,
   },
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 14,
     top: 0,
     bottom: 0,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
-    backgroundColor: '#2A0A0A',
+    backgroundColor: "#2A0A0A",
     borderWidth: 1,
-    borderColor: '#4A1A1A',
+    borderColor: "#4A1A1A",
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
   },
@@ -313,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: Spacing.sm,
   },
   submitButtonDisabled: {
@@ -325,8 +353,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.semibold,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: Spacing.xl,
   },
   footerText: {
@@ -343,9 +371,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
     backgroundColor: Colors.surfaceElevated,
     borderWidth: 1,
@@ -359,8 +387,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
@@ -374,7 +402,7 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   forgotPasswordText: {
     fontSize: Typography.size.sm,
