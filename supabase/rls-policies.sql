@@ -549,3 +549,89 @@ CREATE POLICY "portfolio_images: owner write"
 --     AND (storage.foldername(name))[1] = 'portfolio'
 --     AND EXISTS (SELECT 1 FROM profiles p
 --       WHERE p.id::text = (storage.foldername(name))[2] AND p.user_id = auth.uid()));
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MODERATION TABLES
+-- ─────────────────────────────────────────────────────────────────────────────
+
+
+-- ─── blocked_users ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS blocked_users (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  blocker_id  BIGINT REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  blocked_id  BIGINT REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  UNIQUE(blocker_id, blocked_id),
+  CHECK (blocker_id != blocked_id)
+);
+
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "blocked_users: owner full access"
+  ON blocked_users
+  USING (blocker_id = auth_profile_id())
+  WITH CHECK (blocker_id = auth_profile_id());
+
+-- Allows a user to check if someone has blocked them (SELECT only, no write access)
+CREATE POLICY "blocked_users: see if blocked by someone"
+  ON blocked_users FOR SELECT
+  USING (blocked_id = auth_profile_id());
+
+
+-- ─── content_reports ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS content_reports (
+  id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  reporter_id          BIGINT REFERENCES profiles(id) ON DELETE SET NULL,
+  reported_profile_id  BIGINT REFERENCES profiles(id) ON DELETE CASCADE,
+  reported_event_id    BIGINT REFERENCES events(id) ON DELETE CASCADE,
+  reason               TEXT NOT NULL,
+  status               TEXT DEFAULT 'pending'
+                         CHECK (status IN ('pending', 'reviewed', 'actioned', 'dismissed')),
+  created_at           TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CHECK (reported_profile_id IS NOT NULL OR reported_event_id IS NOT NULL)
+);
+
+ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "content_reports: authenticated insert"
+  ON content_reports FOR INSERT
+  WITH CHECK (reporter_id = auth_profile_id());
+
+CREATE POLICY "content_reports: view own reports"
+  ON content_reports FOR SELECT
+  USING (reporter_id = auth_profile_id());
+
+
+-- ─── block_user_cleanup RPC ───────────────────────────────────────────────────
+-- SECURITY DEFINER so it can delete follows/RSVPs in both directions,
+-- bypassing per-row RLS policies that restrict deletes to the row owner.
+
+CREATE OR REPLACE FUNCTION block_user_cleanup(p_blocker_id BIGINT, p_blocked_id BIGINT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Remove follow relationships in both directions
+  DELETE FROM follows
+  WHERE (follower_id = p_blocker_id AND following_id = p_blocked_id)
+     OR (follower_id = p_blocked_id AND following_id = p_blocker_id);
+
+  -- Remove RSVPs where either user attended the other's events
+  DELETE FROM event_rsvps er
+  USING events e
+  WHERE er.event_id = e.id
+    AND (
+      (er.profile_id = p_blocker_id AND e.host_id = p_blocked_id)
+      OR
+      (er.profile_id = p_blocked_id AND e.host_id = p_blocker_id)
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION block_user_cleanup(BIGINT, BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION block_user_cleanup(BIGINT, BIGINT) TO authenticated;

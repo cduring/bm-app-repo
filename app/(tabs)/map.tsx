@@ -49,7 +49,9 @@ import {
   Spacing,
   Typography,
 } from "../../src/constants/theme";
+import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
 import { useMapEvents, useMapProfiles } from "../../src/hooks/useMapData";
+import { useProfile } from "../../src/hooks/useProfile";
 import type { EventWithHost, Niche, ProfileWithNiches } from "../../src/types";
 import { useAuth } from "../../src/context/auth";
 import { IntroModal } from "../../src/components/IntroModal";
@@ -432,6 +434,14 @@ function formatEventDate(isoString: string): string {
 export default function MapScreen() {
   const { session } = useAuth();
   const introModal = useIntroModal('map', session?.user?.id);
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
+  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
+  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
+  const excludedIds = useMemo(
+    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
+    [blockedIds, blockerIds],
+  );
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
@@ -517,21 +527,29 @@ export default function MapScreen() {
 
   const allNiches = mode === "CREATORS" ? allProfileNiches : allEventNiches;
 
-  // Filtered profiles based on selected niches
+  // Filtered profiles based on selected niches and blocked users
   const visibleProfiles = useMemo(() => {
-    if (selectedNicheIds.size === 0) return mapProfiles;
-    return mapProfiles.filter((p) =>
+    let result = mapProfiles;
+    if (excludedIds.length > 0) {
+      result = result.filter((p) => !excludedIds.includes(String(p.id)));
+    }
+    if (selectedNicheIds.size === 0) return result;
+    return result.filter((p) =>
       p.niches.some((n) => selectedNicheIds.has(n.id)),
     );
-  }, [selectedNicheIds, mapProfiles]);
+  }, [selectedNicheIds, mapProfiles, excludedIds]);
 
-  // Filtered events based on selected niches
+  // Filtered events based on selected niches and blocked users
   const visibleEvents = useMemo(() => {
-    if (selectedNicheIds.size === 0) return mapEvents;
-    return mapEvents.filter((e) =>
+    let result = mapEvents;
+    if (excludedIds.length > 0) {
+      result = result.filter((e) => !excludedIds.includes(String(e.host_id)));
+    }
+    if (selectedNicheIds.size === 0) return result;
+    return result.filter((e) =>
       e.niches.some((n) => selectedNicheIds.has(n.id)),
     );
-  }, [selectedNicheIds, mapEvents]);
+  }, [selectedNicheIds, mapEvents, excludedIds]);
 
   const profileGroups = useMemo<PinGroup<ProfileWithNiches>[]>(() => {
     const pts = visibleProfiles

@@ -563,6 +563,12 @@ export default function SettingsScreen() {
           />
           <Separator />
           <SettingsRow
+            icon="ban-outline"
+            label="Blocked Users"
+            onPress={() => router.push("/blocked-users" as any)}
+          />
+          <Separator />
+          <SettingsRow
             icon="document-text-outline"
             label="Terms of Use"
             onPress={() => openExternal(`${APP_WEBSITE}/terms`)}

@@ -8,12 +8,14 @@ import {
   Alert,
   Dimensions,
   Linking,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -31,6 +33,12 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
+import {
+  useBlockUser,
+  useBlockedIds,
+  useIsBlockedBy,
+  useUnblockUser,
+} from "../../src/hooks/useBlock";
 import { useAttendingEvents, useHostedEvents } from "../../src/hooks/useEvents";
 import {
   useFollowMutation,
@@ -40,6 +48,7 @@ import {
 import { usePortfolio } from "../../src/hooks/usePortfolio";
 import { useProfile, useProfileById } from "../../src/hooks/useProfile";
 import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
+import { useReportContent } from "../../src/hooks/useReport";
 
 export default function ViewProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,6 +69,17 @@ export default function ViewProfileScreen() {
   );
   const followMutation = useFollowMutation();
   const unfollowMutation = useUnfollowMutation();
+  const blockMutation = useBlockUser();
+  const unblockMutation = useUnblockUser();
+  const reportMutation = useReportContent();
+
+  const { data: blockedIds = [], isLoading: blockedIdsLoading } = useBlockedIds(myProfileId);
+  const iHaveBlocked = !!validId && blockedIds.includes(validId);
+  const { data: isBlockedByThem = false, isLoading: blockedByLoading } =
+    useIsBlockedBy(validId, myProfileId);
+
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportReason, setReportReason] = useState("");
 
   const posthog = usePostHog();
   const isOwnProfile = supabaseData?.profile?.user_id === session?.user?.id;
@@ -82,6 +102,77 @@ export default function ViewProfileScreen() {
     } else {
       followMutation.mutate({ followerId: myProfileId, followingId: id });
     }
+  }
+
+  function handleMoreOptions() {
+    const targetName = supabaseData?.profile?.display_name ?? "this user";
+    Alert.alert(targetName, undefined, [
+      {
+        text: "Report User",
+        onPress: () => setReportModalVisible(true),
+      },
+      {
+        text: "Block User",
+        style: "destructive",
+        onPress: () =>
+          Alert.alert(
+            `Block ${targetName}?`,
+            "They won't appear in your feed and you won't appear in theirs. The Loam team will be notified.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Block",
+                style: "destructive",
+                onPress: () => {
+                  if (!myProfileId || !id) return;
+                  blockMutation.mutate(
+                    {
+                      myProfileId,
+                      myDisplayName:
+                        myProfileData?.profile?.display_name ?? "A Loam user",
+                      myEmail: session?.user?.email ?? "",
+                      blockedId: id,
+                      blockedDisplayName: targetName,
+                    },
+                    { onSuccess: () => router.back() },
+                  );
+                },
+              },
+            ],
+          ),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
+  function handleSubmitReport() {
+    if (!myProfileId || !id || !reportReason.trim()) return;
+    reportMutation.mutate(
+      {
+        myProfileId,
+        myDisplayName: myProfileData?.profile?.display_name ?? "A Loam user",
+        myEmail: session?.user?.email ?? "",
+        reportedProfileId: id,
+        reportedDisplayName: supabaseData?.profile?.display_name,
+        reason: reportReason.trim(),
+      },
+      {
+        onSuccess: () => {
+          setReportModalVisible(false);
+          setReportReason("");
+          Alert.alert(
+            "Report submitted",
+            "Thank you for keeping Loam safe. We'll review this shortly.",
+          );
+        },
+        onError: () => {
+          Alert.alert(
+            "Something went wrong",
+            "Your report couldn't be sent. Please try again.",
+          );
+        },
+      },
+    );
   }
 
   const { data: portfolioImages, refetch: refetchPortfolio } =
@@ -130,7 +221,7 @@ export default function ViewProfileScreen() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || blockedIdsLoading || blockedByLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -145,6 +236,70 @@ export default function ViewProfileScreen() {
         onRetry={profileError ? refetchProfile : undefined}
         onBack={() => router.back()}
       />
+    );
+  }
+
+  if (!isOwnProfile && iHaveBlocked) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Ionicons name="ban-outline" size={48} color={Colors.textTertiary} />
+          <Text style={styles.blockedTitle}>You've blocked this user</Text>
+          <Text style={styles.blockedSubtitle}>
+            Unblock them to view their profile
+          </Text>
+          <TouchableOpacity
+            style={styles.unblockButton}
+            onPress={() => {
+              if (!myProfileId || !validId) return;
+              unblockMutation.mutate({ myProfileId, blockedId: validId });
+            }}
+            disabled={unblockMutation.isPending}
+            activeOpacity={0.8}
+            accessibilityLabel="Unblock user"
+            accessibilityRole="button"
+          >
+            <Text style={styles.unblockButtonText}>
+              {unblockMutation.isPending ? "Unblocking…" : "Unblock"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isOwnProfile && isBlockedByThem) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Ionicons
+            name="person-remove-outline"
+            size={48}
+            color={Colors.textTertiary}
+          />
+          <Text style={styles.blockedTitle}>User not found</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -164,15 +319,7 @@ export default function ViewProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity
-          style={styles.shareButton}
-          onPress={handleShare}
-          accessibilityLabel="Share profile"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-redo" size={25} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        {/* Follow button — hidden on own profile */}
+        {/* Follow — hidden on own profile */}
         {!isOwnProfile && (
           <TouchableOpacity
             style={[styles.followButton, isFollowing && styles.followingButton]}
@@ -192,7 +339,82 @@ export default function ViewProfileScreen() {
             </Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleShare}
+          accessibilityLabel="Share profile"
+          accessibilityRole="button"
+        >
+          <Ionicons name="arrow-redo" size={25} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        {/* More options — hidden on own profile */}
+        {!isOwnProfile && (
+          <TouchableOpacity
+            style={styles.moreButton}
+            onPress={handleMoreOptions}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={22}
+              color={Colors.textPrimary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Report user modal */}
+      <Modal
+        visible={reportModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Report User</Text>
+            <Text style={styles.modalSubtitle}>
+              Describe why you're reporting this user. We'll review it within 24
+              hours.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Describe the reason…"
+              placeholderTextColor={Colors.textSecondary}
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setReportModalVisible(false);
+                  setReportReason("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalSubmitButton,
+                  !reportReason.trim() && styles.modalSubmitDisabled,
+                ]}
+                onPress={handleSubmitReport}
+                disabled={!reportReason.trim() || reportMutation.isPending}
+              >
+                <Text style={styles.modalSubmitText}>
+                  {reportMutation.isPending ? "Submitting…" : "Submit"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView
         style={styles.scroll}
@@ -342,7 +564,11 @@ export default function ViewProfileScreen() {
                   key={niche.id}
                   name={niche.name}
                   color={niche.color}
-                  onPress={() => router.push(`/profiles/${encodeURIComponent(niche.name)}` as any)}
+                  onPress={() =>
+                    router.push(
+                      `/profiles/${encodeURIComponent(niche.name)}` as any,
+                    )
+                  }
                 />
               ))}
             </View>
@@ -525,6 +751,76 @@ const styles = StyleSheet.create({
   followingButtonText: {
     color: Colors.textSecondary,
   },
+  moreButton: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Report modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
+  },
+  modalTitle: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  modalInput: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.size.md,
+    minHeight: 100,
+    marginBottom: Spacing.md,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: Colors.textSecondary,
+    fontWeight: Typography.weight.medium,
+  },
+  modalSubmitButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+  },
+  modalSubmitDisabled: {
+    opacity: 0.4,
+  },
+  modalSubmitText: {
+    color: Colors.textPrimary,
+    fontWeight: Typography.weight.semibold,
+  },
 
   // Profile header
   profileHeader: {
@@ -703,6 +999,35 @@ const styles = StyleSheet.create({
     height: "100%" as any,
     borderRadius: BorderRadius.sm,
     backgroundColor: Colors.surfaceElevated,
+  },
+
+  // Blocked states
+  blockedTitle: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+    textAlign: "center",
+    marginTop: Spacing.md,
+  },
+  blockedSubtitle: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginTop: Spacing.xs,
+  },
+  unblockButton: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
+  },
+  unblockButtonText: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textPrimary,
   },
 
   // Hosted events

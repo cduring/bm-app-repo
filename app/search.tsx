@@ -23,8 +23,11 @@ import {
   Spacing,
   Typography,
 } from "../src/constants/theme";
+import { useAuth } from "../src/context/auth";
+import { useBlockedIds, useBlockerIds } from "../src/hooks/useBlock";
 import { useEvents } from "../src/hooks/useEvents";
 import { useNiches } from "../src/hooks/useNiches";
+import { useProfile } from "../src/hooks/useProfile";
 import {
   useDiscoveryProfiles,
   useSearchEvents,
@@ -35,6 +38,16 @@ import type { EventWithHost, ProfileWithNiches } from "../src/types";
 type ResultTab = "ALL" | "CREATORS" | "EVENTS";
 
 export default function SearchScreen() {
+  const { session } = useAuth();
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
+  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
+  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
+  const excludedIds = useMemo(
+    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
+    [blockedIds, blockerIds],
+  );
+
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ResultTab>("ALL");
@@ -70,7 +83,10 @@ export default function SearchScreen() {
 
   // Client-side niche filtering for search results
   const filteredProfiles = useMemo(() => {
-    const source = query ? profileResults : discoveryProfiles;
+    let source = query ? profileResults : discoveryProfiles;
+    if (excludedIds.length > 0) {
+      source = source.filter((p) => !excludedIds.includes(String(p.id)));
+    }
     if (!hasNicheFilter) return source;
     return source.filter((p) =>
       p.niches.some((n) => selectedNicheIds.has(n.id)),
@@ -79,17 +95,21 @@ export default function SearchScreen() {
     query,
     profileResults,
     discoveryProfiles,
+    excludedIds,
     selectedNicheIds,
     hasNicheFilter,
   ]);
 
   const filteredEvents = useMemo(() => {
-    const source = (query ? eventResults : allEvents) as EventWithHost[];
+    let source = (query ? eventResults : allEvents) as EventWithHost[];
+    if (excludedIds.length > 0) {
+      source = source.filter((e) => !excludedIds.includes(String(e.host_id)));
+    }
     if (!hasNicheFilter) return source;
     return source.filter((e) =>
       e.niches.some((n) => selectedNicheIds.has(n.id)),
     );
-  }, [query, eventResults, allEvents, selectedNicheIds, hasNicheFilter]);
+  }, [query, eventResults, allEvents, excludedIds, selectedNicheIds, hasNicheFilter]);
 
   function toggleNiche(id: string) {
     setSelectedNicheIds((prev) => {

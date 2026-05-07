@@ -25,11 +25,13 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
+import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
 import { useEvents } from "../../src/hooks/useEvents";
 import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { useNiches } from "../../src/hooks/useNiches";
 import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
+import { useProfile } from "../../src/hooks/useProfile";
 import type { EventWithHost, ProfileWithNiches } from "../../src/types";
 
 type ActiveView = "CREATORS" | "EVENTS";
@@ -69,6 +71,15 @@ function formatEventTime(start_time: string): string {
 export default function DiscoverScreen() {
   const { session } = useAuth();
   const introModal = useIntroModal("discover", session?.user?.id);
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
+  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
+  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
+  const excludedIds = useMemo(
+    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
+    [blockedIds, blockerIds],
+  );
+
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
     new Set(),
@@ -100,23 +111,29 @@ export default function DiscoverScreen() {
 
   const filteredEvents = useMemo(() => {
     let result = eventsData as EventWithHost[];
+    if (excludedIds.length > 0) {
+      result = result.filter((e) => !excludedIds.includes(String(e.host_id)));
+    }
     if (selectedNicheIds.size > 0) {
       result = result.filter((e) =>
         e.niches.some((n) => selectedNicheIds.has(n.id)),
       );
     }
     return result;
-  }, [eventsData, selectedNicheIds]);
+  }, [eventsData, excludedIds, selectedNicheIds]);
 
   const filteredCreators = useMemo(() => {
     let result = creatorsData as ProfileWithNiches[];
+    if (excludedIds.length > 0) {
+      result = result.filter((p) => !excludedIds.includes(String(p.id)));
+    }
     if (selectedNicheIds.size > 0) {
       result = result.filter((p) =>
         p.niches.some((n) => selectedNicheIds.has(n.id)),
       );
     }
     return result;
-  }, [creatorsData, selectedNicheIds]);
+  }, [creatorsData, excludedIds, selectedNicheIds]);
 
   const groupedEvents = useMemo(
     () => groupEventsByDate(filteredEvents),

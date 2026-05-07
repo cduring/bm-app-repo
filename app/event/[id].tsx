@@ -1,15 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -31,6 +34,8 @@ import { useAuth } from "../../src/context/auth";
 import { useRSVP } from "../../src/context/rsvp";
 import { useEventById } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
+import { useReportContent } from "../../src/hooks/useReport";
+import { useBlockedIds, useIsBlockedBy, useUnblockUser } from "../../src/hooks/useBlock";
 import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import type { RSVPStatus } from "../../src/types";
 import { formatDayDate, formatTimeRange } from "../../src/utils/date";
@@ -46,6 +51,17 @@ export default function EventDetailScreen() {
     refetch: refetchEvent,
   } = useEventById(validId);
   const { data: profileData } = useProfile(session?.user?.id);
+  const myProfileId = profileData?.profile?.id;
+  const hostId = event?.host_id ? String(event.host_id) : undefined;
+  const isOwnEvent = !!myProfileId && !!hostId && String(myProfileId) === hostId;
+
+  const { data: blockedIds = [], isLoading: blockedIdsLoading } = useBlockedIds(myProfileId);
+  const { data: isBlockedByHost = false, isLoading: isBlockedByLoading } =
+    useIsBlockedBy(hostId, myProfileId);
+  const unblockMutation = useUnblockUser();
+
+  const iHaveBlockedHost = !isOwnEvent && !!hostId && blockedIds.includes(hostId);
+
   const {
     getRSVP,
     setRSVP,
@@ -58,6 +74,9 @@ export default function EventDetailScreen() {
   } = useRSVP();
   const { refreshing, handleRefresh: onRefresh } =
     useRefreshHandler(refetchEvent, refetchMyRSVPs, refetchRequestors);
+  const reportMutation = useReportContent();
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportReason, setReportReason] = useState("");
 
   const rsvp: RSVPStatus | null = id ? getRSVP(id) : null;
   const displayedInterestedCount = event
@@ -114,6 +133,43 @@ export default function EventDetailScreen() {
     );
   }
 
+  function handleReportEvent() {
+    Alert.alert(event?.title ?? "Event", undefined, [
+      { text: "Report Event", onPress: () => setReportModalVisible(true) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
+  function handleSubmitEventReport() {
+    if (!profileData?.profile?.id || !id || !reportReason.trim()) return;
+    reportMutation.mutate(
+      {
+        myProfileId: profileData.profile.id,
+        myDisplayName: profileData.profile.display_name,
+        myEmail: session?.user?.email ?? "",
+        reportedEventId: id,
+        reportedEventTitle: event?.title,
+        reason: reportReason.trim(),
+      },
+      {
+        onSuccess: () => {
+          setReportModalVisible(false);
+          setReportReason("");
+          Alert.alert(
+            "Report submitted",
+            "Thank you for keeping Loam safe. We'll review this shortly.",
+          );
+        },
+        onError: () => {
+          Alert.alert(
+            "Something went wrong",
+            "Your report couldn't be sent. Please try again.",
+          );
+        },
+      },
+    );
+  }
+
   async function handleShare() {
     if (!event) return;
     try {
@@ -133,7 +189,7 @@ export default function EventDetailScreen() {
     return <ErrorState message="Invalid event link" onBack={() => router.back()} />;
   }
 
-  if (isLoading && !event) {
+  if ((isLoading && !event) || (!isOwnEvent && (blockedIdsLoading || (!!hostId && isBlockedByLoading)))) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -148,6 +204,60 @@ export default function EventDetailScreen() {
         onRetry={eventError ? refetchEvent : undefined}
         onBack={() => router.back()}
       />
+    );
+  }
+
+  if (!isOwnEvent && iHaveBlockedHost) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.blockedContainer}>
+          <Ionicons name="ban-outline" size={48} color={Colors.textTertiary} />
+          <Text style={styles.blockedTitle}>You've blocked this creator</Text>
+          <Text style={styles.blockedSubtitle}>Unblock them to view their events</Text>
+          <TouchableOpacity
+            style={styles.unblockButton}
+            onPress={() =>
+              unblockMutation.mutate({ myProfileId: String(myProfileId), blockedId: hostId! })
+            }
+            disabled={unblockMutation.isPending}
+          >
+            <Text style={styles.unblockButtonText}>
+              {unblockMutation.isPending ? "Unblocking…" : "Unblock"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isOwnEvent && isBlockedByHost) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.navHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.blockedContainer}>
+          <Ionicons name="calendar-outline" size={48} color={Colors.textTertiary} />
+          <Text style={styles.blockedTitle}>Event not found</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -192,7 +302,72 @@ export default function EventDetailScreen() {
             <Ionicons name="create" size={25} color={Colors.primary} />
           </TouchableOpacity>
         )}
+        {!isHost && (
+          <TouchableOpacity
+            style={styles.moreButton}
+            onPress={handleReportEvent}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={22}
+              color={Colors.textPrimary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Report event modal */}
+      <Modal
+        visible={reportModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Report Event</Text>
+            <Text style={styles.modalSubtitle}>
+              Describe why you're reporting this event. We'll review it within 24 hours.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Describe the reason…"
+              placeholderTextColor={Colors.textSecondary}
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setReportModalVisible(false);
+                  setReportReason("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalSubmitButton,
+                  !reportReason.trim() && styles.modalSubmitDisabled,
+                ]}
+                onPress={handleSubmitEventReport}
+                disabled={!reportReason.trim() || reportMutation.isPending}
+              >
+                <Text style={styles.modalSubmitText}>
+                  {reportMutation.isPending ? "Submitting…" : "Submit"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView
         style={styles.scroll}
@@ -709,6 +884,76 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "flex-end",
   },
+  moreButton: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Report modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.lg,
+    borderTopRightRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
+  },
+  modalTitle: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  modalInput: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.size.md,
+    minHeight: 100,
+    marginBottom: Spacing.md,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: Colors.textSecondary,
+    fontWeight: Typography.weight.medium,
+  },
+  modalSubmitButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+  },
+  modalSubmitDisabled: {
+    opacity: 0.4,
+  },
+  modalSubmitText: {
+    color: Colors.textPrimary,
+    fontWeight: Typography.weight.semibold,
+  },
 
   // Cancelled banner
   cancelledBanner: {
@@ -996,5 +1241,40 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textAlign: "center",
     paddingHorizontal: Spacing.lg,
+  },
+  blockedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
+    paddingBottom: 80,
+  },
+  blockedTitle: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.textPrimary,
+    textAlign: "center",
+    marginTop: Spacing.md,
+  },
+  blockedSubtitle: {
+    fontSize: Typography.size.sm,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginTop: Spacing.xs,
+  },
+  unblockButton: {
+    marginTop: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+  },
+  unblockButtonText: {
+    fontSize: Typography.size.base,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textPrimary,
   },
 });

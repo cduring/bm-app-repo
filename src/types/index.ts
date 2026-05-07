@@ -167,3 +167,22 @@ export interface EventWithHost extends Event {
   niches: Niche[];
   requested_count: number;
 }
+
+// ─── Moderation ───────────────────────────────────────────────────────────────
+
+export interface BlockedUserEntry {
+  id: string;
+  blocked_id: string;
+  created_at: string;
+  blocked_profile: Pick<Profile, 'id' | 'display_name' | 'profile_picture_url'>;
+}
+
+export interface ContentReport {
+  id: string;
+  reporter_id: string;
+  reported_profile_id: string | null;
+  reported_event_id: string | null;
+  reason: string;
+  status: 'pending' | 'reviewed' | 'actioned' | 'dismissed';
+  created_at: string;
+}
