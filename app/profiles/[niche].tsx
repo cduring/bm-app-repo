@@ -10,8 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { useProfilesByNiche } from '../../src/hooks/useSearch';
 import { useNiches } from '../../src/hooks/useNiches';
+import { useExcludedIds } from '../../src/hooks/useBlock';
+import { useAuth } from '../../src/context/auth';
+import { useProfile } from '../../src/hooks/useProfile';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ProfileCard } from '../../src/components/ProfileCard';
 import { Colors, Typography, Spacing } from '../../src/constants/theme';
@@ -21,10 +25,22 @@ export default function ProfilesByNicheScreen() {
   const { niche: rawNiche } = useLocalSearchParams<{ niche: string }>();
   const nicheName = decodeURIComponent(rawNiche ?? '');
 
+  const { session } = useAuth();
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
+  const excludedIds = useExcludedIds(myProfileId);
+
   const { data: allNiches = [] } = useNiches();
   const nicheObj = allNiches.find(n => n.name.toLowerCase() === nicheName.toLowerCase());
 
   const { data: profiles = [], isLoading, error, refetch, isRefetching } = useProfilesByNiche(nicheName);
+
+  const visibleProfiles = useMemo(
+    () => excludedIds.length > 0
+      ? profiles.filter(p => !excludedIds.includes(String(p.id)))
+      : profiles,
+    [profiles, excludedIds],
+  );
 
   function renderItem({ item }: { item: ProfileWithNiches }) {
     return (
@@ -65,7 +81,7 @@ export default function ProfilesByNicheScreen() {
             subtitle="Could not load creators. Pull down to try again."
           />
         </View>
-      ) : profiles.length === 0 ? (
+      ) : visibleProfiles.length === 0 ? (
         <EmptyState
           icon="person-outline"
           title="No creators in this niche yet"
@@ -73,7 +89,7 @@ export default function ProfilesByNicheScreen() {
         />
       ) : (
         <FlatList
-          data={profiles}
+          data={visibleProfiles}
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}

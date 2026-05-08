@@ -25,7 +25,7 @@ import {
   Typography,
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
-import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
+import { useExcludedIds } from "../../src/hooks/useBlock";
 import { useEvents } from "../../src/hooks/useEvents";
 import { useIntroModal } from "../../src/hooks/useIntroModal";
 import { useNicheFilter } from "../../src/hooks/useNicheFilter";
@@ -74,12 +74,7 @@ export default function DiscoverScreen() {
   const introModal = useIntroModal("discover", session?.user?.id);
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
-  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
-  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
-  const excludedIds = useMemo(
-    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
-    [blockedIds, blockerIds],
-  );
+  const excludedIds = useExcludedIds(myProfileId);
 
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
   const { selectedNicheIds, toggleNiche, clearAll } = useNicheFilter();

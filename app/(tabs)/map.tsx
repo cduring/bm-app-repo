@@ -49,7 +49,7 @@ import {
   Spacing,
   Typography,
 } from "../../src/constants/theme";
-import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
+import { useExcludedIds } from "../../src/hooks/useBlock";
 import { useMapEvents, useMapProfiles } from "../../src/hooks/useMapData";
 import { useNicheFilter } from "../../src/hooks/useNicheFilter";
 import { useNiches } from "../../src/hooks/useNiches";
@@ -438,12 +438,7 @@ export default function MapScreen() {
   const introModal = useIntroModal('map', session?.user?.id);
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
-  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
-  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
-  const excludedIds = useMemo(
-    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
-    [blockedIds, blockerIds],
-  );
+  const excludedIds = useExcludedIds(myProfileId);
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();

@@ -10,8 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { useEventsByNiche } from '../../src/hooks/useSearch';
 import { useNiches } from '../../src/hooks/useNiches';
+import { useExcludedIds } from '../../src/hooks/useBlock';
+import { useAuth } from '../../src/context/auth';
+import { useProfile } from '../../src/hooks/useProfile';
 import { EmptyState } from '../../src/components/EmptyState';
 import { EventCard } from '../../src/components/EventCard';
 import { Colors, Typography, Spacing } from '../../src/constants/theme';
@@ -21,10 +25,22 @@ export default function EventsByNicheScreen() {
   const { niche: rawNiche } = useLocalSearchParams<{ niche: string }>();
   const nicheName = decodeURIComponent(rawNiche ?? '');
 
+  const { session } = useAuth();
+  const { data: myProfileData } = useProfile(session?.user?.id);
+  const myProfileId = myProfileData?.profile?.id;
+  const excludedIds = useExcludedIds(myProfileId);
+
   const { data: allNiches = [] } = useNiches();
   const nicheObj = allNiches.find(n => n.name.toLowerCase() === nicheName.toLowerCase());
 
   const { data: events = [], isLoading, error, refetch, isRefetching } = useEventsByNiche(nicheName);
+
+  const visibleEvents = useMemo(
+    () => excludedIds.length > 0
+      ? events.filter(e => !excludedIds.includes(String(e.host_id)))
+      : events,
+    [events, excludedIds],
+  );
 
   function renderItem({ item }: { item: EventWithHost }) {
     return (
@@ -64,7 +80,7 @@ export default function EventsByNicheScreen() {
             subtitle="Could not load events. Pull down to try again."
           />
         </View>
-      ) : events.length === 0 ? (
+      ) : visibleEvents.length === 0 ? (
         <EmptyState
           icon="calendar-outline"
           title="No upcoming events in this niche"
@@ -72,7 +88,7 @@ export default function EventsByNicheScreen() {
         />
       ) : (
         <FlatList
-          data={events}
+          data={visibleEvents}
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}

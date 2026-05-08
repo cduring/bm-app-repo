@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import type { BlockedUserEntry } from '../types';
@@ -74,6 +75,18 @@ export function useBlockerIds(myProfileId: string | undefined) {
   });
 }
 
+export function useExcludedIds(myProfileId: string | undefined): string[] {
+  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
+  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
+  return useMemo(
+    () =>
+      blockedIds.length === 0 && blockerIds.length === 0
+        ? []
+        : [...new Set([...blockedIds, ...blockerIds])],
+    [blockedIds, blockerIds],
+  );
+}
+
 export function useIsBlockedBy(
   viewedProfileId: string | undefined,
   myProfileId: string | undefined,
@@ -138,10 +151,11 @@ export function useBlockUser() {
     },
     onSuccess: (_data, { myProfileId, blockedId }) => {
       queryClient.invalidateQueries({ queryKey: ['blockedIds', myProfileId] });
-      queryClient.invalidateQueries({ queryKey: ['blockerIds', blockedId] });
       queryClient.invalidateQueries({ queryKey: ['blockedProfiles', myProfileId] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['discoveryProfiles'] });
+      queryClient.invalidateQueries({ queryKey: ['mapProfiles'] });
+      queryClient.invalidateQueries({ queryKey: ['mapEvents'] });
       // Follows cleanup
       queryClient.invalidateQueries({ queryKey: ['isFollowing', myProfileId, blockedId] });
       queryClient.invalidateQueries({ queryKey: ['isFollowing', blockedId, myProfileId] });
@@ -177,11 +191,7 @@ export function useUnblockUser() {
     },
     onSuccess: (_data, { myProfileId }) => {
       queryClient.invalidateQueries({ queryKey: ['blockedIds', myProfileId] });
-      queryClient.invalidateQueries({
-        queryKey: ['blockedProfiles', myProfileId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['events'] });
-      queryClient.invalidateQueries({ queryKey: ['discoveryProfiles'] });
+      queryClient.invalidateQueries({ queryKey: ['blockedProfiles', myProfileId] });
     },
   });
 }

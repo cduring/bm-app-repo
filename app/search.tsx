@@ -24,7 +24,7 @@ import {
   Typography,
 } from "../src/constants/theme";
 import { useAuth } from "../src/context/auth";
-import { useBlockedIds, useBlockerIds } from "../src/hooks/useBlock";
+import { useExcludedIds } from "../src/hooks/useBlock";
 import { useEvents } from "../src/hooks/useEvents";
 import { useNiches } from "../src/hooks/useNiches";
 import { useProfile } from "../src/hooks/useProfile";
@@ -41,12 +41,7 @@ export default function SearchScreen() {
   const { session } = useAuth();
   const { data: myProfileData } = useProfile(session?.user?.id);
   const myProfileId = myProfileData?.profile?.id;
-  const { data: blockedIds = [] } = useBlockedIds(myProfileId);
-  const { data: blockerIds = [] } = useBlockerIds(myProfileId);
-  const excludedIds = useMemo(
-    () => (blockedIds.length === 0 && blockerIds.length === 0 ? [] : [...new Set([...blockedIds, ...blockerIds])]),
-    [blockedIds, blockerIds],
-  );
+  const excludedIds = useExcludedIds(myProfileId);
 
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
