@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -371,7 +372,10 @@ export default function ViewProfileScreen() {
         transparent
         onRequestClose={() => setReportModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Report User</Text>
             <Text style={styles.modalSubtitle}>
@@ -413,7 +417,7 @@ export default function ViewProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <ScrollView
