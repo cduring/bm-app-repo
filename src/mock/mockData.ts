@@ -29,6 +29,7 @@ export interface Niche {
   id: string;
   name: string;
   color: string;
+  category?: string;
 }
 
 export interface ExternalLink {
@@ -85,37 +86,37 @@ export interface Event {
 // ─────────────────────────────────────────────
 
 export const mockNiches: Niche[] = [
-  { id: '1',  name: 'Streetwear',            color: '#5D3FD3' },
-  { id: '2',  name: 'Cinematography',        color: '#C0C0C0' },
-  { id: '3',  name: 'Barbering',             color: '#E32636' },
-  { id: '4',  name: 'Music Production',      color: '#FFBF00' },
-  { id: '5',  name: 'Photography',           color: '#9966CC' },
-  { id: '6',  name: 'Modeling',              color: '#A4C639' },
-  { id: '7',  name: 'Comedy',               color: '#CD9575' },
-  { id: '8',  name: 'Tattoo Art',           color: '#ABC230' },
-  { id: '9',  name: 'Fitness',              color: '#007FFF' },
-  { id: '10', name: 'Food & Culinary',      color: '#89CFF0' },
-  { id: '11', name: 'Theatre',              color: '#F5F5DC' },
-  { id: '12', name: 'Digital Art',          color: '#DE5D83' },
-  { id: '13', name: 'Hair Styling',         color: '#9C594E' },
-  { id: '14', name: 'Podcasting',           color: '#02C9C0' },
-  { id: '15', name: 'Fashion Design',       color: '#D1E231' },
-  { id: '16', name: 'Graphic Design',       color: '#ED872D' },
-  { id: '17', name: 'DJing',                color: '#A52A2A' },
-  { id: '18', name: 'Makeup Artistry',      color: '#239643' },
-  { id: '19', name: 'Real Estate',          color: '#2FD48B' },
-  { id: '20', name: 'Fine Arts',            color: '#7BB661' },
-  { id: '21', name: 'Dance',                color: '#44D7A8' },
-  { id: '22', name: 'Poetry',               color: '#B1CFE6' },
-  { id: '23', name: 'Gaming & Streaming',   color: '#C41E3A' },
-  { id: '24', name: 'Content Creation',     color: '#00CC99' },
-  { id: '25', name: 'UX/UI',                color: '#960018' },
-  { id: '26', name: 'Software',             color: '#DFFF00' },
-  { id: '27', name: 'Nightlife',            color: '#DE3163' },
-  { id: '28', name: 'Event Planning',       color: '#007BA7' },
-  { id: '29', name: 'Floral Design',        color: '#7FFF00' },
-  { id: '30', name: 'Travel & Hospitality', color: '#D2691E' },
-  { id: '31', name: 'Skincare & Esthetics', color: '#E4D00A' },
+  { id: '1',  name: 'Streetwear',            color: '#5D3FD3', category: 'Fashion & Beauty' },
+  { id: '2',  name: 'Cinematography',        color: '#C0C0C0', category: 'Visual Arts' },
+  { id: '3',  name: 'Barbering',             color: '#E32636', category: 'Fashion & Beauty' },
+  { id: '4',  name: 'Music Production',      color: '#FFBF00', category: 'Music' },
+  { id: '5',  name: 'Photography',           color: '#9966CC', category: 'Visual Arts' },
+  { id: '6',  name: 'Modeling',              color: '#A4C639', category: 'Fashion & Beauty' },
+  { id: '7',  name: 'Comedy',               color: '#CD9575', category: 'Performance' },
+  { id: '8',  name: 'Tattoo Art',           color: '#ABC230', category: 'Visual Arts' },
+  { id: '9',  name: 'Fitness',              color: '#007FFF', category: 'Lifestyle' },
+  { id: '10', name: 'Food & Culinary',      color: '#89CFF0', category: 'Lifestyle' },
+  { id: '11', name: 'Theatre',              color: '#F5F5DC', category: 'Performance' },
+  { id: '12', name: 'Digital Art',          color: '#DE5D83', category: 'Visual Arts' },
+  { id: '13', name: 'Hair Styling',         color: '#9C594E', category: 'Fashion & Beauty' },
+  { id: '14', name: 'Podcasting',           color: '#02C9C0', category: 'Music' },
+  { id: '15', name: 'Fashion Design',       color: '#D1E231', category: 'Fashion & Beauty' },
+  { id: '16', name: 'Graphic Design',       color: '#ED872D', category: 'Visual Arts' },
+  { id: '17', name: 'DJing',                color: '#A52A2A', category: 'Music' },
+  { id: '18', name: 'Makeup Artistry',      color: '#239643', category: 'Fashion & Beauty' },
+  { id: '19', name: 'Real Estate',          color: '#2FD48B', category: 'Business' },
+  { id: '20', name: 'Fine Arts',            color: '#7BB661', category: 'Visual Arts' },
+  { id: '21', name: 'Dance',                color: '#44D7A8', category: 'Performance' },
+  { id: '22', name: 'Poetry',               color: '#B1CFE6', category: 'Performance' },
+  { id: '23', name: 'Gaming & Streaming',   color: '#C41E3A', category: 'Tech & Media' },
+  { id: '24', name: 'Content Creation',     color: '#00CC99', category: 'Tech & Media' },
+  { id: '25', name: 'UX/UI',                color: '#960018', category: 'Visual Arts' },
+  { id: '26', name: 'Software',             color: '#DFFF00', category: 'Tech & Media' },
+  { id: '27', name: 'Nightlife',            color: '#DE3163', category: 'Lifestyle' },
+  { id: '28', name: 'Event Planning',       color: '#007BA7', category: 'Business' },
+  { id: '29', name: 'Floral Design',        color: '#7FFF00', category: 'Fashion & Beauty' },
+  { id: '30', name: 'Travel & Hospitality', color: '#D2691E', category: 'Lifestyle' },
+  { id: '31', name: 'Skincare & Esthetics', color: '#E4D00A', category: 'Fashion & Beauty' },
 ];
 
 // ─────────────────────────────────────────────

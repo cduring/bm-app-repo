@@ -51,6 +51,8 @@ import {
 } from "../../src/constants/theme";
 import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
 import { useMapEvents, useMapProfiles } from "../../src/hooks/useMapData";
+import { useNicheFilter } from "../../src/hooks/useNicheFilter";
+import { useNiches } from "../../src/hooks/useNiches";
 import { useProfile } from "../../src/hooks/useProfile";
 import type { EventWithHost, Niche, ProfileWithNiches } from "../../src/types";
 import { useAuth } from "../../src/context/auth";
@@ -446,9 +448,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const [mode, setMode] = useState<Mode>("CREATORS");
-  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const { selectedNicheIds, toggleNiche: baseToggleNiche, clearAll, setSelectedNicheIds } = useNicheFilter();
   const [selectedPin, setSelectedPin] = useState<SelectedPin>(null);
   const [topPinData, setTopPinData] = useState<SelectedPin>(null);
   const [locationGranted, setLocationGranted] = useState(false);
@@ -470,6 +470,7 @@ export default function MapScreen() {
     error: eventsError,
     refetch: refetchMapEvents,
   } = useMapEvents();
+  const { data: allNiches = [] } = useNiches();
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status }) => {
@@ -494,38 +495,6 @@ export default function MapScreen() {
       });
     }, 300);
   }, [eventId, mapEvents]);
-
-  // Unique niches across real profiles (deduplicated by id)
-  const allProfileNiches = useMemo<Niche[]>(() => {
-    const seen = new Set<string>();
-    const result: Niche[] = [];
-    for (const profile of mapProfiles) {
-      for (const niche of profile.niches) {
-        if (!seen.has(niche.id)) {
-          seen.add(niche.id);
-          result.push(niche);
-        }
-      }
-    }
-    return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [mapProfiles]);
-
-  // Unique niches across real events (deduplicated by id)
-  const allEventNiches = useMemo<Niche[]>(() => {
-    const seen = new Set<string>();
-    const result: Niche[] = [];
-    for (const event of mapEvents) {
-      for (const niche of event.niches) {
-        if (!seen.has(niche.id)) {
-          seen.add(niche.id);
-          result.push(niche);
-        }
-      }
-    }
-    return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [mapEvents]);
-
-  const allNiches = mode === "CREATORS" ? allProfileNiches : allEventNiches;
 
   // Filtered profiles based on selected niches and blocked users
   const visibleProfiles = useMemo(() => {
@@ -632,18 +601,13 @@ export default function MapScreen() {
       mode,
       action: wasActive ? "removed" : "added",
     });
-    setSelectedNicheIds((prev) => {
-      const next = new Set(prev);
-      next.has(nicheId) ? next.delete(nicheId) : next.add(nicheId);
-      return next;
-    });
+    baseToggleNiche(nicheId);
     deselectPin();
   }
 
   function handleSwitchMode(newMode: Mode) {
     setMode(newMode);
     clearPin();
-    setSelectedNicheIds(new Set());
   }
 
   function handleUserLocationUpdate(location: any) {
@@ -950,6 +914,20 @@ export default function MapScreen() {
           })()}
       </MapView>
 
+      {/* No-results overlay */}
+      {selectedNicheIds.size > 0 &&
+        ((mode === "CREATORS" && visibleProfiles.length === 0) ||
+          (mode === "EVENTS" && visibleEvents.length === 0)) && (
+          <View style={styles.noResultsOverlay} pointerEvents="none">
+            <View style={styles.noResultsCard}>
+              <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
+              <Text style={styles.noResultsText}>
+                No {mode === "CREATORS" ? "creators" : "events"} match this filter
+              </Text>
+            </View>
+          </View>
+        )}
+
       {/* Recenter button */}
       {showRecenterButton && locationGranted && (
         <TouchableOpacity
@@ -1030,7 +1008,7 @@ export default function MapScreen() {
           niches={allNiches}
           selectedIds={selectedNicheIds}
           onToggle={handleToggleNiche}
-          onClearAll={() => setSelectedNicheIds(new Set())}
+          onClearAll={clearAll}
           onClearAllExtra={deselectPin}
         />
       </SafeAreaView>
@@ -1355,6 +1333,29 @@ const styles = StyleSheet.create({
   },
   eventPinImage: {
     borderRadius: 8,
+  },
+
+  // No-results overlay
+  noResultsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noResultsCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  noResultsText: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.medium,
+    color: Colors.textPrimary,
   },
 
   // Recenter button

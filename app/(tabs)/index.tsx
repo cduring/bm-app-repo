@@ -28,6 +28,7 @@ import { useAuth } from "../../src/context/auth";
 import { useBlockedIds, useBlockerIds } from "../../src/hooks/useBlock";
 import { useEvents } from "../../src/hooks/useEvents";
 import { useIntroModal } from "../../src/hooks/useIntroModal";
+import { useNicheFilter } from "../../src/hooks/useNicheFilter";
 import { useNiches } from "../../src/hooks/useNiches";
 import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
 import { useDiscoveryProfiles } from "../../src/hooks/useSearch";
@@ -81,9 +82,7 @@ export default function DiscoverScreen() {
   );
 
   const [activeView, setActiveView] = useState<ActiveView>("CREATORS");
-  const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const { selectedNicheIds, toggleNiche, clearAll } = useNicheFilter();
   const { data: niches = [] } = useNiches();
 
   const {
@@ -160,15 +159,6 @@ export default function DiscoverScreen() {
       }));
     }
   }, [activeView, groupedEvents, filteredCreators, isLoading]);
-
-  function toggleNiche(id: string) {
-    setSelectedNicheIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   function renderItem({ item }: { item: ListItem }) {
     if (item._type === "dateHeader") {
@@ -338,7 +328,7 @@ export default function DiscoverScreen() {
         niches={niches}
         selectedIds={selectedNicheIds}
         onToggle={toggleNiche}
-        onClearAll={() => setSelectedNicheIds(new Set())}
+        onClearAll={clearAll}
       />
 
       {/* Feed */}

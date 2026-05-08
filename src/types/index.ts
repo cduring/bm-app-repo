@@ -32,6 +32,7 @@ export interface Niche {
   id: string;
   name: string;
   color?: string;
+  category?: string;
 }
 
 // ─── External Links ──────────────────────────────────────────────────────────

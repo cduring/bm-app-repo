@@ -5,7 +5,7 @@ import type { Niche } from "../types";
 async function fetchNiches(): Promise<Niche[]> {
   const { data, error } = await supabase
     .from("niches")
-    .select("id, name, color")
+    .select("id, name, color, category")
     .order("name");
 
   if (error) throw error;
@@ -13,6 +13,7 @@ async function fetchNiches(): Promise<Niche[]> {
     id: String(n.id),
     name: n.name,
     color: n.color ?? undefined,
+    category: n.category ?? undefined,
   }));
 }
 

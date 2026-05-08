@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { mockNiches } from '../../src/mock/mockData';
 
 export async function seedNiches(client: SupabaseClient): Promise<Map<string, number>> {
-  const rows = mockNiches.map((n) => ({ name: n.name, color: n.color }));
+  const rows = mockNiches.map((n) => ({ name: n.name, color: n.color, category: n.category }));
   const { data, error } = await client
     .from('niches')
     .upsert(rows, { onConflict: 'name' })
