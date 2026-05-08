@@ -11,16 +11,20 @@ export function useIntroModal(tabKey: TabKey, userId: string | undefined) {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
 
     (async () => {
       const raw = await SecureStore.getItemAsync(`${STORE_KEY_PREFIX}${userId}`);
       const seen: Partial<Record<TabKey, boolean>> = raw ? JSON.parse(raw) : {};
       if (!cancelled && !seen[tabKey]) {
-        setVisible(true);
+        timer = setTimeout(() => setVisible(true), 1000);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [userId, tabKey]);
 
   const dismiss = async () => {
