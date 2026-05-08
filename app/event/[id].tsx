@@ -17,12 +17,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { APP_WEBSITE } from "../../src/constants/app";
 import { ErrorState } from "../../src/components/ErrorState";
 import { EventTypeBadge } from "../../src/components/EventTypeBadge";
 import { LocationMapPreview } from "../../src/components/LocationMapPreview";
 import { NicheTag } from "../../src/components/NicheTag";
 import { ProfileCard } from "../../src/components/ProfileCard";
+import { APP_WEBSITE } from "../../src/constants/app";
 import { EVENT_TYPE_COLOR } from "../../src/constants/eventTypes";
 import {
   BorderRadius,
@@ -32,11 +32,15 @@ import {
 } from "../../src/constants/theme";
 import { useAuth } from "../../src/context/auth";
 import { useRSVP } from "../../src/context/rsvp";
+import {
+  useBlockedIds,
+  useIsBlockedBy,
+  useUnblockUser,
+} from "../../src/hooks/useBlock";
 import { useEventById } from "../../src/hooks/useEvents";
 import { useProfile } from "../../src/hooks/useProfile";
-import { useReportContent } from "../../src/hooks/useReport";
-import { useBlockedIds, useIsBlockedBy, useUnblockUser } from "../../src/hooks/useBlock";
 import { useRefreshHandler } from "../../src/hooks/useRefreshHandler";
+import { useReportContent } from "../../src/hooks/useReport";
 import type { RSVPStatus } from "../../src/types";
 import { formatDayDate, formatTimeRange } from "../../src/utils/date";
 
@@ -53,14 +57,17 @@ export default function EventDetailScreen() {
   const { data: profileData } = useProfile(session?.user?.id);
   const myProfileId = profileData?.profile?.id;
   const hostId = event?.host_id ? String(event.host_id) : undefined;
-  const isOwnEvent = !!myProfileId && !!hostId && String(myProfileId) === hostId;
+  const isOwnEvent =
+    !!myProfileId && !!hostId && String(myProfileId) === hostId;
 
-  const { data: blockedIds = [], isLoading: blockedIdsLoading } = useBlockedIds(myProfileId);
+  const { data: blockedIds = [], isLoading: blockedIdsLoading } =
+    useBlockedIds(myProfileId);
   const { data: isBlockedByHost = false, isLoading: isBlockedByLoading } =
     useIsBlockedBy(hostId, myProfileId);
   const unblockMutation = useUnblockUser();
 
-  const iHaveBlockedHost = !isOwnEvent && !!hostId && blockedIds.includes(hostId);
+  const iHaveBlockedHost =
+    !isOwnEvent && !!hostId && blockedIds.includes(hostId);
 
   const {
     getRSVP,
@@ -72,8 +79,11 @@ export default function EventDetailScreen() {
     getPendingCount,
     refetchRequestors,
   } = useRSVP();
-  const { refreshing, handleRefresh: onRefresh } =
-    useRefreshHandler(refetchEvent, refetchMyRSVPs, refetchRequestors);
+  const { refreshing, handleRefresh: onRefresh } = useRefreshHandler(
+    refetchEvent,
+    refetchMyRSVPs,
+    refetchRequestors,
+  );
   const reportMutation = useReportContent();
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -88,7 +98,9 @@ export default function EventDetailScreen() {
   function handleRSVP(status: RSVPStatus) {
     if (!id) return;
 
-    const eventMeta = event ? { title: event.title, startTime: event.start_time } : undefined;
+    const eventMeta = event
+      ? { title: event.title, startTime: event.start_time }
+      : undefined;
 
     if (event?.privacy === "EXCLUSIVE" && rsvp === "GOING") {
       Alert.alert(
@@ -99,9 +111,10 @@ export default function EventDetailScreen() {
           {
             text: "Leave",
             style: "destructive",
-            onPress: () => setRSVP(id, rsvp === status ? null : status, eventMeta),
+            onPress: () =>
+              setRSVP(id, rsvp === status ? null : status, eventMeta),
           },
-        ]
+        ],
       );
       return;
     }
@@ -186,10 +199,15 @@ export default function EventDetailScreen() {
   }
 
   if (!validId) {
-    return <ErrorState message="Invalid event link" onBack={() => router.back()} />;
+    return (
+      <ErrorState message="Invalid event link" onBack={() => router.back()} />
+    );
   }
 
-  if ((isLoading && !event) || (!isOwnEvent && (blockedIdsLoading || (!!hostId && isBlockedByLoading)))) {
+  if (
+    (isLoading && !event) ||
+    (!isOwnEvent && (blockedIdsLoading || (!!hostId && isBlockedByLoading)))
+  ) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -223,11 +241,16 @@ export default function EventDetailScreen() {
         <View style={styles.blockedContainer}>
           <Ionicons name="ban-outline" size={48} color={Colors.textTertiary} />
           <Text style={styles.blockedTitle}>You've blocked this creator</Text>
-          <Text style={styles.blockedSubtitle}>Unblock them to view their events</Text>
+          <Text style={styles.blockedSubtitle}>
+            Unblock them to view their events
+          </Text>
           <TouchableOpacity
             style={styles.unblockButton}
             onPress={() =>
-              unblockMutation.mutate({ myProfileId: String(myProfileId), blockedId: hostId! })
+              unblockMutation.mutate({
+                myProfileId: String(myProfileId),
+                blockedId: hostId!,
+              })
             }
             disabled={unblockMutation.isPending}
           >
@@ -254,7 +277,11 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.blockedContainer}>
-          <Ionicons name="calendar-outline" size={48} color={Colors.textTertiary} />
+          <Ionicons
+            name="calendar-outline"
+            size={48}
+            color={Colors.textTertiary}
+          />
           <Text style={styles.blockedTitle}>Event not found</Text>
         </View>
       </SafeAreaView>
@@ -329,7 +356,8 @@ export default function EventDetailScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Report Event</Text>
             <Text style={styles.modalSubtitle}>
-              Describe why you're reporting this event. We'll review it within 24 hours.
+              Describe why you're reporting this event. We'll review it within
+              24 hours.
             </Text>
             <TextInput
               style={styles.modalInput}
@@ -655,7 +683,7 @@ export default function EventDetailScreen() {
                         styles.rsvpButtonTextDisabled,
                       ]}
                     >
-                      Pending…
+                      Request Sent
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -793,7 +821,11 @@ export default function EventDetailScreen() {
                   key={niche.id}
                   name={niche.name}
                   color={niche.color}
-                  onPress={() => router.push(`/events/${encodeURIComponent(niche.name)}` as any)}
+                  onPress={() =>
+                    router.push(
+                      `/events/${encodeURIComponent(niche.name)}` as any,
+                    )
+                  }
                 />
               ))}
             </View>
