@@ -105,24 +105,37 @@ export function NicheSelector({
       {/* Category picker button */}
       {categories.length > 0 && (
         <TouchableOpacity
-          style={[styles.categoryChip, activeCategory !== null && styles.categoryChipActive]}
+          style={[
+            styles.categoryChip,
+            activeCategory !== null && styles.categoryChipActive,
+          ]}
           onPress={() => setCategoryPickerVisible(true)}
           activeOpacity={0.7}
-          accessibilityLabel={activeCategory ? `Category: ${activeCategory}` : "All Categories"}
+          accessibilityLabel={
+            activeCategory ? `Category: ${activeCategory}` : "All Categories"
+          }
           accessibilityRole="button"
         >
           <Ionicons
             name="grid-outline"
             size={13}
-            color={activeCategory !== null ? Colors.textPrimary : Colors.textSecondary}
+            color={
+              activeCategory !== null
+                ? Colors.textPrimary
+                : Colors.textSecondary
+            }
           />
-          <Text style={[styles.categoryChipText, activeCategory !== null && styles.categoryChipTextActive]}>
+          <Text
+            style={[styles.categoryChipText, styles.categoryChipTextActive]}
+          >
             {activeCategory ?? "All Categories"}
           </Text>
           <Ionicons
             name="chevron-down"
             size={11}
-            color={activeCategory !== null ? Colors.textPrimary : Colors.textTertiary}
+            color={
+              activeCategory !== null ? Colors.textPrimary : Colors.textTertiary
+            }
           />
         </TouchableOpacity>
       )}
@@ -231,7 +244,10 @@ export function NicheSelector({
               <Text style={styles.sheetDone}>Done</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={styles.sheetBody} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.sheetBody}
+            showsVerticalScrollIndicator={false}
+          >
             {categories.map((cat) => {
               const isActive = activeCategory === cat;
               return (
@@ -244,11 +260,20 @@ export function NicheSelector({
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.categoryRowText, isActive && styles.categoryRowTextActive]}>
+                  <Text
+                    style={[
+                      styles.categoryRowText,
+                      isActive && styles.categoryRowTextActive,
+                    ]}
+                  >
                     {cat}
                   </Text>
                   {isActive && (
-                    <Ionicons name="checkmark" size={16} color={Colors.primary} />
+                    <Ionicons
+                      name="checkmark"
+                      size={16}
+                      color={Colors.primary}
+                    />
                   )}
                 </TouchableOpacity>
               );

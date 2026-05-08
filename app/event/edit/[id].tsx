@@ -34,15 +34,15 @@ export default function EventEditScreen() {
   const qc = useQueryClient();
   const { data: niches = [] } = useNiches();
 
-  const [title, setTitle] = useState(event?.title ?? '');
-  const [description, setDescription] = useState(event?.description ?? '');
-  const [addressName, setAddressName] = useState(event?.address_name ?? '');
-  const [latitude, setLatitude] = useState(event?.latitude ?? 43.6532);
-  const [longitude, setLongitude] = useState(event?.longitude ?? -79.3832);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [addressName, setAddressName] = useState('');
+  const [latitude, setLatitude] = useState(43.6532);
+  const [longitude, setLongitude] = useState(-79.3832);
   const [geocoded, setGeocoded] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [coverUri, setCoverUri] = useState<string | null>(event?.cover_image_url ?? null);
+  const [coverUri, setCoverUri] = useState<string | null>(null);
   const [selectedNicheIds, setSelectedNicheIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -59,6 +59,13 @@ export default function EventEditScreen() {
 
   useEffect(() => {
     if (event) {
+      setTitle(event.title);
+      setDescription(event.description ?? '');
+      setAddressName(event.address_name ?? '');
+      setLatitude(event.latitude ?? 43.6532);
+      setLongitude(event.longitude ?? -79.3832);
+      setCoverUri(event.cover_image_url ?? null);
+      if (event.latitude && event.longitude) setGeocoded(true);
       setSelectedNicheIds(new Set(event.niches.map(n => n.id)));
       setEventType(event.event_type);
       const s = new Date(event.start_time);
